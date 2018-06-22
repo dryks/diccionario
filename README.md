@@ -1,2 +1,2 @@
-echo
+repositorij не удалять 
 # diccionario
