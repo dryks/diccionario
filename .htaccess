@@ -19,5 +19,5 @@ RewriteRule ^wiki/(.*)$ /index.php?word=$1 [L]
 #RewriteRule ^category$ category.php?word=$1 [L]
 #RewriteRule ^category/$ category.php?word=$1 [L]
 #RewriteRule ^w/index.php(.*)$ /404.php?word=$1 [R]
-#loxi
+
 
