@@ -9,7 +9,7 @@ RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 
 #RewriteCond %{HTTP_HOST} ^(.+).serials.ru$
-#RewriteRule (.*) http://kakue.ru/$1?region=%1 [L,R=301,QSA]
+#RewriteRule (.*) http://.ru/$1?region=%1 [L,R=301,QSA]
 
 RewriteRule ^/$ /index.php?index=$1 [L]
 RewriteRule ^wiki/Файл:(.*)$ /index.php?photo=$1 [L]
