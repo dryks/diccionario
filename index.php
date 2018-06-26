@@ -1,8 +1,8 @@
 <?php
 if(isset($_GET['category'])){
    include "category.php";
-}elseif(isset($_GET['wordday'])){
-    include "wordday.php";
+}elseif(isset($_GET['word'])){
+    include "model/word.php";
 
 }elseif(isset($_GET['categorymain'])){
     include "categorymain.php";
