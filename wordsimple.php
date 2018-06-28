@@ -1,12 +1,10 @@
 <?php
 $word= htmlspecialchars($_GET["word"]);
-
-//$wiki= $_GET["wiki"];
-//if($wiki==""){
-	//$wiki="Заглавная_страница";
-//};
-$word="Заглавная_страница";
-urldecode($wiki);
+$morfij=preg_match_all("#^словарь:#",$word,$res);
+if($morfij==1){
+    $word="Вики".$word; 
+};
+urldecode($word);
 include("./include/conf.php");
 $title="Категории словаря сленга";
 
@@ -27,13 +25,12 @@ $headtexture=$texta2->parse->headhtml->{'*'};
 //var_dump($texta->parse->text->{'*'});
 $texture=$texta->parse->text->{'*'}; 
 $title=$texta->parse->title; 
+$title= preg_replace('#Вики#','',$title);
 $textim2 = preg_replace("~<a .*>Править</a>~",'',$texture);
 //$textim2 = preg_replace('~<a href="https://ru.wikipedia.org/wiki/.*>.*</a>~','',$textim2);
 $textim2 = preg_replace('~<a href="https://.*.wikipedia.org/wiki/.*>.*</a>~','',$textim2);
 //$textim2 = preg_replace('#<a href="/w/index.php?title.*" class=".*" title=".*">.*</a>#','',$textim2);
 $textim2 = preg_replace('#<a href="/w/.*redlink=1" class="new" title=".*">.*</a>#','',$textim2);
-//$textim2=  strstr($textim2, "Все статьи здесь пишутся исключительно на русском языке",true);
-$textim2=  strstr($textim2, "Статьи на других языках можно найти в соответствующих языковых разделах Wiktionary",true);
 //$textim2 = preg_replace('#<td class=\"mbox-text\" style=\"\">.*#','',$textim2);
 //$textim2 = preg_replace('#<table class=\"plainlinks fmbox fmbox-editnotice stub-main-footer\" style=\".*">.*</table>#','',$textim2);
 
@@ -67,7 +64,7 @@ $textim2 = preg_replace("~<a .*>Править</a>~",'',$textim2);
    $textim2short = substr($textim2short, 0, 150);
    $textim2short = preg_replace('#"#', '', $textim2short);
    //убрать из title нижний дефис
-   //$wikititle = preg_replace('#_#', ' ', $wiki);
+   //$wordtitle = preg_replace('#_#', ' ', $word);
 
    $headtexture1 = preg_replace('#<!DOCTYPE html> .* <head>#', '', $headtexture);
 
@@ -108,39 +105,41 @@ $textim2 = preg_replace("~<a .*>Править</a>~",'',$textim2);
   <meta property="og:description" content="<?php if (isset($title)){echo $title;}?> ">
   <?php if (isset($parsiteinfo["imgurl"])) { echo  '<meta property="og:image" content="'.$parsiteinfo["imgurl"].'">';     };?>
     <meta property="og:type" content="website">
-    <?php  if (isset($pathname)) { echo  ' <meta property="og:url" content= "https://slenga.ru'.$pathname.'.html">';     };?>
+    <?php  if (isset($pathname)) { echo  ' <meta property="og:url" content= "https://slowari.ru'.$pathname.'.html">';     };?>
  
     <title><?php if (isset($title)){echo $title;}?></title>
  
                 
                
                 <?php
-                 include("include/topmenu.php");
+                include("include/topmenu.php");
                 // блок параграфов текста
              if($morf==1){ 
 
-                 echo '<li class="nav-item"><a class="nav-link" href="https://slowari.ru/word/'.$wiki.'#Морфологические_и_синтаксические_свойства"><img class="menu-icon"  width="17px" src="../images/menu_icons/05.png" alt="Падежи слова '.$wiki.'"> <span class="menu-title">Падежи</span></a></li>';
+                 echo '<li class="nav-item"><a class="nav-link" href="https://slowari.ru/word/'.$word.'#Морфологические_и_синтаксические_свойства"><img class="menu-icon"  width="17px" src="../images/menu_icons/05.png" alt="Падежи слова '.$word.'"> <span class="menu-title">Падежи</span></a></li>';
               };
 
               if($proiznoc==1){ 
 
-                echo '<li class="nav-item"><a class="nav-link" href="https://slowari.ru/word/'.$wiki.'#Произношение"><img class="menu-icon"  width="17px" src="../images/menu_icons/09.png" alt="Произношение слова '.$wiki.'"> <span class="menu-title">Произношение</span></a></li>';
+                echo '<li class="nav-item"><a class="nav-link" href="https://slowari.ru/word/'.$word.'#Произношение"><img class="menu-icon"  width="17px" src="../images/menu_icons/09.png" alt="Произношение слова '.$word.'"> <span class="menu-title">Произношение</span></a></li>';
                           };   
                           
                    if($znach==1){ 
 
-                            echo '<li class="nav-item"><a class="nav-link" href="https://slowari.ru/word/'.$wiki.'#Значение"><img class="menu-icon"  width="17px" src="../images/menu_icons/06.png" alt="Значение слова '.$wiki.'"> <span class="menu-title">Значение</span></li></a>';
+                            echo '<li class="nav-item"><a class="nav-link" href="https://slowari.ru/word/'.$word.'#Значение"><img class="menu-icon"  width="17px" src="../images/menu_icons/06.png" alt="Значение слова '.$word.'"> <span class="menu-title">Значение</span></li></a>';
                                       };     
                                       
                     if($sinonim==1){ 
 
-                           echo '<li class="nav-item"><a class="nav-link" href="https://slowari.ru/word/'.$wiki.'#Синонимы"><img class="menu-icon"  width="17px" src="../images/menu_icons/04.png" alt="Синонимы слова '.$wiki.'"> <span class="menu-title">Синонимы</span></a></li>';
+                           echo '<li class="nav-item"><a class="nav-link" href="https://slowari.ru/word/'.$word.'#Синонимы"><img class="menu-icon"  width="17px" src="../images/menu_icons/04.png" alt="Синонимы слова '.$word.'"> <span class="menu-title">Синонимы</span></a></li>';
                             }; 
                      if($etimology==1){ 
 
-                                echo '<li class="nav-item"><a class="nav-link" href="https://slowari.ru/word/'.$wiki.'#Этимология"><img class="menu-icon"  width="17px" src="../images/menu_icons/02.png" alt="Происхождение слова '.$wiki.'"> <span class="menu-title">Происхождение</span></a></li>';
+                                echo '<li class="nav-item"><a class="nav-link" href="https://slowari.ru/word/'.$word.'#Этимология"><img class="menu-icon"  width="17px" src="../images/menu_icons/02.png" alt="Происхождение слова '.$word.'"> <span class="menu-title">Происхождение</span></a></li>';
                              };     
                       ?>
+
+
 
 
             </ul>
@@ -148,34 +147,22 @@ $textim2 = preg_replace("~<a .*>Править</a>~",'',$textim2);
         <!-- partial -->
         <div class="main-panel">
             <div class="content-wrapper">
-                
+               
+
+
+
                     <div class="row" id="description">
                         <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12 grid-margin">
                             <div class="card">
                                 <div class="card-body">
                                     <h4 class="card-title mb-4" id="rating"><?php if (isset($title)){echo $title;}?></h4>
-                                    <div class="row">                          
+                                    <div class="row">
+                                      
+                                       
                                     <div class="row">
 <?php
 
   
-
-
-//$link = mysqli_connect("localhost", "domain", "domain", "domain"); WHERE pathname LIKE '".$post."'
-$query = mysqli_query($link, "SET NAMES 'utf8'");
-if ($result = mysqli_query($link, "SELECT *  FROM category  ")) { 
-  while($row = mysqli_fetch_array($result))
-{
-
-	//print_r( mysqli_error($link));
-	
-	//информация о сериале
-	if (isset($row['id'])){ $idcategory=$row['id'];};
-	if (isset($row['names'])){ $names=$row['names'];};
-	if (isset($row['pathname'])){ $pathname=$row['pathname'];};
-   
-};
-};
 
 echo $textim2;
 
@@ -191,16 +178,12 @@ echo $textim2;
                     </div>
 
 
+  <?php include("include/footer.php");?>
+ 
 
 
-
-
-               
-                <!-- content-wrapper ends -->
-                <?php include("include/footer.php");?>
 
     <!-- End custom js for this page-->
 </body>
-
 
 </html>
