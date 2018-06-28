@@ -12,7 +12,7 @@ $this->texta=$texta;
 }
 
 
-function gettexta($wiki="Заглавная_страница"){
+function gettext($wiki="Заглавная_страница"){
     
     $input=file_get_contents("https://ru.wiktionary.org/w/api.php?action=parse&prop=text|headhtml|categories&format=json&mobileformat&redirects=1&useskin=minerva&page=".$wiki);
     $texta=json_decode($input);
@@ -32,7 +32,7 @@ function cleantexta(){
 
 $cat=new Word();
 
-$lom=$cat->getwiki("Москва")->parse->headhtml->{'*'};
-$lom=$cat->getwiki($word)->parse->text->{'*'}; 
+$lom=$cat->gettext("Москва")->parse->headhtml->{'*'};
+$lom=$cat->gettext($word)->parse->text->{'*'}; 
 echo 222222;
 var_dump($lom);
