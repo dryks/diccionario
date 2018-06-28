@@ -8,10 +8,11 @@ class Word{
 function __construct($wiki="Заглавная_страница")
 {
 $this->wiki=$wiki;
+$this->texta=$texta;
 }
 
 
-function getwiki($wiki="Заглавная_страница"){
+function gettexta($wiki="Заглавная_страница"){
     
     $input=file_get_contents("https://ru.wiktionary.org/w/api.php?action=parse&prop=text|headhtml|categories&format=json&mobileformat&redirects=1&useskin=minerva&page=".$wiki);
     $texta=json_decode($input);
@@ -20,7 +21,9 @@ return $texta;
 
 }
 
+function cleantexta(){
 
+}
 
 
 
