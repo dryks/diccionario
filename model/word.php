@@ -29,14 +29,22 @@ return $this->texta;
 function cleantext(){
    $clean= $this->texta;
    $clean = preg_replace("~<a .*>Править</a>~",'',$clean);
-
+   $clean = preg_replace('~<a href="/w/index.php.*".*>(.*?)</a>~','$1',$clean);
 
 
   return  $clean;
 
 }
 
+function cleanhead(){
+  $clean= $this->texta;
+  $clean = preg_replace("~<a .*>Править</a>~",'',$clean);
+  $clean = preg_replace('~<a href="/w/index.php.*".*>(.*?)</a>~','$1',$clean);
 
+
+ return  $clean;
+
+}
 
 
 }
