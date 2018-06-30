@@ -1,5 +1,4 @@
 <?php
-echo 100;
 $word="москва";
 class Word{
     public $wiki; //слово запроса
@@ -33,18 +32,11 @@ function cleantext(){
 
 
   return  $clean;
+ 
 
 }
 
-function cleanhead(){
-  $clean= $this->texta;
-  $clean = preg_replace("~<a .*>Править</a>~",'',$clean);
-  $clean = preg_replace('~<a href="/w/index.php.*".*>(.*?)</a>~','$1',$clean);
 
-
- return  $clean;
-
-}
 
 
 }
@@ -60,7 +52,7 @@ $clean=$cat->cleantext();
 //var_dump($clean);
 
 ?>
-
+<?php /*
 <!doctype html>
 <html lang="en">
   <head>
@@ -79,7 +71,12 @@ $clean=$cat->cleantext();
   
 </style>
      <title>Hello, world!</title>
-  </head>
+      </head>
+*/?>
+<?php echo $cat->htmlhead; ?>
+
+
+ 
 
 
 
