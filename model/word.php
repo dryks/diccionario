@@ -79,7 +79,7 @@ $clean=$cat->cleantext();
  
 
 
-
+<?php /* 
   <body>
 
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
@@ -109,7 +109,7 @@ $clean=$cat->cleantext();
     </form>
   </div>
 </nav>
-
+*/?>
 
 <?php echo $clean ?>
 
