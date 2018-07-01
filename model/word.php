@@ -27,12 +27,45 @@ return $this->texta;
 
 function cleantext(){
    $clean= $this->texta;
+   $cleanhead=$this->htmlhead;
+//форматирование head к выводу
+//стили вывод в хеад
+$headend=' <!-- Bootstrap CSS -->
+<link href="https://stackpath.bootstrapcdn.com/bootswatch/4.1.1/cerulean/bootstrap.min.css" rel="stylesheet" integrity="sha384-0Mou2qXGeXK7k/Ue/a1hspEVcEP2zCpoQZw8/MPeUgISww+VmDJcy2ri9tX0a6iy" crossorigin="anonymous">
+
+<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+
+</head>';
+//вывод в боди после тега body
+$navig='
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+  <a class="navbar-brand" href="#">Navbar</a>
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarColor01" aria-controls="navbarColor01" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  <div class="collapse navbar-collapse" id="navbarColor01">
+  
+    <form class="form-inline my-2 my-lg-0">
+      <input class="form-control mr-sm-2" type="text" placeholder="Search">
+      <button class="btn btn-secondary my-2 my-sm-0" type="submit">Search</button>
+    </form>
+  </div>
+</nav>';
+
+
+$cleanhead = preg_replace("#</head>#",$headend,$cleanhead);
+$cleanhead = preg_replace("#<body (.*?)>#","<body $1>$navig",$cleanhead);
+   //форматирование текста к выводу
    $clean = preg_replace("~<a .*>Править</a>~",'',$clean);
    $clean = preg_replace('~<a href="/w/index.php.*".*>(.*?)</a>~','$1',$clean);
+   $this->texta=$clean;
 
-
+  //return  $clean;
+  $this->htmlhead=$cleanhead;
   return  $clean;
- 
 
 }
 
@@ -111,7 +144,7 @@ $clean=$cat->cleantext();
 </nav>
 */?>
 
-<?php echo $clean ?>
+<?php echo  $cat->texta; ?>
 
 
     <!-- Optional JavaScript -->
