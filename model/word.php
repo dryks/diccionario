@@ -19,6 +19,7 @@ function gettext($wiki="Заглавная_страница"){
     $this->texta=json_decode($input);
     $inputdecode=json_decode($input);
     $this->htmlhead=$inputdecode->parse->headhtml->{'*'};
+    $this->title=$inputdecode->parse->title;
     $this->texta=$inputdecode->parse->text->{'*'};
 return $this->texta;
 
@@ -77,6 +78,7 @@ $navig='
 
 
 $cleanhead = preg_replace("#</head>#",$headend,$cleanhead);
+$cleanhead = preg_replace("#<title>(.*)</title>#","<title>{$this->title}</title>",$cleanhead);
 $cleanhead = preg_replace("#<body (.*?)>#","<body $1>$navig",$cleanhead);
    //форматирование текста к выводу
    $clean = preg_replace("~<a .*>Править</a>~",'',$clean);
@@ -166,13 +168,17 @@ $clean=$cat->cleantext();
 */?>
 
 <?php echo  $cat->texta; ?>
+<?php
+function get_footer(){
+  ob_start();
+include "view/footer.php";
 
 
-    <!-- Optional JavaScript -->
-    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
-    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
-  </body>
-</html>
+return ob_get_clean();
+echo "199";
+
+}; 
+echo get_footer();
+
+?>
 

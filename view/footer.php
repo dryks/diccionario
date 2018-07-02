@@ -1,12 +1,11 @@
-<?php
-echo '
+
 <!-- content-wrapper ends -->
 <footer class="footer">
     <div class="container-fluid clearfix">
         <span class="text-muted d-block text-center text-sm-left d-sm-inline-block">CC © 2011-2018 <a href="https://slowari.ru/" target="_blank">slowari.ru</a>. Копирование запрещено.</span>
           </div>
 </footer>
-page-body-wrapper ends -->
+
 
 
 <!-- Plugin js for this page-->
@@ -18,5 +17,3 @@ page-body-wrapper ends -->
 </body>
 </html>
 
-
-';
