@@ -2,7 +2,7 @@
 if(isset($_GET['category'])){
    include "category.php";
 }elseif(isset($_GET['word'])){
-    include "model/word.php";
+    include "controller/word.php";
 
 }elseif(isset($_GET['categorymain'])){
     include "categorymain.php";
