@@ -1,5 +1,5 @@
 <?php
-$word="москва";
+$word="Россия";
 class Word{
     public $wiki; //слово запроса
     public $texta;//text body страницы
