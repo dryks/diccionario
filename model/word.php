@@ -33,6 +33,8 @@ function cleantext(){
 //стили вывод в хеад
 $headend=' <!-- Bootstrap CSS -->
 <link href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/4.1.1/cerulean/bootstrap.min.css" rel="stylesheet"  crossorigin="anonymous">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet"  crossorigin="anonymous">
+<link href="../css/style.css" rel="stylesheet"  crossorigin="anonymous">
 <style>
 
    body {

@@ -1,4 +1,9 @@
 
+ </div>
+            </div>
+        </div>
+
+
 <!-- content-wrapper ends -->
 <footer class="footer">
     <div class="container-fluid clearfix">
