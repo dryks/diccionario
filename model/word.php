@@ -21,6 +21,8 @@ function gettext($wiki="Заглавная_страница"){
     $this->htmlhead=$inputdecode->parse->headhtml->{'*'};
     $this->title=$inputdecode->parse->title;
     $this->texta=$inputdecode->parse->text->{'*'};
+    $this->section=$inputdecode->parse->sections;
+  //  var_dump($this->section);
 return $this->texta;
 
 }
@@ -45,8 +47,8 @@ background-repeat: repeat;
 </style>
 
 </head>';
-
-$navig='
+ob_start();
+echo'
 <div  class="container-fluid">
 <div class="row">
     <div class="col-sm-3">
@@ -54,27 +56,29 @@ $navig='
             <div class="brand">Brand Logo</div>
             <i class="fa fa-bars fa-2x toggle-btn" data-toggle="collapse" data-target="#menu-content"></i>
             <div class="menu-list">
-                <ul id="menu-content" class="menu-content collapse out">
-                    <li>
-                        <a href="#">
-                            <i class="fa fa-dashboard fa-lg"></i> Dashboard
-                        </a>
-                    </li>
-                    <li data-toggle="collapse" data-target="#new" class="collapsed">
-                        <a href="#"><i class="fa fa-car fa-lg"></i> New <span class="arrow"></span></a>
-                    </li>
-                    <ul class="sub-menu collapse" id="new">
-                        <li>New New 1</li>
-                    </ul>
-                </ul>
-            </div>
-        </div>
+                <ul id="menu-content" class="menu-content collapse out">';
+
+    for ($i=0; $i<count($this->section) ; $i++) {
+        $toc=$this->section[$i]->toclevel;
+       
+        
+        echo'
+        <li data-toggle="collapse" data-target="#'.$this->section[$i]->anchor.'" class="collapsed">
+       
+        <a href="#'.$this->section[$i]->anchor.'">'.$this->section[$i]->line.' </a> </li>';
+
+
+    };
+
+    echo'</ul>
     </div>
-    
-    <div class="col-sm-9 col-sm-offset-1">';
+</div>
+</div>
+
+<div class="col-sm-9 col-sm-offset-1">';
 
 
-
+    $navig=ob_get_clean();
 
 
 
