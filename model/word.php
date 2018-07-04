@@ -56,17 +56,25 @@ echo'
             <div class="brand">Brand Logo</div>
             <i class="fa fa-bars fa-2x toggle-btn" data-toggle="collapse" data-target="#menu-content"></i>
             <div class="menu-list">
-                <ul id="menu-content" class="menu-content collapse out">';
+                <ul id="menu-content" class="menu-content collapse out"> ';
 
     for ($i=0; $i<count($this->section) ; $i++) {
         $toc=$this->section[$i]->toclevel;
        
-        
-        echo'
-        <li data-toggle="collapse" data-target="#'.$this->section[$i]->anchor.'" class="collapsed">
-       
-        <a href="#'.$this->section[$i]->anchor.'">'.$this->section[$i]->line.' </a> </li>';
+        if ($toc==1) {
+            echo'
+            </ul><li data-toggle="collapse" data-target="#'.(int)($this->section[$i]->number).'" class="collapsed">
+           
+            <a href="#'.$this->section[$i]->anchor.'"><i class="fa fa-arrow-circle-down fa-lg"></i>'.$this->section[$i]->line.' <span class="arrow"></span> </a> </li>
+            <ul class="sub-menu collapse" id="'.(int)($this->section[$i]->number).'">
+            ';
+        }else{
+echo '
+<li><a href="#'.$this->section[$i]->anchor.'">'.$this->section[$i]->line.' </a> </li>
+';
 
+        }
+       
 
     };
 
@@ -80,6 +88,7 @@ echo'
 
     $navig=ob_get_clean();
 
+   
 
 
 $cleanhead = preg_replace("#</head>#",$headend,$cleanhead);
