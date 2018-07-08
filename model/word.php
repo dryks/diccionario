@@ -53,7 +53,7 @@ echo'
 <div class="row">
     <div class="col-sm-3">
         <div class="nav-side-menu">
-            <div class="brand">Brand Logo</div>
+            <div class="brand">diccionario.pro</div>
             <i class="fa fa-bars fa-2x toggle-btn" data-toggle="collapse" data-target="#menu-content"></i>
             <div class="menu-list">
                 <ul id="menu-content" class="menu-content collapse out"> ';
@@ -83,7 +83,8 @@ echo '
 </div>
 </div>
 
-<div class="col-sm-9 col-sm-offset-1">';
+<div class="col-sm-9 col-sm-offset-1">
+<h1 id="firstHeading" class="firstHeading" lang="ru">'.$this->title.'</h1>';
 
 
     $navig=ob_get_clean();
