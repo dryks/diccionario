@@ -57,13 +57,21 @@ echo'
             <i class="fa fa-bars fa-2x toggle-btn" data-toggle="collapse" data-target="#menu-content"></i>
             <div class="menu-list">
                 <ul id="menu-content" class="menu-content collapse out"> ';
+                echo'
+                <li data-toggle="collapse" data-target="#'.(int)($this->section[0]->number).'" class="collapsed">
+               
+                <a href="#'.$this->section[0]->anchor.'"><i class="fa fa-arrow-circle-down fa-lg"></i>'.$this->section[0]->line.' <span class="arrow"></span> </a> </li>
+                <ul class="sub-menu collapse" id="'.(int)($this->section[0]->number).'">
+                ';
 
-    for ($i=0; $i<count($this->section) ; $i++) {
+
+
+    for ($i=1; $i<count($this->section) ; $i++) {
         $toc=$this->section[$i]->toclevel;
        
         if ($toc==1) {
             echo'
-            </ul><li data-toggle="collapse" data-target="#'.(int)($this->section[$i]->number).'" class="collapsed">
+            </ul> <li data-toggle="collapse" data-target="#'.(int)($this->section[$i]->number).'" class="collapsed">
            
             <a href="#'.$this->section[$i]->anchor.'"><i class="fa fa-arrow-circle-down fa-lg"></i>'.$this->section[$i]->line.' <span class="arrow"></span> </a> </li>
             <ul class="sub-menu collapse" id="'.(int)($this->section[$i]->number).'">
