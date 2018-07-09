@@ -4,8 +4,8 @@ if(isset($_GET['category'])){
 }elseif(isset($_GET['word'])){
     include "controller/word.php";
 
-}elseif(isset($_GET['categorymain'])){
-    include "categorymain.php";
+}elseif(isset($_GET['photo'])){
+    include "controller/photo.php";
  }elseif(isset($_GET['id'])){
     include "news.php";
  }elseif($_SERVER['REQUEST_URI'] == '/' or $_SERVER['REQUEST_URI'] == '/index.php') {

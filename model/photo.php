@@ -1,11 +1,12 @@
 <?php
 //$word="Россия";
-class Word{
+class photo{
     public $wiki; //слово запроса
     public $texta;//text body страницы
     public $htmlhead ;
+    public $url ;//ссылка на изображение
 
-function __construct($wiki="Заглавная_страница")
+function __construct($wiki="MSK_Collage_2015.png")
 {
 $this->wiki=$wiki;
 $this->texta=$texta;
@@ -13,17 +14,19 @@ $this->htmlhead=$htmlhead;
 }
 
 
-function gettext($wiki="Заглавная_страница"){
+function gettext($wiki="MSK_Collage_2015.png"){
     
-    $input=file_get_contents("https://ru.wiktionary.org/w/api.php?action=parse&prop=text|headhtml|sections&format=json&mobileformat&redirects=1&useskin=minerva&page=".$wiki);
+    $input=file_get_contents("https://ru.wiktionary.org/w/api.php?action=query&prop=imageinfo&iiprop=url&format=json&titles=Файл:".$wiki);
     $this->texta=json_decode($input);
     $inputdecode=json_decode($input);
+    $this->title=$inputdecode->query->pages->{'-1'}->title; 
+    $this->url=$inputdecode->query->pages->{'-1'}->imageinfo[0]->url; 
     $this->htmlhead=$inputdecode->parse->headhtml->{'*'};
     $this->title=$inputdecode->parse->title;
     $this->texta=$inputdecode->parse->text->{'*'};
     $this->section=$inputdecode->parse->sections;
   //  var_dump($this->section);
-return $this->texta;
+return $this->title;
 
 }
 
@@ -68,25 +71,6 @@ echo'
 
 
 
-    for ($i=1; $i<count($this->section) ; $i++) {
-        $toc=$this->section[$i]->toclevel;
-       
-        if ($toc==1) {
-            echo'
-            </ul> <li data-toggle="collapse" data-target="#'.(int)($this->section[$i]->number).'" class="collapsed">
-           
-            <a href="#'.$this->section[$i]->anchor.'"><i class="fa fa-arrow-circle-down fa-lg"></i>'.$this->section[$i]->line.' <span class="arrow"></span> </a> </li>
-            <ul class="sub-menu collapse" id="'.(int)($this->section[$i]->number).'">
-            ';
-        }else{
-echo '
-<li><a href="#'.$this->section[$i]->anchor.'">'.$this->section[$i]->line.' </a> </li>
-';
-
-        }
-       
-
-    };
 
     echo'</ul>
     </div>
@@ -94,13 +78,14 @@ echo '
 </div>
 
 <div class="col-sm-9 col-sm-offset-1">
-<h1 id="firstHeading" class="firstHeading" lang="ru">'.$this->title.'</h1>';
+<h1 id="firstHeading" class="firstHeading" lang="ru">'.$this->title.'</h1> '.$this->url.'';
+
 
 
     $navig=ob_get_clean();
 
    
-
+   
 
 $cleanhead = preg_replace("#</head>#",$headend,$cleanhead);
 $cleanhead = preg_replace("#<title>(.*)</title>#","<title>{$this->title}</title>",$cleanhead);
