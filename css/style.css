@@ -26,6 +26,7 @@
     display: block;
     text-align: center;
     font-size: 14px;
+    font-weight: bold;
 }
 .nav-side-menu .toggle-btn {
     display: none;
@@ -142,6 +143,7 @@
         font-size: 22px;
         padding-left: 20px;
         line-height: 50px !important;
+        font-weight: bold;
     }
 }
 @media (min-width: 767px) {
