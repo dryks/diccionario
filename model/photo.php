@@ -58,13 +58,13 @@ $headend='<!DOCTYPE html>
  <!-- Bootstrap CSS -->
 <link href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/4.1.1/cerulean/bootstrap.min.css" rel="stylesheet"  crossorigin="anonymous">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet"  crossorigin="anonymous">
-<link href="../css/style.css" rel="stylesheet"  crossorigin="anonymous">
-<link href="../css/bootstrap.min.css" rel="stylesheet"  crossorigin="anonymous">
+<link href="/css/style.css" rel="stylesheet"  crossorigin="anonymous">
+<link href="/css/bootstrap.min.css" rel="stylesheet"  crossorigin="anonymous">
 
 <style>
 
    body {
-background-image: url("http://diccionario.pro/img/light.png");
+background-image: url("/img/light.png");
 background-repeat: repeat;
 }
 
@@ -77,16 +77,11 @@ echo'
 <div class="row">
     <div class="col-sm-3">
         <div class="nav-side-menu">
-            <div class="brand"><a href="http://diccionario.pro" ><img src="../img/logo.png" class="brand" alt="diccionario.pro"></a></div>
+            <div class="brand"><a href="http://diccionario.pro" ><img src="/img/logo.png" class="brand" alt="diccionario.pro"></a></div>
             <i class="fa fa-bars fa-2x toggle-btn" data-toggle="collapse" data-target="#menu-content"></i>
             <div class="menu-list">
                 <ul id="menu-content" class="menu-content collapse out"> ';
-                echo'
-                <li data-toggle="collapse" data-target="#'.(int)($this->section[0]->number).'" class="collapsed">
-               
-                <a href="#'.$this->section[0]->anchor.'"><i class="fa fa-arrow-circle-down fa-lg"></i>'.$this->section[0]->line.' <span class="arrow"></span> </a> </li>
-                <ul class="sub-menu collapse" id="'.(int)($this->section[0]->number).'">
-                ';
+              
 
 
 
