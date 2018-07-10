@@ -73,7 +73,7 @@ background-repeat: repeat;
 </head>';
 ob_start();
 echo'
-<div  class="container-fluid">
+<body><div  class="container-fluid">
 <div class="row">
     <div class="col-sm-3">
         <div class="nav-side-menu">
@@ -109,7 +109,7 @@ echo'
 //$cleanhead = preg_replace("#</head>#",$headend,$cleanhead);
 //$cleanhead = preg_replace("#<title>(.*)</title>#","<title>{$this->title}</title>",$cleanhead);
 //$cleanhead = preg_replace("#<body (.*?)>#","<body $1>$navig",$cleanhead);
-$cleanhead=$headend;
+$cleanhead=$headend.$navig;
    //форматирование текста к выводу
    $clean = preg_replace("~<a .*>Править</a>~",'',$clean);
    $clean = preg_replace('~<a href="/w/index.php.*".*>(.*?)</a>~','$1',$clean);
