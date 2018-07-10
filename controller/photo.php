@@ -11,7 +11,7 @@ $photoclean=$photostart->cleantext();
 //сборка страницы
 echo $photostart->htmlhead; 
 echo $photostart->texta;
-echo $photostart->url;
+//echo $photostart->url;
 include "view/footer.php";
 
 //парсинг меню вики

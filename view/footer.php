@@ -7,7 +7,7 @@
 <!-- content-wrapper ends -->
 <footer class="footer">
     <div class="container-fluid clearfix">
-        <span class="text-muted d-block text-center text-sm-left d-sm-inline-block">CC © 2011-2018 <a href="https://slowari.ru/" target="_blank">slowari.ru</a>. Копирование запрещено.</span>
+        <span class="text-muted d-block text-center text-sm-left d-sm-inline-block">CC © 2011-2018 <a href="https://diccionario.pro" target="_blank">diccionario.pro</a>. Копирование запрещено.</span>
           </div>
 </footer>
 

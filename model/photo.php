@@ -20,11 +20,11 @@ function gettext($wiki="MSK_Collage_2015.png"){
     $this->texta=json_decode($input);
     $inputdecode=json_decode($input);
     $this->title=$inputdecode->query->pages->{'-1'}->title; 
+  
     $this->url=$inputdecode->query->pages->{'-1'}->imageinfo[0]->url; 
     $this->htmlhead=$inputdecode->parse->headhtml->{'*'};
-    $this->title=$inputdecode->parse->title;
     $this->texta=$inputdecode->parse->text->{'*'};
-    var_dump($this->url);
+   
     $this->section=$inputdecode->parse->sections;
   //  var_dump($this->section);
 return $this->title;
@@ -97,7 +97,11 @@ echo'
 </div>
 
 <div class="col-sm-9 col-sm-offset-1">
-<h1 id="firstHeading" class="firstHeading" lang="ru">'.$this->title.'</h1>';
+<h1 id="firstHeading" class="firstHeading" lang="ru">'.$this->title.'</h1>
+
+<img src="'.$this->url.'" class="col-sm-12 col-xs-12 col-lg-12" alt="'.$this->title.'">
+
+';
 
 
 
@@ -111,8 +115,8 @@ echo'
 //$cleanhead = preg_replace("#<body (.*?)>#","<body $1>$navig",$cleanhead);
 $cleanhead=$headend.$navig;
    //форматирование текста к выводу
-   $clean = preg_replace("~<a .*>Править</a>~",'',$clean);
-   $clean = preg_replace('~<a href="/w/index.php.*".*>(.*?)</a>~','$1',$clean);
+  // $clean = preg_replace("~<a .*>Править</a>~",'',$clean);
+ //  $clean = preg_replace('~<a href="/w/index.php.*".*>(.*?)</a>~','$1',$clean);
    $this->texta=$clean;
 
   //return  $clean;
