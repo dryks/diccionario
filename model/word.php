@@ -21,8 +21,9 @@ function gettext($wiki="Заглавная_страница"){
     $this->htmlhead=$inputdecode->parse->headhtml->{'*'};
     $this->title=$inputdecode->parse->title;
     $this->texta=$inputdecode->parse->text->{'*'};
-   // $this->section=$inputdecode->parse->sections;
-    var_dump($this->section);
+    $this->section=$inputdecode->parse->sections;
+   $this->section=1;
+  // var_dump($this->texta);
 return $this->texta;
 
 }
