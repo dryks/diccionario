@@ -22,7 +22,7 @@ function gettext($wiki="Заглавная_страница"){
     $this->title=$inputdecode->parse->title;
     $this->texta=$inputdecode->parse->text->{'*'};
     $this->section=$inputdecode->parse->sections;
-  //  var_dump($this->section);
+    var_dump($this->section);
 return $this->texta;
 
 }
