@@ -1,16 +1,17 @@
 <?php
-$word= htmlspecialchars($_GET["word"]);
+$photo= htmlspecialchars($_GET["photo"]);
 include"model/photo.php";
 
 //обработка страницы
 $photostart=new Photo();
 
 //$lom=$cat->gettext("Москва")->parse->headhtml->{'*'};
-$photoget=$photostart->gettext($word); 
+$photoget=$photostart->gettext($photo); 
 $photoclean=$photostart->cleantext(); 
 //сборка страницы
 echo $photostart->htmlhead; 
 echo $photostart->texta;
+echo $photostart->url;
 include "view/footer.php";
 
 //парсинг меню вики

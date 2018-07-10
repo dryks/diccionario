@@ -1,6 +1,6 @@
 <?php
 //$word="Россия";
-class photo{
+class Photo{
     public $wiki; //слово запроса
     public $texta;//text body страницы
     public $htmlhead ;
@@ -24,6 +24,7 @@ function gettext($wiki="MSK_Collage_2015.png"){
     $this->htmlhead=$inputdecode->parse->headhtml->{'*'};
     $this->title=$inputdecode->parse->title;
     $this->texta=$inputdecode->parse->text->{'*'};
+    var_dump($this->url);
     $this->section=$inputdecode->parse->sections;
   //  var_dump($this->section);
 return $this->title;
@@ -36,7 +37,25 @@ function cleantext(){
    $cleanhead=$this->htmlhead;
 //форматирование head к выводу
 //стили вывод в хеад
-$headend=' <!-- Bootstrap CSS -->
+$headend='<!DOCTYPE html>
+<html class="client-nojs" lang="ru" dir="ltr">
+<head>
+<meta charset="UTF-8"/>
+<title>'. $this->title.'</title>
+<meta name="ResourceLoaderDynamicStyles" content=""/>
+<link rel="stylesheet" href="/w/load.php?debug=false&amp;lang=ru&amp;modules=site.styles&amp;only=styles&amp;skin=minerva"/>
+<meta name="generator" content="MediaWiki 1.32.0-wmf.10"/>
+<meta name="referrer" content="origin"/>
+<meta name="referrer" content="origin-when-crossorigin"/>
+<meta name="referrer" content="origin-when-cross-origin"/>
+<link rel="apple-touch-icon" href="/static/apple-touch/wiktionary.png"/>
+<link rel="shortcut icon" href="/static/favicon/piece.ico"/>
+<link rel="search" type="application/opensearchdescription+xml" href="/w/opensearch_desc.php" title="Викисловарь (ru)"/>
+<link rel="EditURI" type="application/rsd+xml" href="//ru.wiktionary.org/w/api.php?action=rsd"/>
+<link rel="license" href="//creativecommons.org/licenses/by-sa/3.0/"/>
+<link rel="alternate" type="application/atom+xml" title="Викисловарь — Atom-лента" href="/w/index.php?title=%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:%D0%A1%D0%B2%D0%B5%D0%B6%D0%B8%D0%B5_%D0%BF%D1%80%D0%B0%D0%B2%D0%BA%D0%B8&amp;feed=atom"/>
+<!--[if lt IE 9]><script src="/w/load.php?debug=false&amp;lang=ru&amp;modules=html5shiv&amp;only=scripts&amp;skin=vector&amp;sync=1"></script><![endif]-->
+ <!-- Bootstrap CSS -->
 <link href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/4.1.1/cerulean/bootstrap.min.css" rel="stylesheet"  crossorigin="anonymous">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet"  crossorigin="anonymous">
 <link href="../css/style.css" rel="stylesheet"  crossorigin="anonymous">
@@ -78,7 +97,7 @@ echo'
 </div>
 
 <div class="col-sm-9 col-sm-offset-1">
-<h1 id="firstHeading" class="firstHeading" lang="ru">'.$this->title.'</h1> '.$this->url.'';
+<h1 id="firstHeading" class="firstHeading" lang="ru">'.$this->title.'</h1>';
 
 
 
@@ -87,9 +106,10 @@ echo'
    
    
 
-$cleanhead = preg_replace("#</head>#",$headend,$cleanhead);
-$cleanhead = preg_replace("#<title>(.*)</title>#","<title>{$this->title}</title>",$cleanhead);
-$cleanhead = preg_replace("#<body (.*?)>#","<body $1>$navig",$cleanhead);
+//$cleanhead = preg_replace("#</head>#",$headend,$cleanhead);
+//$cleanhead = preg_replace("#<title>(.*)</title>#","<title>{$this->title}</title>",$cleanhead);
+//$cleanhead = preg_replace("#<body (.*?)>#","<body $1>$navig",$cleanhead);
+$cleanhead=$headend;
    //форматирование текста к выводу
    $clean = preg_replace("~<a .*>Править</a>~",'',$clean);
    $clean = preg_replace('~<a href="/w/index.php.*".*>(.*?)</a>~','$1',$clean);
