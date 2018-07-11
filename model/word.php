@@ -13,12 +13,7 @@ class Word {
 
     function gettext($wiki = "Заглавная_страница") {
 
-        $input = file_get_contents(
-            (
-                "https://es.wiktionary.org/w/api.php?action=parse&prop=text|headhtml|sections&f" +
-                "ormat=json&mobileformat&redirects=1&useskin=minerva&page="
-            ).$wiki
-        );
+        $input = file_get_contents("https://es.wiktionary.org/w/api.php?action=parse&prop=text|headhtml|sections&format=json&mobileformat&redirects=1&useskin=minerva&page=".$wiki);
         $this -> texta = json_decode($input);
         $inputdecode = json_decode($input);
         $this -> htmlhead = $inputdecode -> parse -> headhtml -> {
@@ -40,9 +35,8 @@ function cleantext() {
     $cleanhead = $this -> htmlhead;
 //форматирование head к выводу стили вывод в хеад
 $headend = ' <!-- Bootstrap CSS -->
- < link href = "https://cdnjs.cloudflare.com/ajax/libs/bootswatch/4.1.1/cerulean/bootstrap.min" +
-        ".css" rel = "stylesheet" crossorigin = "anonymous" > <link
-            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
+ <link href = "https://cdnjs.cloudflare.com/ajax/libs/bootswatch/4.1.1/cerulean/bootstrap.min.css" rel = "stylesheet" crossorigin = "anonymous" >
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
             rel="stylesheet"
             crossorigin="anonymous">
             <link href="/css/style.css" rel="stylesheet" crossorigin="anonymous">
@@ -67,12 +61,15 @@ echo'
             <i class="fa fa-bars fa-2x toggle-btn" data-toggle="collapse" data-target="#menu-content"></i>
             <div class="menu-list">
                 <ul id="menu-content" class="menu-content collapse out"> ';
-                echo'
-                <li data-toggle="collapse" data-target="#'.(int)($this->section[0]->number).'" class="collapsed">
+            
+if(isset($this->section[0]->number)){
+
+          echo '<li data-toggle="collapse" data-target="#'.(int)($this->section[0]->number).'" class="collapsed">
                
                 <a href="#'.$this->section[0]->anchor.'"><i class="fa fa-arrow-circle-down fa-lg"></i>'.$this->section[0]->line.' <span class="arrow"></span> </a> </li>
                 <ul class="sub-menu collapse" id="'.(int)($this->section[0]->number).'">
                 ';
+}
 
 
 
@@ -92,11 +89,27 @@ echo '
 ';
 
         }
+
+   
        
 
     };
 
     echo'</ul>
+
+ 
+    <li data-toggle="collapse" data-target="#Lemario" class="collapsed">
+   
+    <a href="/wiki/Apéndice:Lemario"><i class="fa fa-arrow-circle-down fa-lg"></i>Lemario del español <span class="arrow"></span> </a> </li>
+    <ul class="sub-menu collapse" id="#Lemario">  </ul>
+    
+    <li data-toggle="collapse" data-target="#Swadesh" class="collapsed">
+   
+    <a href="/wiki/Categoría:Lista_Swadesh"><i class="fa fa-arrow-circle-down fa-lg"></i>Lista Swadesh<span class="arrow"></span> </a> </li>
+    <ul class="sub-menu collapse" id="#Swadesh">  </ul>
+
+
+
     </div>
 </div>
 </div>
@@ -114,7 +127,7 @@ $cleanhead = preg_replace("#</head>#",$headend,$cleanhead);
 $cleanhead = preg_replace("#<title>(.*)</title>#","<title>{$this->title}</title>",$cleanhead);
 $cleanhead = preg_replace("#<body (.*?)>#","<body $1>$navig",$cleanhead);
    //форматирование текста к выводу
-   $clean = preg_replace("~<a .*>Править</a>~",'',$clean);
+   $clean = preg_replace("~<a .*>Editar</a>~",'',$clean);
    $clean = preg_replace('~<a href="/w/index.php.*".*>(.*?)</a>~','$1',$clean);
    $this->texta=$clean;
 
