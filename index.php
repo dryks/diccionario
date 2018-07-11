@@ -6,13 +6,11 @@ if(isset($_GET['category'])){
 
 }elseif(isset($_GET['photo'])){
     include "controller/photo.php";
- }elseif(isset($_GET['id'])){
-    include "news.php";
- }elseif($_SERVER['REQUEST_URI'] == '/' or $_SERVER['REQUEST_URI'] == '/index.php') {
-    include "home.php";
-}elseif(isset($_GET['home'])) {
-    include "home.php";
- }else{
+}elseif(isset($_GET['list0'])){
+    include "controller/list0.php";
+}elseif(isset($_GET['list'])){
+    include "controller/list.php";
+}else{
     header('Location: /404');
 echo 'error url';
 };
