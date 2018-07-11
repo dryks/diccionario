@@ -18,6 +18,7 @@ RewriteRule ^wiki/Файл:(.*)$ /index.php?photo=$1 [L]
 RewriteRule ^wiki/(.*)/$ /index.php?word=$1 [L]
 RewriteRule ^wiki/(.*)$ /index.php?word=$1 [L]
 RewriteRule ^list0.php$ /index.php?list0=list0 [L]
+#решить проблему с редиректом из-за передачи гет параметра в хтакес на лист пхп
 RewriteCond %{QUERY_STRING} id=(\d+) [NC]
 RewriteRule .* /controller/list.php?id=%1? [L]
 #RewriteRule ^list.php(.*)id=(.*)$ /controller/list.php?id=$2 [L]
