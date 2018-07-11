@@ -1,9 +1,9 @@
 <?php
-if (isset($_GET["id"]) and intval($_GET["id"])<101){
+if (isset($_GET["id"]) and intval($_GET["id"])<85){
 	$page= htmlspecialchars($_GET["id"]);
-}elseif(intval($_GET["id"])>101){
+}elseif(intval($_GET["id"])>85){
 $page=1;
-die();	
+//die();	
 }else{
 $page=1;
 };

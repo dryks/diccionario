@@ -8,7 +8,7 @@ if(isset($_GET['category'])){
     include "controller/photo.php";
 }elseif(isset($_GET['list0'])){
     include "controller/list0.php";
-}elseif(isset($_GET['list'])){
+}elseif(isset($_GET['id'])){
     include "controller/list.php";
 }else{
     header('Location: /404');
