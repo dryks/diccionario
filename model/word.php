@@ -1,47 +1,54 @@
 <?php
 //$word="Россия";
-class Word{
+class Word {
     public $wiki; //слово запроса
-    public $texta;//text body страницы
-    public $htmlhead ;
+    public $texta; //text body страницы
+    public $htmlhead;
 
-function __construct($wiki="Заглавная_страница")
-{
-$this->wiki=$wiki;
-$this->texta=$texta;
-$this->htmlhead=$htmlhead;
-}
+    function __construct($wiki = "Заглавная_страница") {
+        $this -> wiki = $wiki;
+        $this -> texta = $texta;
+        $this -> htmlhead = $htmlhead;
+    }
+
+    function gettext($wiki = "Заглавная_страница") {
+
+        $input = file_get_contents(
+            (
+                "https://es.wiktionary.org/w/api.php?action=parse&prop=text|headhtml|sections&f" +
+                "ormat=json&mobileformat&redirects=1&useskin=minerva&page="
+            ).$wiki
+        );
+        $this -> texta = json_decode($input);
+        $inputdecode = json_decode($input);
+        $this -> htmlhead = $inputdecode -> parse -> headhtml -> {
+            '*'
+        };
+        $this -> title = $inputdecode -> parse -> title;
+        $this -> texta = $inputdecode -> parse -> text -> {
+            '*'
+        };
+        $this -> section = $inputdecode -> parse -> sections;
+        // $this->section=1; var_dump($this->texta);
+        return $this -> texta;
+
+    }
 
 
-function gettext($wiki="Заглавная_страница"){
-    
-    $input=file_get_contents("https://es.wiktionary.org/w/api.php?action=parse&prop=text|headhtml|sections&format=json&mobileformat&redirects=1&useskin=minerva&page=".$wiki);
-    $this->texta=json_decode($input);
-    $inputdecode=json_decode($input);
-    $this->htmlhead=$inputdecode->parse->headhtml->{'*'};
-    $this->title=$inputdecode->parse->title;
-    $this->texta=$inputdecode->parse->text->{'*'};
-    $this->section=$inputdecode->parse->sections;
-  // $this->section=1;
-  // var_dump($this->texta);
-return $this->texta;
+function cleantext() {
+    $clean = $this -> texta;
+    $cleanhead = $this -> htmlhead;
+//форматирование head к выводу стили вывод в хеад
+$headend = ' <!-- Bootstrap CSS -->
+ < link href = "https://cdnjs.cloudflare.com/ajax/libs/bootswatch/4.1.1/cerulean/bootstrap.min" +
+        ".css" rel = "stylesheet" crossorigin = "anonymous" > <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
+            rel="stylesheet"
+            crossorigin="anonymous">
+            <link href="/css/style.css" rel="stylesheet" crossorigin="anonymous">
+                <link href="/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
 
-}
-
-
-function cleantext(){
-   $clean= $this->texta;
-   $cleanhead=$this->htmlhead;
-//форматирование head к выводу
-//стили вывод в хеад
-$headend=' <!-- Bootstrap CSS -->
-<link href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/4.1.1/cerulean/bootstrap.min.css" rel="stylesheet"  crossorigin="anonymous">
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet"  crossorigin="anonymous">
-<link href="/css/style.css" rel="stylesheet"  crossorigin="anonymous">
-<link href="/css/bootstrap.min.css" rel="stylesheet"  crossorigin="anonymous">
-
-<style>
-
+                    <style>
    body {
 background-image: url("/img/light.png");
 background-repeat: repeat;
@@ -128,4 +135,3 @@ $cleanhead = preg_replace("#<body (.*?)>#","<body $1>$navig",$cleanhead);
 
 
 ?>
-
