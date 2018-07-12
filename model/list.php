@@ -19,7 +19,7 @@ if ($result = mysqli_query($link, "SELECT id , title  FROM base WHERE id BETWEEN
   while($row = mysqli_fetch_array($result))
 {
 	if (isset($row['id'])){ echo "<url>\n
-  <loc>https://http://diccionario.pro/wiki/".$row['title']."</loc>\n
+  <loc>https://diccionario.pro/wiki/".$row['title']."</loc>\n
 <priority>0.5</priority>\n
 <changefreq>weekly</changefreq>\n
 </url>\n";};	
