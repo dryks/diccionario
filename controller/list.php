@@ -1,3 +1,2 @@
 <?php
-echo 1111;
-//include "model/list.php";
+include $_SERVER['DOCUMENT_ROOT']."/model/list.php";

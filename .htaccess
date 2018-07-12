@@ -22,7 +22,7 @@ RewriteRule ^wiki/(.*).jpeg$ /index.php?photo=$1&dir=jpeg [L]
 RewriteRule ^wiki/(.*)/$ /index.php?word=$1 [L]
 RewriteRule ^wiki/(.*)$ /index.php?word=$1 [L]
 RewriteRule ^list0.php$ /index.php?list0=list0 [L]
-RewriteRule ^list/(.*)$ /controller/list.php?id=$2 [L]
+RewriteRule ^list/(.*)$ /controller/list.php?id=$1 [L]
 #RewriteRule ^w/index.php(.*)$ /404.php?word=$1 [R]
 
 
