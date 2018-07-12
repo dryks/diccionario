@@ -1,14 +1,16 @@
-</div>
-</div>
-</div>
 
+</br>
 <!-- content-wrapper ends -->
 <footer class="footer">
 <div class="container-fluid clearfix">
 <span class="text-muted d-block text-center text-sm-left d-sm-inline-block">CC © 2011-2018
-<a href="https://diccionario.pro" target="_blank">diccionario.pro</a>. Копирование запрещено.</span>
+<a href="https://diccionario.pro" target="_blank">diccionario.pro</a>. La copia está prohibida.</span>
 </div>
 </footer>
+
+</div>
+</div>
+</div>
 
 <!-- Plugin js for this page-->
 <!-- Optional JavaScript -->

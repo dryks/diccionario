@@ -105,7 +105,7 @@ echo '
     
     <li data-toggle="collapse" data-target="#Swadesh" class="collapsed">
    
-    <a href="/wiki/Categoría:Lista_Swadesh"><i class="fa fa-arrow-circle-down fa-lg"></i>Lista Swadesh<span class="arrow"></span> </a> </li>
+    <a href="/wiki/Apéndice:Lista_Swadesh"><i class="fa fa-arrow-circle-down fa-lg"></i>Lista Swadesh<span class="arrow"></span> </a> </li>
     <ul class="sub-menu collapse" id="#Swadesh">  </ul>
 
 

@@ -30,7 +30,7 @@ $wgMetaNamespace = "Wikiredia";
 $wgScriptPath = "/w";
 
 ## The protocol and server name to use in fully-qualified URLs
-$wgServer = "http://diccionario.org";
+$wgServer = "http://wikiredia.org";
 
 ## The URL path to static resources (images, scripts, etc.)
 $wgResourceBasePath = $wgScriptPath;
@@ -44,8 +44,8 @@ $wgLogo = "$wgResourceBasePath/resources/assets/wiki.png";
 $wgEnableEmail = true;
 $wgEnableUserEmail = true; # UPO
 
-$wgEmergencyContact = "apache@diccionario.org";
-$wgPasswordSender = "apache@diccionario.org";
+$wgEmergencyContact = "apache@wikiredia.org";
+$wgPasswordSender = "apache@wikiredia.org";
 
 $wgEnotifUserTalk = false; # UPO
 $wgEnotifWatchlist = false; # UPO
@@ -54,9 +54,9 @@ $wgEmailAuthentication = true;
 ## Database settings
 $wgDBtype = "mysql";
 $wgDBserver = "localhost";
-$wgDBname = "diccionario";
-$wgDBuser = "diccionario";
-$wgDBpassword = "diccionario";
+$wgDBname = "wikiredia";
+$wgDBuser = "wikiredia";
+$wgDBpassword = "wikiredia";
 
 # MySQL specific settings
 $wgDBprefix = "";

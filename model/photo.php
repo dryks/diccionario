@@ -15,8 +15,8 @@ $this->htmlhead=$htmlhead;
 
 
 function gettext($wiki="MSK_Collage_2015.png"){
-    
-    $input=file_get_contents("https://ru.wiktionary.org/w/api.php?action=query&prop=imageinfo&iiprop=url&format=json&titles=Файл:".$wiki);
+    // different bez file:
+    $input=file_get_contents("https://es.wiktionary.org/w/api.php?action=query&prop=imageinfo&iiprop=url&format=json&titles=".$wiki);
     $this->texta=json_decode($input);
     $inputdecode=json_decode($input);
     $this->title=$inputdecode->query->pages->{'-1'}->title; 
@@ -80,7 +80,18 @@ echo'
             <div class="brand"><a href="http://diccionario.pro" ><img src="/img/logo.png" class="brand" alt="diccionario.pro"></a></div>
             <i class="fa fa-bars fa-2x toggle-btn" data-toggle="collapse" data-target="#menu-content"></i>
             <div class="menu-list">
-                <ul id="menu-content" class="menu-content collapse out"> ';
+                <ul id="menu-content" class="menu-content collapse out">
+                
+                <li data-toggle="collapse" data-target="#Lemario" class="collapsed">
+   
+                <a href="/wiki/Apéndice:Lemario"><i class="fa fa-arrow-circle-down fa-lg"></i>Lemario del español <span class="arrow"></span> </a> </li>
+                <ul class="sub-menu collapse" id="#Lemario">  </ul>
+                
+                <li data-toggle="collapse" data-target="#Swadesh" class="collapsed">
+               
+                <a href="/wiki/Apéndice:Lista_Swadesh"><i class="fa fa-arrow-circle-down fa-lg"></i>Lista Swadesh<span class="arrow"></span> </a> </li>
+                <ul class="sub-menu collapse" id="#Swadesh">  </ul>
+                ';
               
 
 

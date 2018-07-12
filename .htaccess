@@ -13,18 +13,16 @@ RewriteCond %{REQUEST_FILENAME} !-d
 #RewriteRule (.*) http://.ru/$1?region=%1 [L,R=301,QSA]
 
 RewriteRule ^/$ /index.php?index=$1 [L]
-RewriteRule ^wiki/Файл:(.*)$ /index.php?photo=$1 [L]
+RewriteRule ^wiki/File:(.*)$ /index.php?photo=$1 [L]
+RewriteRule ^wiki/(.*).jpg$ /index.php?photo=$1&dir=jpg [L]
+RewriteRule ^wiki/(.*).gif$ /index.php?photo=$1&dir=gif [L]
+RewriteRule ^wiki/(.*).png$ /index.php?photo=$1&dir=png [L]
+RewriteRule ^wiki/(.*).jpeg$ /index.php?photo=$1&dir=jpeg [L]
 #RewriteRule ^wiki/Categoría:(.*)$ /index.php?word=$1 [L]
 RewriteRule ^wiki/(.*)/$ /index.php?word=$1 [L]
 RewriteRule ^wiki/(.*)$ /index.php?word=$1 [L]
 RewriteRule ^list0.php$ /index.php?list0=list0 [L]
-#решить проблему с редиректом из-за передачи гет параметра в хтакес на лист пхп
-RewriteCond %{QUERY_STRING} id=(\d+) [NC]
-RewriteRule .* /controller/list.php?id=%1? [L]
-#RewriteRule ^list.php(.*)id=(.*)$ /controller/list.php?id=$2 [L]
-#RewriteRule ^list.php?id=(.*)$ /index.php?id=$1 [L]
-#RewriteRule ^category$ category.php?word=$1 [L]
-#RewriteRule ^category/$ category.php?word=$1 [L]
+RewriteRule ^list/(.*)$ /controller/list.php?id=$2 [L]
 #RewriteRule ^w/index.php(.*)$ /404.php?word=$1 [R]
 
 

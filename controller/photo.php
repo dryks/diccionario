@@ -1,5 +1,6 @@
 <?php
 $photo= htmlspecialchars($_GET["photo"]);
+$photo=$photo.".".htmlspecialchars($_GET["dir"]);
 include"model/photo.php";
 
 //обработка страницы
