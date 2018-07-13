@@ -1,5 +1,5 @@
 <?php
-//glavnaya page index
+//glavnaya page index spatb pora
 if(isset($_GET['category'])){
    include "category.php";
 }elseif(isset($_GET['word'])){
