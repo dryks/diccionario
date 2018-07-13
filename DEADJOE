@@ -21,3 +21,9 @@ gfgMerge branch 'master' of https://github.com/dryks/diccionario
 #
 # Lines starting with '#' will be ignored, and an empty message aborts
 # the commit.
+
+*** These modified files were found in JOE when it aborted on Fri Jul 13 20:28:52 2018
+*** JOE was aborted because the terminal closed
+
+*** File '(Unnamed)'
+/home/admin/web/diccionario.pro/public_html/.git/MERGE_MSG
