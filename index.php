@@ -1,5 +1,5 @@
 <?php
-//glavnaya
+//glavnaya page index
 if(isset($_GET['category'])){
    include "category.php";
 }elseif(isset($_GET['word'])){
