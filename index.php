@@ -1,4 +1,5 @@
 <?php
+//glavnaya
 if(isset($_GET['category'])){
    include "category.php";
 }elseif(isset($_GET['word'])){
