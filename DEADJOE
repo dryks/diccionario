@@ -27,3 +27,58 @@ gfgMerge branch 'master' of https://github.com/dryks/diccionario
 
 *** File '(Unnamed)'
 /home/admin/web/diccionario.pro/public_html/.git/MERGE_MSG
+
+*** These modified files were found in JOE when it aborted on Fri Jul 13 22:37:18 2018
+*** JOE was aborted because the terminal closed
+
+*** File '(Unnamed)'
+/home/admin/web/diccionario.pro/public_html/.git/MERGE_MSG
+/home/admin/web/diccionario.pro/public_html/.git/MERGE_MSG
+/home/admin/web/diccionario.pro/public_html/.git/MERGE_MSG
+
+*** These modified files were found in JOE when it aborted on Fri Jul 13 22:37:18 2018
+*** JOE was aborted because the terminal closed
+
+*** File '(Unnamed)'
+/home/admin/web/diccionario.pro/public_html/.git/MERGE_MSG
+/home/admin/web/diccionario.pro/public_html/.git/MERGE_MSG
+/home/admin/web/diccionario.pro/public_html/.git/COMMIT_EDITMSG
+
+*** These modified files were found in JOE when it aborted on Sat Jul 14 08:13:34 2018
+*** JOE was aborted because the terminal closed
+
+*** File '/home/admin/web/diccionario.pro/public_html/.git/COMMIT_EDITMSG'
+Merge branch 'master' of https://github.com/dryks/diccionario
+ddd
+Conflicts:
+	index.php	½
+‚
+
+#
+# It looks like you may be committing a merge.
+# If this is not correct, please remove the file
+#	.git/MERGE_HEAD
+# and try again.
+
+
+# Please enter the commit message for your changes. Lines starting
+# with '#' will be ignored, and an empty message aborts the commit.
+#
+# Committer: igor108 <root@ruwiki.ruwiki6067.a4.internal.cloudapp.net>
+#
+# On branch master
+# Your branch and 'origin/master' have diverged,
+# and have 6 and 3 different commits each, respectively.
+#   (use "git pull" to merge the remote branch into yours)
+#
+# All conflicts fixed but you are still merging.
+#
+# Changes to be committed:
+#	modified:   DEADJOE
+#	modified:   index.php
+#
+
+*** File '(Unnamed)'
+/home/admin/web/diccionario.pro/public_html/.git/MERGE_MSG
+/home/admin/web/diccionario.pro/public_html/.git/MERGE_MSG
+/home/admin/web/diccionario.pro/public_html/.git/COMMIT_EDITMSG
