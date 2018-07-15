@@ -1,2 +1,3 @@
-repositorij не удалять 
-# diccionario
+repositoriy
+
+diccionario
