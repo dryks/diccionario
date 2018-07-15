@@ -1,5 +1,5 @@
 <?php
-//spatb pora
+//spatb pora uzhe
 if(isset($_GET['category'])){
    include "category.php";
 }elseif(isset($_GET['word'])){
