@@ -60,15 +60,15 @@ $headend='<!DOCTYPE html>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet"  crossorigin="anonymous">
 <link href="/css/style.css" rel="stylesheet"  crossorigin="anonymous">
 <link href="/css/bootstrap.min.css" rel="stylesheet"  crossorigin="anonymous">
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-29275243-30"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag("js", new Date());
 
-<style>
-
-   body {
-background-image: url("/img/light.png");
-background-repeat: repeat;
-}
-
-</style>
+  gtag("config", "UA-29275243-30");
+</script>
 
 </head>';
 ob_start();

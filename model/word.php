@@ -40,15 +40,7 @@ $headend = ' <!-- Bootstrap CSS -->
             rel="stylesheet"
             crossorigin="anonymous">
             <link href="/css/style.css" rel="stylesheet" crossorigin="anonymous">
-                <link href="/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
-
-                    <style>
-   body {
-background-image: url("/img/light.png");
-background-repeat: repeat;
-}
-
-</style>
+                <link href="/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">  
 <!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=UA-29275243-30"></script>
 <script>
@@ -131,8 +123,7 @@ echo '
     $navig=ob_get_clean();
 
    
-
-
+$cleanhead = preg_replace("#</head>#",$headend,$cleanhead);
 $cleanhead = preg_replace("#</head>#",$headend,$cleanhead);
 $cleanhead = preg_replace("#<title>(.*)</title>#","<title>{$this->title}</title>",$cleanhead);
 $cleanhead = preg_replace("#<body (.*?)>#","<body $1>$navig",$cleanhead);
