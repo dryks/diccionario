@@ -49,6 +49,16 @@ background-repeat: repeat;
 }
 
 </style>
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-29275243-30"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag("js", new Date());
+
+  gtag("config", "UA-29275243-30");
+</script>
+
 
 </head>';
 ob_start();
