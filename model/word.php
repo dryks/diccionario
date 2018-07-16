@@ -41,6 +41,9 @@ $headend = ' <!-- Bootstrap CSS -->
             crossorigin="anonymous">
             <link href="/css/style.css" rel="stylesheet" crossorigin="anonymous">
                 <link href="/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">  
+                <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js" crossorigin="anonymous"></script>
+                <script src="https://diccionario.pro/js/jquery.easy-autocomplete.min.js" type="text/javascript"></script>
+                <script src="https://diccionario.pro/js/search.js" type="text/javascript"></script>
 <!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=UA-29275243-30"></script>
 <script>
