@@ -80,7 +80,7 @@ echo'
     <div class="col-sm-3">
         <div class="nav-side-menu">
             <div class="brand"><a href="https://diccionario.pro" ><img src="/img/logo.png" class="brand" alt="diccionario.pro"></a></div>
-            <div class="nav-item  d-lg-block d-xs-block d-sm-block  "></br>
+            <div class="nav-item  d-lg-block d-xs-block d-sm-block  col-xs-12 col-sm-11 col-md-11 col-lg-11 "></br>
             <input id="data-links" class="form-control fa fa-search d-md-block " placeholder="escribe la palabra">
             </div>
             <script src="https://diccionario.pro/js/search.js" type="text/javascript"></script>
