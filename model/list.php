@@ -13,7 +13,7 @@ $start=intval($end)-9999 ;
 echo '<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
 
-$link = mysqli_connect("localhost", "diccionario", "diccionario", "diccionario");
+$link = mysqli_connect("localhost", "f4f9idfdfdi4f!fdvjs", "fdfkvcvfkD33dS3!df", "f4f9idfdfdi4f!fdvjs");
 $query = mysqli_query($link, "SET NAMES 'utf8'");
 if ($result = mysqli_query($link, "SELECT id , title  FROM base WHERE id BETWEEN ".$start." AND ".$end." ")) { 
   while($row = mysqli_fetch_array($result))

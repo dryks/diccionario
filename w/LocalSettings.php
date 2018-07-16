@@ -54,9 +54,9 @@ $wgEmailAuthentication = true;
 ## Database settings
 $wgDBtype = "mysql";
 $wgDBserver = "localhost";
-$wgDBname = "diccionario";
-$wgDBuser = "diccionario";
-$wgDBpassword = "diccionario";
+$wgDBname = "f4f9idfdfdi4f!fdvjs";
+$wgDBuser = "f4f9idfdfdi4f!fdvjs";
+$wgDBpassword = "fdfkvcvfkD33dS3!df";
 
 # MySQL specific settings
 $wgDBprefix = "";
