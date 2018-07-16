@@ -19,8 +19,8 @@ if ( !defined( 'MEDIAWIKI' ) ) {
 ## Uncomment this to disable output compression
 # $wgDisableOutputCompression = true;
 
-$wgSitename = "diccionario";
-$wgMetaNamespace = "Diccionario";
+$wgSitename = "wikiredia";
+$wgMetaNamespace = "Wikiredia";
 
 ## The URL base path to the directory containing the wiki;
 ## defaults for all runtime URL paths are based off of this.
@@ -30,7 +30,7 @@ $wgMetaNamespace = "Diccionario";
 $wgScriptPath = "/w";
 
 ## The protocol and server name to use in fully-qualified URLs
-$wgServer = "http://diccionario.pro";
+$wgServer = "http://wikiredia.org";
 
 ## The URL path to static resources (images, scripts, etc.)
 $wgResourceBasePath = $wgScriptPath;
@@ -41,11 +41,11 @@ $wgLogo = "$wgResourceBasePath/resources/assets/wiki.png";
 
 ## UPO means: this is also a user preference option
 
-$wgEnableEmail = false;
+$wgEnableEmail = true;
 $wgEnableUserEmail = true; # UPO
 
-$wgEmergencyContact = "apache@diccionario.pro";
-$wgPasswordSender = "apache@diccionario.pro";
+$wgEmergencyContact = "apache@wikiredia.org";
+$wgPasswordSender = "apache@wikiredia.org";
 
 $wgEnotifUserTalk = false; # UPO
 $wgEnotifWatchlist = false; # UPO
@@ -54,9 +54,9 @@ $wgEmailAuthentication = true;
 ## Database settings
 $wgDBtype = "mysql";
 $wgDBserver = "localhost";
-$wgDBname = "diccionario";
-$wgDBuser = "diccionario";
-$wgDBpassword = "diccionario";
+$wgDBname = "wikiredia";
+$wgDBuser = "wikiredia";
+$wgDBpassword = "wikiredia";
 
 # MySQL specific settings
 $wgDBprefix = "";
@@ -75,7 +75,7 @@ $wgEnableUploads = false;
 #$wgImageMagickConvertCommand = "/usr/bin/convert";
 
 # InstantCommons allows wiki to use images from https://commons.wikimedia.org
-$wgUseInstantCommons = false;
+$wgUseInstantCommons = true;
 
 # Periodically send a pingback to https://www.mediawiki.org/ with basic data
 # about this MediaWiki instance. The Wikimedia Foundation shares this data
@@ -93,40 +93,34 @@ $wgShellLocale = "C.UTF-8";
 #$wgCacheDirectory = "$IP/cache";
 
 # Site language code, should be one of the list in ./languages/data/Names.php
-$wgLanguageCode = "es";
+$wgLanguageCode = "ru";
 
-$wgSecretKey = "dfe58aa23a059213222863a30d4b1d28149f6c1b6a7bf250774d5d4964833bc2";
+$wgSecretKey = "a7b228b939a8af0bc2941efbaa0cff6703d485993220c41fc3676dda51f268d1";
 
 # Changing this will log out all existing sessions.
 $wgAuthenticationTokenVersion = "1";
 
 # Site upgrade key. Must be set to a string (default provided) to turn on the
 # web installer while LocalSettings.php is in place
-$wgUpgradeKey = "c0a562eee03438b1";
+$wgUpgradeKey = "fb3149526eae79ee";
 
 ## For attaching licensing metadata to pages, and displaying an
 ## appropriate copyright notice / icon. GNU Free Documentation
 ## License and Creative Commons licenses are supported so far.
 $wgRightsPage = ""; # Set to the title of a wiki page that describes your license/copyright
-$wgRightsUrl = "https://creativecommons.org/licenses/by-nc-sa/4.0/";
-$wgRightsText = "Creative Commons Atribución-NoComercial-CompartirIgual";
-$wgRightsIcon = "$wgResourceBasePath/resources/assets/licenses/cc-by-nc-sa.png";
+$wgRightsUrl = "";
+$wgRightsText = "";
+$wgRightsIcon = "";
 
 # Path to the GNU diff3 utility. Used for conflict resolution.
 $wgDiff3 = "";
 
-# The following permissions were set based on your choice in the installer
-$wgGroupPermissions['*']['createaccount'] = false;
-$wgGroupPermissions['*']['edit'] = false;
-$wgGroupPermissions['*']['read'] = false;
-
 ## Default skin: you can change the default skin. Use the internal symbolic
 ## names, ie 'vector', 'monobook':
-$wgDefaultSkin = "timeless";
+//$wgDefaultSkin = "vector";
 
 # Enabled skins.
 # The following skins were automatically enabled:
-wfLoadSkin( 'MinervaNeue' );
 wfLoadSkin( 'MonoBook' );
 wfLoadSkin( 'Timeless' );
 wfLoadSkin( 'Vector' );
@@ -138,31 +132,16 @@ wfLoadSkin( 'Vector' );
 # The following extensions were automatically enabled:
 wfLoadExtension( 'CategoryTree' );
 wfLoadExtension( 'Cite' );
-wfLoadExtension( 'CiteThisPage' );
-wfLoadExtension( 'ConfirmEdit' );
-require_once "$IP/extensions/FlaggedRevs/FlaggedRevs.php";
-wfLoadExtension( 'Gadgets' );
 wfLoadExtension( 'ImageMap' );
 wfLoadExtension( 'InputBox' );
-wfLoadExtension( 'Interwiki' );
-wfLoadExtension( 'LocalisationUpdate' );
-wfLoadExtension( 'MobileFrontend' );
-wfLoadExtension( 'MultimediaViewer' );
-wfLoadExtension( 'OATHAuth' );
 wfLoadExtension( 'ParserFunctions' );
+wfLoadExtension( 'PdfHandler' );
 wfLoadExtension( 'Poem' );
-wfLoadExtension( 'Renameuser' );
-wfLoadExtension( 'ReplaceText' );
-wfLoadExtension( 'SpamBlacklist' );
 wfLoadExtension( 'SyntaxHighlight_GeSHi' );
-wfLoadExtension( 'TitleBlacklist' );
-wfLoadExtension( 'WikiEditor' );
 
 
 # End of automatically generated settings.
 # Add more configuration options below.
-
-
 
 include_once('extensions/FlaggedRevs/FlaggedRevs.php');
 wfLoadExtension( 'MobileFrontend' );
@@ -171,6 +150,4 @@ wfLoadSkin( 'MinervaNeue' );
 $wgDefaultSkin = 'minerva';
 wfLoadSkin( 'MinervaNeue' );
 $wgDefaultSkin = 'minerva';
-
-
 
