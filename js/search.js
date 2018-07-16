@@ -2,10 +2,10 @@
 
                                     url: function(phrase) {
                                         if (phrase !== "") {
-                                            return "http://diccionario.pro/site.php?text=" + phrase + "";
+                                            return "https://diccionario.pro/site.php?text=" + phrase + "";
                                         } else {
 
-                                            return "http://diccionario.pro/site.php?text=0";
+                                            return "https://diccionario.pro/site.php?text=0";
                                         }
                                     },
 

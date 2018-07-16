@@ -5,13 +5,13 @@ class Word {
     public $texta; //text body страницы
     public $htmlhead;
 
-    function __construct($wiki = "Заглавная_страница") {
+    function __construct($wiki = "Wikcionario:Portada") {
         $this -> wiki = $wiki;
         $this -> texta = $texta;
         $this -> htmlhead = $htmlhead;
     }
 
-    function gettext($wiki = "Заглавная_страница") {
+    function gettext($wiki = "Wikcionario:Portada") {
 
         $input = file_get_contents("https://es.wiktionary.org/w/api.php?action=parse&prop=text|headhtml|sections&format=json&mobileformat&redirects=1&useskin=minerva&page=".$wiki);
         $this -> texta = json_decode($input);
@@ -42,7 +42,7 @@ $headend = ' <!-- Bootstrap CSS -->
             <link href="/css/style.css" rel="stylesheet" crossorigin="anonymous">
                 <link href="/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">  
                 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js" crossorigin="anonymous"></script>
-                <script src="http://diccionario.pro/js/jquery.easy-autocomplete.min.js" type="text/javascript"></script>
+                <script src="https://diccionario.pro/js/jquery.easy-autocomplete.min.js" type="text/javascript"></script>
                 
 <!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=UA-29275243-30"></script>
@@ -62,11 +62,11 @@ echo'
 <div class="row">
     <div class="col-sm-3">
         <div class="nav-side-menu">
-            <div class="brand"><a href="http://diccionario.pro" ><img src="/img/logo.png" class="brand" alt="diccionario.pro"></a></div>
+            <div class="brand"><a href="https://diccionario.pro" ><img src="/img/logo.png" class="brand" alt="diccionario.pro"></a></div>
             <div class="nav-item  d-lg-block d-xs-block d-sm-block  "></br>
                                 <input id="data-links" class="form-control fa fa-search d-md-block " placeholder="escribe la palabra">
                                 </div>
-                                <script src="http://diccionario.pro/js/search.js" type="text/javascript"></script>
+                                <script src="https://diccionario.pro/js/search.js" type="text/javascript"></script>
             <i class="fa fa-bars fa-2x toggle-btn" data-toggle="collapse" data-target="#menu-content"></i>
             <div class="menu-list">
                 <ul id="menu-content" class="menu-content collapse out"> ';
