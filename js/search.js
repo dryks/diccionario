@@ -1,12 +1,11 @@
- <script>
-                                var options = {
+ var options = {
 
                                     url: function(phrase) {
                                         if (phrase !== "") {
-                                            return "https://diccionario.pro/site.php?text=" + phrase + "";
+                                            return "http://diccionario.pro/site.php?text=" + phrase + "";
                                         } else {
 
-                                            return "https://diccionario.pro/site.php?text=0";
+                                            return "http://diccionario.pro/site.php?text=0";
                                         }
                                     },
 
@@ -34,4 +33,3 @@
                                 };
 
                                 $("#data-links").easyAutocomplete(options);
-                            </script>
