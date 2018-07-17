@@ -1,5 +1,5 @@
-@import 'minerva.variables';
-@import 'minerva.mixins';
+@import "minerva.variables";
+@import "minerva.mixins";
 
 // Content formatting and typography
 //
@@ -18,8 +18,14 @@ html {
 body {
 	font-family: @fontFamily;
 	line-height: @bodyLineHeight;
-	color: @colorGray2;
+	color: @grayDark;
 	background: #fff;
+}
+
+.pre-content,
+.content,
+.post-content {
+	margin: 0 @contentMargin;
 }
 
 .content {
@@ -28,9 +34,9 @@ body {
 	word-wrap: break-word;
 }
 
-@media all and ( max-width: @width-breakpoint-mobile - 1 ) {
+@media all and (max-width: @wgMFDeviceWidthMobileSmall) {
 	body {
-		font-size: 0.8em;
+		font-size: .8em;
 	}
 
 	.content {
@@ -38,27 +44,7 @@ body {
 	}
 }
 
-.client-js {
-	.collapsible-block {
-		display: none;
-
-		&.open-block {
-			display: block;
-		}
-	}
-}
-
 .nomobile {
 	// No mobile should trump any other class. e.g. .content table { display: table; }
 	display: none !important;
-}
-
-@media all and ( min-width: @width-breakpoint-tablet ) {
-	.client-js {
-		// Avoid flash of unstyled content for tablet users while JavaScript is loading
-		// onclick attribute is removed by the toggling code.
-		[onclick] + .collapsible-block {
-			display: block;
-		}
-	}
 }

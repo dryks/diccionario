@@ -1,13 +1,11 @@
-( function ( M ) {
+( function ( M, $ ) {
 	/**
 	 * Utility function for the structured language overlay
 	 *
 	 * @class util
 	 * @singleton
 	 */
-	var util = {},
-		log = mw.log, // resource-modules-disable-line
-		mfUtils = M.require( 'mobile.startup/util' );
+	var util = {};
 
 	/**
 	 * Return the device language if it's in the list of article languages.
@@ -18,8 +16,8 @@
 	 *
 	 * @ignore
 	 * @param {Object[]} languages list of language objects as returned by the API
-	 * @param {string|undefined} deviceLanguage the device's primary language
-	 * @return {string|undefined} Return undefined if the article is not available in
+	 * @param {String|undefined} deviceLanguage the device's primary language
+	 * @returns {String|undefined} Return undefined if the article is not available in
 	 *  the (general or variant) device language
 	 */
 	function getDeviceLanguageOrParent( languages, deviceLanguage ) {
@@ -36,7 +34,7 @@
 			parentLanguage = deviceLanguage.slice( 0, index );
 		}
 
-		languages.forEach( function ( language ) {
+		$.each( languages, function ( i, language ) {
 			if ( language.lang === parentLanguage || language.lang === deviceLanguage ) {
 				deviceLanguagesWithVariants[ language.lang ] = true;
 			}
@@ -52,83 +50,33 @@
 	}
 
 	/**
-	 * Determine whether a language is LTR or RTL
-	 * This works around T74153 and T189036
+	 * Return two sets of languages: preferred and all (everything else)
 	 *
-	 * @param {Object} language with 'lang' key.
-	 * @return {Object} language with 'lang' key and new 'dir' key.
-	 */
-	util.getDir = function ( language ) {
-		var dir = [
-			'aeb',
-			'aeb-arab',
-			'ar',
-			'arc',
-			'arq',
-			'arz',
-			'azb',
-			'bcc',
-			'bgn',
-			'bqi',
-			'ckb',
-			'dv',
-			'fa',
-			'glk',
-			'he',
-			'khw',
-			'kk-arab',
-			'kk-cn',
-			'ks',
-			'ks-arab',
-			'ku-arab',
-			'lki',
-			'lrc',
-			'luz',
-			'mzn',
-			'pnb',
-			'ps',
-			'sd',
-			'sdh',
-			'skr',
-			'skr-arab',
-			'ug',
-			'ug-arab',
-			'ur',
-			'yi'
-		].indexOf( language.lang ) > -1 ? 'rtl' : 'ltr';
-		return mfUtils.extend( {}, language, { dir: dir } );
-	};
-
-	/**
-	 * Return two sets of languages: suggested and all (everything else)
-	 *
-	 * Suggested languages are the ones that the user has used before. This also
-	 * includes the user device's primary language. Suggested languages are ordered
+	 * Preferred languages are the ones that the user has used before. This also
+	 * includes the user device's primary language. Preferred languages are ordered
 	 * by frequency in descending order. The device's language is always at the top.
 	 * This group also includes the variants.
 	 *
-	 * All languages are the languages that are not suggested.
+	 * All languages are the languages that are not preferred.
 	 * Languages in this list are ordered in the lexicographical order of
 	 * their language names.
 	 *
 	 * @param {Object[]} languages list of language objects as returned by the API
-	 * @param {Array|boolean} variants language variant objects or false if no variants exist
+	 * @param {Array|Boolean} variants language variant objects or false if no variants exist
 	 * @param {Object} frequentlyUsedLanguages list of the frequently used languages
-	 * @param {string} [deviceLanguage] the device's primary language
+	 * @param {String|undefined} deviceLanguage the device's primary language
 	 * @return {Object[]}
 	 */
 	util.getStructuredLanguages = function ( languages, variants, frequentlyUsedLanguages, deviceLanguage ) {
 		var maxFrequency = 0,
 			minFrequency = 0,
-			missingDir = 0,
-			suggestedLanguages = [],
+			preferredLanguages = [],
 			allLanguages = [];
 
 		// Is the article available in the user's device language?
 		deviceLanguage = getDeviceLanguageOrParent( languages, deviceLanguage );
 		if ( deviceLanguage ) {
-			Object.keys( frequentlyUsedLanguages ).forEach( function ( language ) {
-				var frequency = frequentlyUsedLanguages[ language ];
+			$.each( frequentlyUsedLanguages, function ( language, frequency ) {
 				maxFrequency = maxFrequency < frequency ? frequency : maxFrequency;
 				minFrequency = minFrequency > frequency ? frequency : minFrequency;
 			} );
@@ -138,47 +86,33 @@
 			frequentlyUsedLanguages[ deviceLanguage ] = maxFrequency + 1;
 		}
 
-		/**
-		 * @ignore
-		 * @param {Object} language
-		 * @return {Object} which has 'dir' key.
-		 */
-		function addLangDir( language ) {
-			if ( language.dir ) {
-				return language;
-			} else {
-				missingDir++;
-				return util.getDir( language );
-			}
-		}
-
-		// Separate languages into suggested and all languages.
-		languages.map( addLangDir ).forEach( function ( language ) {
+		// Separate languages into preferred and all languages.
+		$.each( languages, function ( i, language ) {
 			if ( frequentlyUsedLanguages.hasOwnProperty( language.lang ) ) {
 				language.frequency = frequentlyUsedLanguages[ language.lang ];
-				suggestedLanguages.push( language );
+				preferredLanguages.push( language );
 			} else {
 				allLanguages.push( language );
 			}
 		} );
 
-		// Add variants to the suggested languages list and assign the lowest
+		// Add variants to the preferred languages list and assign the lowest
 		// frequency because the variant hasn't been clicked on yet.
 		// Note that the variants data doesn't contain the article title, thus
 		// we cannot show it for the variants.
 		if ( variants ) {
-			variants.map( addLangDir ).forEach( function ( variant ) {
+			$.each( variants, function ( i, variant ) {
 				if ( frequentlyUsedLanguages.hasOwnProperty( variant.lang ) ) {
-					variant.frequency = frequentlyUsedLanguages[variant.lang];
+					variant.frequency =  frequentlyUsedLanguages[variant.lang];
 				} else {
 					variant.frequency = minFrequency - 1;
 				}
-				suggestedLanguages.push( variant );
+				preferredLanguages.push( variant );
 			} );
 		}
 
-		// sort suggested languages in descending order by frequency
-		suggestedLanguages = suggestedLanguages.sort( function ( a, b ) {
+		// sort preferred languages in descending order by frequency
+		preferredLanguages = preferredLanguages.sort( function ( a, b ) {
 			return b.frequency - a.frequency;
 		} );
 
@@ -188,22 +122,15 @@
 		 * @ignore
 		 * @param {Object} a first language
 		 * @param {Object} b second language
-		 * @return {number} Comparison value, 1 or -1
 		 */
 		function compareLanguagesByLanguageName( a, b ) {
-			return a.autonym.toLocaleLowerCase() < b.autonym.toLocaleLowerCase() ? -1 : 1;
+			return a.autonym < b.autonym ? -1 : 1;
 		}
 
 		allLanguages = allLanguages.sort( compareLanguagesByLanguageName );
 
-		// This works around T74153
-		log.warn(
-			missingDir === 0 ? 'Direction is provided. Please remove handling in getStructuredLanguages' :
-				'`dir` attribute was missing from languages. Is T74153 resolved?'
-		);
-
 		return {
-			suggested: suggestedLanguages,
+			preferred: preferredLanguages,
 			all: allLanguages
 		};
 	};
@@ -211,12 +138,12 @@
 	/**
 	 * Return a map of frequently used languages on the current device.
 	 *
-	 * @return {Object}
+	 * @returns {Object}
 	 */
 	util.getFrequentlyUsedLanguages = function () {
 		var languageMap = mw.storage.get( 'langMap' );
 
-		return languageMap ? JSON.parse( languageMap ) : {};
+		return languageMap ? $.parseJSON( languageMap ) : {};
 	};
 
 	/**
@@ -232,7 +159,7 @@
 	 * Increment the current language usage by one and save it to the device.
 	 * Cap the result at 100.
 	 *
-	 * @param {string} languageCode
+	 * @param {String} languageCode
 	 * @param {Object} frequentlyUsedLanguages list of the frequently used languages
 	 */
 	util.saveLanguageUsageCount = function ( languageCode, frequentlyUsedLanguages ) {
@@ -246,4 +173,4 @@
 
 	M.define( 'mobile.languages.structured/util', util );
 
-}( mw.mobileFrontend ) );
+}( mw.mobileFrontend, jQuery ) );

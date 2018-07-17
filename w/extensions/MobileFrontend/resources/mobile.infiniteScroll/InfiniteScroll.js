@@ -1,6 +1,4 @@
-( function ( M ) {
-	var util = M.require( 'mobile.startup/util' );
-
+( function ( M, $ ) {
 	/**
 	 * Class to assist a view in implementing infinite scrolling on some DOM
 	 * element.
@@ -32,7 +30,7 @@
 	 *           } );
 	 *           // 1. Set up infinite scroll helper and listen to events
 	 *           this.infiniteScroll = new InfiniteScroll( 1000 );
-	 *           this.infiniteScroll.on( 'load', this._loadPhotos.bind( this ) );
+	 *           this.infiniteScroll.on( 'load', $.proxy( this, '_loadPhotos' ) );
 	 *           View.prototype.initialize.apply( this, arguments );
 	 *         },
 	 *         preRender: function () {
@@ -53,12 +51,13 @@
 	 */
 	/**
 	 * Constructor.
-	 * @param {number} threshold distance in pixels used to calculate if scroll
+	 * @param {Number} threshold distance in pixels used to calculate if scroll
 	 * position is near the end of the $el
 	 */
 	function InfiniteScroll( threshold ) {
 		this.threshold = threshold || 100;
-		this.enable();
+		this.enabled = true;
+		this._bindScroll();
 		OO.EventEmitter.call( this );
 	}
 	OO.mixinClass( InfiniteScroll, OO.EventEmitter );
@@ -70,21 +69,10 @@
 		 * @private
 		 */
 		_bindScroll: function () {
-			if ( !this._scrollHandler ) {
-				this._scrollHandler = this._onScroll.bind( this );
-				M.on( 'scroll:throttled', this._scrollHandler );
-			}
-		},
-		/**
-		 * Unbind scroll handler
-		 * @method
-		 * @private
-		 */
-		_unbindScroll: function () {
-			if ( this._scrollHandler ) {
-				M.off( 'scroll:throttled', this._scrollHandler );
-				this._scrollHandler = null;
-			}
+			// FIXME: Consider using setInterval instead or some sort of
+			// dethrottling/debouncing to avoid performance degradation
+			// e.g. http://benalman.com/projects/jquery-throttle-debounce-plugin/
+			$( window ).on( 'scroll', $.proxy( this, '_onScroll' ) );
 		},
 		/**
 		 * Scroll handler. Triggers load event when near the end of the container.
@@ -108,11 +96,10 @@
 		 * Is the scroll position near the end of the container element?
 		 * @method
 		 * @private
-		 * @return {boolean}
+		 * @return {Boolean}
 		 */
 		scrollNearEnd: function () {
-			var $window = util.getWindow(),
-				scrollBottom = $window.scrollTop() + $window.height(),
+			var scrollBottom = $( window ).scrollTop() + $( window ).height(),
 				endPosition = this.$el.offset().top + this.$el.outerHeight();
 			return scrollBottom + this.threshold > endPosition;
 		},
@@ -122,7 +109,6 @@
 		 */
 		enable: function () {
 			this.enabled = true;
-			this._bindScroll();
 		},
 		/**
 		 * Disable the InfiniteScroll so that it doesn't trigger events.
@@ -130,7 +116,6 @@
 		 */
 		disable: function () {
 			this.enabled = false;
-			this._unbindScroll();
 		},
 		/**
 		 * Set the element to compare to scroll position to
@@ -143,4 +128,4 @@
 	} );
 
 	M.define( 'mobile.infiniteScroll/InfiniteScroll', InfiniteScroll );
-}( mw.mobileFrontend ) );
+}( mw.mobileFrontend, jQuery ) );

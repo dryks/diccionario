@@ -1,4 +1,5 @@
-@import 'mobile.variables';
+@import "minerva.mixins";
+@import "minerva.variables";
 
 @paddingHorizontal: 24px;
 @iconSize: 16px;
@@ -22,21 +23,21 @@
 		// Override rules for section toggler
 		// In table of contents the collapsing caret is on the right
 		.indicator {
-			margin: 0.2em 0.4em 0 0;
+			margin: .2em .4em 0 0;
 			float: right;
-			font-size: 0.6em;
+			font-size: .6em;
 		}
 	}
 
 	.collapsible-block {
 		// Override default toggle styles
-		border-bottom: 0;
+		border-bottom: none;
 		margin-left: @paddingHorizontal + @iconSize + @iconHeadingGap;
 		margin-right: @paddingHorizontal;
-		font-size: ( 7 * @fontSize ) / 8;
+		font-size: (7 * @fontSize) / 8;
 		width: auto;
 		> ul {
-			padding-bottom: @fontSize + 0.5em;
+			padding-bottom: @fontSize + @headingMargin;
 		}
 
 		ul {

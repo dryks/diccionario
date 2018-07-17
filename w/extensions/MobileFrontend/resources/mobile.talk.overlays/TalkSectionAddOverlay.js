@@ -1,7 +1,6 @@
-( function ( M ) {
+( function ( M, $ ) {
 	var TalkOverlayBase = M.require( 'mobile.talk.overlays/TalkOverlayBase' ),
-		util = M.require( 'mobile.startup/util' ),
-		toast = M.require( 'mobile.startup/toast' ),
+		toast = M.require( 'mobile.toast/toast' ),
 		Icon = M.require( 'mobile.startup/Icon' );
 
 	/**
@@ -9,16 +8,10 @@
 	 * @class TalkSectionAddOverlay
 	 * @extends TalkOverlayBase
 	 * @uses Toast
-	 *
-	 * @constructor
-	 * @param {Object} options Configuration options
-	 * @param {Object} options.title Title of the talk page being modified
-	 * @param {Object} options.currentPageTitle Title of the page before the overlay appears
 	 */
 	function TalkSectionAddOverlay( options ) {
 		TalkOverlayBase.apply( this, arguments );
 		this.title = options.title;
-		this.currentPageTitle = options.currentPageTitle;
 		// Variable to indicate, if the overlay will be closed by the save function or by the user. If this is false and there is content in the input fields,
 		// the user will be asked, if he want to abandon his changes before we close the Overlay, otherwise the Overlay will be closed without any question.
 		this._saveHit = false;
@@ -28,14 +21,14 @@
 		/**
 		 * @inheritdoc
 		 * @cfg {Object} defaults Default options hash.
-		 * @cfg {string} defaults.cancelMsg Caption for cancel button on edit form.
-		 * @cfg {string} defaults.topicTitlePlaceHolder Placeholder text to prompt user to add
+		 * @cfg {String} defaults.cancelMsg Caption for cancel button on edit form.
+		 * @cfg {String} defaults.topicTitlePlaceHolder Placeholder text to prompt user to add
 		 * a talk page topic subject.
-		 * @cfg {string} defaults.topicContentPlaceHolder Placeholder text to prompt user to add
+		 * @cfg {String} defaults.topicContentPlaceHolder Placeholder text to prompt user to add
 		 * content to talk page content.
-		 * @cfg {string} defaults.editingMsg Label for button which submits a new talk page topic.
+		 * @cfg {String} defaults.editingMsg Label for button which submits a new talk page topic.
 		 */
-		defaults: util.extend( {}, TalkOverlayBase.prototype.defaults, {
+		defaults: $.extend( {}, TalkOverlayBase.prototype.defaults, {
 			cancelMsg: mw.msg( 'mobile-frontend-editor-cancel' ),
 			topicTitlePlaceHolder: mw.msg( 'mobile-frontend-talk-add-overlay-subject-placeholder' ),
 			topicContentPlaceHolder: mw.msg( 'mobile-frontend-talk-add-overlay-content-placeholder' ),
@@ -48,11 +41,11 @@
 			} ).toHtmlString()
 		} ),
 		template: mw.template.get( 'mobile.talk.overlays', 'SectionAddOverlay.hogan' ),
-		templatePartials: util.extend( {}, TalkOverlayBase.prototype.templatePartials, {
+		templatePartials: $.extend( {}, TalkOverlayBase.prototype.templatePartials, {
 			contentHeader: mw.template.get( 'mobile.talk.overlays', 'SectionAddOverlay/contentHeader.hogan' ),
 			saveHeader: mw.template.get( 'mobile.editor.common', 'saveHeader.hogan' )
 		} ),
-		events: util.extend( {}, TalkOverlayBase.prototype.events, {
+		events: $.extend( {}, TalkOverlayBase.prototype.events, {
 			'input .wikitext-editor, .summary': 'onTextInput',
 			'change .wikitext-editor, .summary': 'onTextInput',
 			'click .confirm-save': 'onSaveClick'
@@ -71,8 +64,6 @@
 				confirmMessage = mw.msg( 'mobile-frontend-editor-cancel-confirm' );
 
 			empty = ( !this.$subject.val() && !this.$ta.val() );
-			// TODO: Replace with an OOUI dialog
-			// eslint-disable-next-line no-alert
 			if ( this._saveHit || empty || window.confirm( confirmMessage ) ) {
 				return TalkOverlayBase.prototype.hide.apply( this, arguments );
 			} else {
@@ -98,45 +89,45 @@
 		 * Handles a click on the save button
 		 */
 		onSaveClick: function () {
-			var self = this,
-				isOnTalkPage = self.title === self.currentPageTitle;
+			var self = this;
 
 			this.showHidden( '.saving-header' );
 			this.save().done( function ( status ) {
 				if ( status === 'ok' ) {
-					if ( isOnTalkPage ) {
-						M.emit( 'talk-added-wo-overlay' );
-					} else {
+					// Check if the user was previously on the talk overlay
+					if ( self.title !== mw.config.get( 'wgPageName' ) ) {
 						self.pageGateway.invalidatePage( self.title );
 						toast.show( mw.msg( 'mobile-frontend-talk-topic-feedback' ) );
 						M.emit( 'talk-discussion-added' );
-						self.hide();
+						window.history.back();
+					} else {
+						M.emit( 'talk-added-wo-overlay' );
 					}
 				}
 			} ).fail( function ( error ) {
-				var editMsg = mw.msg( 'mobile-frontend-talk-topic-error' );
+				var editMsg = 'mobile-frontend-talk-topic-error';
 
 				self.$confirm.prop( 'disabled', false );
 				switch ( error.details ) {
 					case 'protectedpage':
-						editMsg = mw.msg( 'mobile-frontend-talk-topic-error-protected' );
+						editMsg = 'mobile-frontend-talk-topic-error-protected';
 						break;
 					case 'noedit':
 					case 'blocked':
-						editMsg = mw.msg( 'mobile-frontend-talk-topic-error-permission' );
+						editMsg = 'mobile-frontend-talk-topic-error-permission';
 						break;
 					case 'spamdetected':
-						editMsg = mw.msg( 'mobile-frontend-talk-topic-error-spam' );
+						editMsg = 'mobile-frontend-talk-topic-error-spam';
 						break;
 					case 'badtoken':
-						editMsg = mw.msg( 'mobile-frontend-talk-topic-error-badtoken' );
+						editMsg = 'mobile-frontend-talk-topic-error-badtoken';
 						break;
 					default:
-						editMsg = mw.msg( 'mobile-frontend-talk-topic-error' );
+						editMsg = 'mobile-frontend-talk-topic-error';
 						break;
 				}
 
-				toast.show( editMsg, 'error' );
+				toast.show( mw.msg( editMsg ), 'error' );
 				self.showHidden( '.save-header, .save-panel' );
 			} );
 		},
@@ -149,9 +140,8 @@
 		save: function () {
 			var heading = this.$subject.val(),
 				self = this,
-				d = util.Deferred(),
-				text = this.$ta.val();
-
+				text = this.$ta.val(),
+				result = $.Deferred();
 			this.$ta.removeClass( 'error' );
 			this.$subject.removeClass( 'error' );
 
@@ -161,25 +151,26 @@
 			this.$( '.content' ).empty().addClass( 'loading' );
 			// FIXME: while saving: a spinner would be nice
 			// FIXME: This should be using a gateway e.g. TalkGateway, PageGateway or EditorGateway
-			return this.editorApi.postWithToken( 'edit', {
+			this.editorApi.postWithToken( 'edit', {
 				action: 'edit',
 				section: 'new',
 				sectiontitle: heading,
 				title: self.title,
-				summary: mw.msg( 'newsectionsummary', heading ),
+				summary: mw.msg( 'mobile-frontend-talk-edit-summary', heading ),
 				text: text + ' ~~~~'
-			} ).then( function () {
-				return 'ok';
-			}, function ( msg ) {
-				// FIXME: Throw an Error
-				return d.reject( {
+			} ).done( function () {
+				result.resolve( 'ok' );
+			} ).fail( function ( msg ) {
+				result.reject( {
 					type: 'error',
 					details: msg
 				} );
 			} );
+
+			return result;
 		}
 	} );
 
-	M.define( 'mobile.talk.overlays/TalkSectionAddOverlay', TalkSectionAddOverlay ); // resource-modules-disable-line
+	M.define( 'mobile.talk.overlays/TalkSectionAddOverlay', TalkSectionAddOverlay );
 
-}( mw.mobileFrontend ) );
+}( mw.mobileFrontend, jQuery ) );

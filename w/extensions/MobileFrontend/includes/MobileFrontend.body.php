@@ -1,45 +1,55 @@
 <?php
+/**
+ * MobileFrontend.body.php
+ */
 
 use Wikibase\Client\WikibaseClient;
-use Wikibase\DataModel\Entity\EntityDocument;
 use Wikibase\DataModel\Entity\ItemId;
-use MobileFrontend\ContentProviders\ContentProviderFactory;
 
 /**
  * Implements additional functions to use in MobileFrontend
  */
 class ExtMobileFrontend {
 	/**
+	 * Uses EventLogging when available to record an event on server side
+	 *
+	 * @param string $schema The name of the schema
+	 * @param int $revision The revision of the schema
+	 * @param array $data The data to be recorded against the schema
+	 */
+	public static function eventLog( $schema, $revision, $data ) {
+		if ( is_callable( 'EventLogging::logEvent' ) ) {
+			EventLogging::logEvent( $schema, $revision, $data );
+		}
+	}
+
+	/**
 	 * Transforms content to be mobile friendly version.
 	 * Filters out various elements and runs the MobileFormatter.
 	 * @param OutputPage $out
-	 * @param string $text override out html
-	 * @param bool $mobileFormatHtml whether content should be run through the MobileFormatter
+	 * @param string $mode mobile mode, i.e. stable or beta
 	 *
 	 * @return string
 	 */
-	public static function domParse( OutputPage $out, $text = null, $mobileFormatHtml = true ) {
-		$featureManager = \MediaWiki\MediaWikiServices::getInstance()
-			->getService( 'MobileFrontend.FeaturesManager' );
+	public static function DOMParse( OutputPage $out, $text = null, $isBeta = false ) {
+		$html = $text ? $text : $out->getHTML();
+
 		$context = MobileContext::singleton();
 		$config = $context->getMFConfig();
-		$factory = new ContentProviderFactory();
-		$provider = $factory->getProvider( $config, $out, $text );
-
-		// If we're not running the formatter we can exit earlier
-		if ( !$mobileFormatHtml ) {
-			return $provider->getHTML();
-		}
 
 		$title = $out->getTitle();
 		$ns = $title->getNamespace();
 		// Only include the table of contents element if the page is in the main namespace
 		// and the MFTOC flag has been set (which means the page originally had a table of contents)
 		$includeTOC = $out->getProperty( 'MFTOC' ) && $ns === NS_MAIN;
+		$formatter = MobileFormatter::newFromContext( $context, $html );
+		$formatter->enableTOCPlaceholder( $includeTOC );
+
+		Hooks::run( 'MobileFrontendBeforeDOM', array( $context, $formatter ) );
 
 		$isSpecialPage = $title->isSpecialPage();
 
-		$expandSections = (
+		$formatter->enableExpandableSections(
 			// Don't collapse sections e.g. on JS pages
 			$out->canUseWikiPage()
 			&& $out->getWikiPage()->getContentModel() == CONTENT_MODEL_WIKITEXT
@@ -52,21 +62,13 @@ class ExtMobileFrontend {
 			&& $context->getRequest()->getText( 'action', 'view' ) == 'view'
 		);
 
-		$formatter = MobileFormatter::newFromContext( $context, $provider,
-			$expandSections, $includeTOC );
-
-		Hooks::run( 'MobileFrontendBeforeDOM', [ $context, $formatter ] );
-
-		$removeImages = $featureManager->isFeatureAvailableInContext( 'MFLazyLoadImages', $context );
-		$removeReferences =
-			$featureManager->isFeatureAvailableInContext( 'MFLazyLoadReferences', $context );
-		$showFirstParagraphBeforeInfobox = $ns === NS_MAIN &&
-			$featureManager->isFeatureAvailableInContext( 'MFShowFirstParagraphBeforeInfobox', $context );
+		$removeImages = $context->isLazyLoadImagesEnabled();
+		$removeReferences = $context->isLazyLoadReferencesEnabled();
 
 		if ( $context->getContentTransformations() ) {
 			// Remove images if they're disabled from special pages, but don't transform otherwise
-			$formatter->filterContent( !$isSpecialPage,
-				$removeReferences, $removeImages, $showFirstParagraphBeforeInfobox );
+			$formatter->filterContent( /* remove defaults */ !$isSpecialPage,
+				$removeReferences, $removeImages );
 		}
 
 		$contentHtml = $formatter->getText();
@@ -76,14 +78,9 @@ class ExtMobileFrontend {
 		// on whether the user is the owner of the page or not.
 		if ( $title->inNamespace( NS_USER ) && !$title->isSubpage() ) {
 			$pageUserId = User::idFromName( $title->getText() );
-
-			$out->addModuleStyles( [
-				'mediawiki.ui.icon',
-				'mobile.userpage.styles', 'mobile.userpage.icons'
-			] );
 			if ( $pageUserId && !$title->exists() ) {
 				$pageUser = User::newFromId( $pageUserId );
-				$contentHtml = self::getUserPageContent(
+				$contentHtml = ExtMobileFrontend::getUserPageContent(
 					$out, $pageUser );
 			}
 		}
@@ -104,9 +101,6 @@ class ExtMobileFrontend {
 		// Is the current user viewing their own page?
 		$isCurrentUser = $output->getUser()->getName() === $pageUsername;
 
-		$data = [
-			'userIconClass' => MobileUI::iconClass( 'userpage', 'element', 'mw-ui-icon-large icon' ),
-		];
 		$data['ctaHeading'] = $isCurrentUser ?
 			$context->msg( 'mobile-frontend-user-page-no-owner-page-yet' )->text() :
 			$context->msg( 'mobile-frontend-user-page-no-page-yet', $pageUsername )->parse();
@@ -132,10 +126,10 @@ class ExtMobileFrontend {
 	 * Returns the Wikibase entity associated with a page or null if none exists.
 	 *
 	 * @param string $item Wikibase id of the page
-	 * @return EntityDocument|null
+	 * @return mw.wikibase.entity|null
 	 */
 	public static function getWikibaseEntity( $item ) {
-		if ( !class_exists( WikibaseClient::class ) ) {
+		if ( !class_exists( 'Wikibase\\Client\\WikibaseClient' ) ) {
 			return null;
 		}
 

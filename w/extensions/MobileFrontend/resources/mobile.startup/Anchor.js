@@ -1,6 +1,6 @@
 ( function ( M ) {
 
-	var View = M.require( 'mobile.startup/View' );
+	var View = M.require( 'mobile.view/View' );
 
 	/**
 	 * A wrapper for creating an anchor.
@@ -16,15 +16,17 @@
 		isTemplateMode: true,
 		/**
 		 * @cfg {Object} defaults Default options hash.
-		 * @cfg {boolean} defaults.progressive is progressive action
-		 * @cfg {boolean} defaults.destructive is destructive action
-		 * @cfg {string} defaults.additionalClassNames Additional class name(s).
-		 * @cfg {string} defaults.href url
-		 * @cfg {string} defaults.label of anchor
+		 * @cfg {Boolean} defaults.progressive is progressive action
+		 * @cfg {Boolean} defaults.constructive is constructive action
+		 * @cfg {Boolean} defaults.destructive is destructive action
+		 * @cfg {String} defaults.additionalClassNames Additional class name(s).
+		 * @cfg {String} defaults.href url
+		 * @cfg {String} defaults.label of anchor
 		 */
 		defaults: {
 			progressive: undefined,
 			destructive: undefined,
+			constructive: undefined,
 			additionalClassNames: '',
 			href: undefined,
 			label: undefined

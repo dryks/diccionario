@@ -1,13 +1,8 @@
-( function ( M ) {
-	var util = M.require( 'mobile.startup/util' );
-
+( function ( M, $ ) {
 	/**
 	 * API for managing clickable watchstar
 	 *
 	 * @class WatchstarGateway
-	 *
-	 * @constructor
-	 * @param {mw.Api} api
 	 */
 	function WatchstarGateway( api ) {
 		this.api = api;
@@ -25,7 +20,7 @@
 		_loadIntoCache: function ( resp ) {
 			var self = this;
 			if ( resp.query && resp.query.pages ) {
-				Object.keys( resp.query.pages ).forEach( function ( id ) {
+				$.each( resp.query.pages, function ( id ) {
 					self._cache[ id ] = resp.query.pages[ id ].hasOwnProperty( 'watched' );
 				} );
 			}
@@ -34,34 +29,37 @@
 		 * Loads the watch status for a given list of page ids in bulk
 		 * @method
 		 * @param {Array} ids A list of page ids
-		 * @param {boolean} markAsAllWatched When true will assume all given ids are watched without a lookup.
+		 * @param {Boolean} markAsAllWatched When true will assume all given ids are watched without a lookup.
 		 * @return {jQuery.Deferred}
 		 */
 		loadWatchStatus: function ( ids, markAsAllWatched ) {
-			var self = this;
+			var self = this,
+				result = $.Deferred();
 
 			if ( markAsAllWatched ) {
-				ids.forEach( function ( id ) {
+				$.each( ids, function ( i, id ) {
 					self._cache[ id ] = true;
 				} );
-				return util.Deferred().resolve();
+				result.resolve();
 			} else {
-				return this.api.get( {
+				this.api.get( {
 					action: 'query',
 					prop: 'info',
 					inprop: 'watched',
 					pageids: ids
-				} ).then( function ( resp ) {
+				} ).done( function ( resp ) {
 					self._loadIntoCache( resp );
+					result.resolve();
 				} );
 			}
+			return result;
 		},
 
 		/**
 		 * Marks whether a given page is watched or not to avoid an API call
 		 * @method
 		 * @param {Page} page Page view object
-		 * @param {boolean} isWatched True if page is watched
+		 * @param {Boolean} isWatched True if page is watched
 		 */
 		setWatchedPage: function ( page, isWatched ) {
 			this._cache[ page.getId() ] = isWatched;
@@ -71,7 +69,7 @@
 		 * Check if a given page is watched
 		 * @method
 		 * @param {Page} page Page view object
-		 * @return {boolean|undefined} undefined when the watch status is not known.
+		 * @return {Boolean|undefined} undefined when the watch status is not known.
 		 */
 		isWatchedPage: function ( page ) {
 			var id = page.getId();
@@ -92,7 +90,7 @@
 			data = {
 				action: 'watch'
 			};
-			if ( !page.isMissing ) {
+			if ( id !== 0 ) {
 				data.pageids = id;
 			} else {
 				// it's a new page use title instead
@@ -105,10 +103,11 @@
 			return this.api.postWithToken( 'watch', data ).done( function () {
 				var newStatus = !self.isWatchedPage( page );
 				self.setWatchedPage( page, newStatus );
+				M.emit( 'watched', page, newStatus );
 			} );
 		}
 	};
 
 	M.define( 'mobile.watchstar/WatchstarGateway', WatchstarGateway );
 
-}( mw.mobileFrontend ) );
+}( mw.mobileFrontend, jQuery ) );

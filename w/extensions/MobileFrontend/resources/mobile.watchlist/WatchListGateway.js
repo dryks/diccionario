@@ -1,12 +1,10 @@
-( function ( M ) {
-	var Page = M.require( 'mobile.startup/Page' ),
-		util = M.require( 'mobile.startup/util' ),
-		extendSearchParams = M.require( 'mobile.search.util/extendSearchParams' );
+( function ( M, $ ) {
+	var Page = M.require( 'mobile.startup/Page' );
 
 	/**
 	 * @class WatchListGateway
 	 * @param {mw.Api} api
-	 * @param {string} lastTitle of page listed in Watchlist to be used as a continuation parameter
+	 * @param {String} lastTitle of page listed in Watchlist to be used as a continuation parameter
 	 */
 	function WatchListGateway( api, lastTitle ) {
 		this.api = api;
@@ -15,13 +13,13 @@
 
 		if ( lastTitle ) {
 			this.continueParams = {
-				'continue': 'gwrcontinue||',
+				continue: 'gwrcontinue||',
 				gwrcontinue: '0|' + lastTitle.replace( / /g, '_' )
 			};
 			this.shouldSkipFirstTitle = true;
 		} else {
 			this.continueParams = {
-				'continue': ''
+				continue: ''
 			};
 			this.shouldSkipFirstTitle = false;
 		}
@@ -32,22 +30,22 @@
 	WatchListGateway.prototype = {
 		/**
 		 * Load the list of items on the watchlist
-		 * @return {jQuery.Deferred}
+		 * @returns {jQuery.Deferred}
 		 */
 		loadWatchlist: function () {
 			var self = this,
-				params = extendSearchParams( 'watchlist', {
-					prop: [ 'info', 'revisions' ],
+				params = $.extend( {
+					prop: [ 'info', 'revisions' ].concat( mw.config.get( 'wgMFQueryPropModules' ) ),
 					format: 'json',
 					formatversion: 2,
 					rvprop: 'timestamp|user',
 					generator: 'watchlistraw',
 					gwrnamespace: '0',
 					gwrlimit: this.limit
-				}, this.continueParams );
+				}, mw.config.get( 'wgMFSearchAPIParams' ), this.continueParams );
 
 			if ( this.canContinue === false ) {
-				return util.Deferred().resolve( [] );
+				return $.Deferred();
 			}
 			if ( this.shouldSkipFirstTitle ) {
 				// If we are calling the api from the last item of the previous page
@@ -83,8 +81,8 @@
 			}
 
 			// Convert the map to an Array.
-			pages = Object.keys( data.query.pages ).map( function ( id ) {
-				return data.query.pages[ id ];
+			pages = $.map( data.query.pages, function ( page ) {
+				return page;
 			} );
 
 			// Sort results alphabetically (the api map doesn't have any order). The
@@ -101,7 +99,7 @@
 			}
 
 			// Transform the items to a sensible format
-			return pages.map( function ( item ) {
+			return $.map( pages, function ( item ) {
 				return Page.newFromJSON( item );
 			} );
 		}
@@ -110,4 +108,4 @@
 
 	M.define( 'mobile.watchlist/WatchListGateway', WatchListGateway );
 
-}( mw.mobileFrontend ) );
+}( mw.mobileFrontend, jQuery ) );

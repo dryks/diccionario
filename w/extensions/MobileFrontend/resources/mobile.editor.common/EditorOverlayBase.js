@@ -1,11 +1,10 @@
-( function ( M ) {
-	var Overlay = M.require( 'mobile.startup/Overlay' ),
-		util = M.require( 'mobile.startup/util' ),
+( function ( M, $ ) {
+	var Overlay = M.require( 'mobile.overlays/Overlay' ),
 		PageGateway = M.require( 'mobile.startup/PageGateway' ),
+		browser = M.require( 'mobile.browser/browser' ),
 		Icon = M.require( 'mobile.startup/Icon' ),
-		toast = M.require( 'mobile.startup/toast' ),
-		user = M.require( 'mobile.startup/user' ),
-		mwUser = mw.user;
+		toast = M.require( 'mobile.toast/toast' ),
+		user = M.require( 'mobile.user/user' );
 
 	/**
 	 * 'Edit' button
@@ -43,13 +42,12 @@
 	 * @extends Overlay
 	 * @uses Icon
 	 * @uses user
-	 * @param {Object} options Configuration options
 	 */
 	function EditorOverlayBase( options ) {
 		var self = this;
 
 		if ( options.isNewPage ) {
-			options.placeholder = mw.msg( 'mobile-frontend-editor-placeholder-new-page', mwUser );
+			options.placeholder = mw.msg( 'mobile-frontend-editor-placeholder-new-page', mw.user );
 		}
 		// change the message to request a summary when not in article namespace
 		if ( mw.config.get( 'wgNamespaceNumber' ) !== 0 ) {
@@ -62,17 +60,16 @@
 		this.sectionId = options.sectionId;
 		this.config = mw.config.get( 'wgMFEditorOptions' );
 		this.sessionId = options.sessionId;
-		this.overlayManager = options.overlayManager;
 		this.allowCloseWindow = mw.confirmCloseWindow( {
-			// Returns true if content has changed
+			/** Returns true, if content has changed, otherwise false */
 			test: function () {
 				// Check if content has changed
 				return self.hasChanged();
 			},
 
-			// Message to show the user, if content has changed
+			/** Message to show the user, if content has changed */
 			message: mw.msg( 'mobile-frontend-editor-cancel-confirm' ),
-			// Event namespace
+			/** Event namespace */
 			namespace: 'editwarning'
 		} );
 
@@ -83,32 +80,31 @@
 		/**
 		 * @inheritdoc
 		 * @cfg {Object} defaults Default options hash.
-		 * @cfg {OverlayManager} defaults.overlayManager instance
 		 * @cfg {mw.Api} defaults.api to interact with
-		 * @cfg {boolean} defaults.hasToolbar Whether the editor has a toolbar or not. When
+		 * @cfg {Boolean} defaults.hasToolbar Whether the editor has a toolbar or not. When
 		 *  disabled a header will be show instead.
-		 * @cfg {string} defaults.continueMsg Caption for the next button on edit form which takes
+		 * @cfg {String} defaults.continueMsg Caption for the next button on edit form which takes
 		 * you to the screen that shows a preview and license information.
-		 * @cfg {string} defaults.cancelMsg Caption for cancel button on edit form.
-		 * @cfg {string} defaults.closeMsg Caption for a button that takes you back to editing
+		 * @cfg {String} defaults.cancelMsg Caption for cancel button on edit form.
+		 * @cfg {String} defaults.closeMsg Caption for a button that takes you back to editing
 		 * from edit preview screen.
-		 * @cfg {string} defaults.summaryRequestMsg Header above edit summary input field asking
+		 * @cfg {String} defaults.summaryRequestMsg Header above edit summary input field asking
 		 * the user to summarize the changes they made to the page.
-		 * @cfg {string} defaults.summaryMsg A placeholder with examples for the summary input
+		 * @cfg {String} defaults.summaryMsg A placeholder with examples for the summary input
 		 * field asking user what they changed.
-		 * @cfg {string} defaults.placeholder Placeholder text for empty sections.
-		 * @cfg {string} defaults.waitMsg Text that displays while a page edit is being saved.
-		 * @cfg {string} defaults.waitIcon HTML of the icon that displays while a page edit
+		 * @cfg {String} defaults.placeholder Placeholder text for empty sections.
+		 * @cfg {String} defaults.waitMsg Text that displays while a page edit is being saved.
+		 * @cfg {String} defaults.waitIcon HTML of the icon that displays while a page edit
 		 * is being saved.
-		 * @cfg {string} defaults.captchaMsg Placeholder for captcha input field.
-		 * @cfg {string} defaults.captchaTryAgainMsg A message shown when user enters wrong CAPTCHA
+		 * @cfg {String} defaults.captchaMsg Placeholder for captcha input field.
+		 * @cfg {String} defaults.captchaTryAgainMsg A message shown when user enters wrong CAPTCHA
 		 * and a new one is displayed.
-		 * @cfg {string} defaults.switchMsg Label for button that allows the user to switch between
+		 * @cfg {String} defaults.switchMsg Label for button that allows the user to switch between
 		 * two different editing interfaces.
-		 * @cfg {string} defaults.licenseMsg Text and link of the license, under which this contribution will be
+		 * @cfg {String} defaults.licenseMsg Text and link of the license, under which this contribution will be
 		 * released to inform the user.
 		 */
-		defaults: util.extend( {}, Overlay.prototype.defaults, {
+		defaults: $.extend( {}, Overlay.prototype.defaults, {
 			hasToolbar: false,
 			continueMsg: mw.msg( 'mobile-frontend-editor-continue' ),
 			cancelMsg: mw.msg( 'mobile-frontend-editor-cancel' ),
@@ -129,7 +125,7 @@
 			licenseMsg: undefined
 		} ),
 		/** @inheritdoc **/
-		templatePartials: util.extend( {}, Overlay.prototype.templatePartials, {
+		templatePartials: $.extend( {}, Overlay.prototype.templatePartials, {
 			editHeader: mw.template.get( 'mobile.editor.common', 'editHeader.hogan' ),
 			previewHeader: mw.template.get( 'mobile.editor.common', 'previewHeader.hogan' ),
 			saveHeader: mw.template.get( 'mobile.editor.common', 'saveHeader.hogan' )
@@ -138,7 +134,8 @@
 		template: mw.template.get( 'mobile.editor.common', 'EditorOverlayBase.hogan' ),
 		/** @inheritdoc **/
 		className: 'overlay editor-overlay',
-		events: util.extend( {}, Overlay.prototype.events, {
+		events: $.extend( {}, Overlay.prototype.events, {
+			// FIXME: This should be .close (see bug 71203)
 			'click .back': 'onClickBack',
 			'click .continue': 'onClickContinue',
 			'click .submit': 'onClickSubmit'
@@ -148,7 +145,7 @@
 		 * @param {Object} data
 		 */
 		log: function ( data ) {
-			mw.track( 'mf.schemaEdit', util.extend( data, {
+			mw.track( 'mf.schemaEdit', $.extend( data, {
 				editor: this.editor,
 				editingSessionId: this.sessionId
 			} ) );
@@ -157,13 +154,10 @@
 		/**
 		 * If this is a new article, require confirmation before saving.
 		 * @method
-		 * @return {boolean} The user confirmed saving
 		 */
 		confirmSave: function () {
 			if ( this.isNewPage &&
-				// TODO: Replace with an OOUI dialog
-				// eslint-disable-next-line no-alert
-				!window.confirm( mw.msg( 'mobile-frontend-editor-new-page-confirm', mwUser ) )
+				!window.confirm( mw.msg( 'mobile-frontend-editor-new-page-confirm', mw.user ) )
 			) {
 				return false;
 			} else {
@@ -172,28 +166,25 @@
 		},
 		/**
 		 * Executed when page save is complete. Handles reloading the page, showing toast
-		 * messages.
+		 * messages, and setting mobile edit cookie.
 		 * @method
 		 */
 		onSaveComplete: function () {
 			var msg,
-				$window = util.getWindow(),
 				title = this.options.title,
 				self = this;
 
 			// FIXME: use generic method for following 3 lines
 			this.pageGateway.invalidatePage( title );
-			// Close the overlay to cancel the hash fragment
-			// otherwise clicking back will take you back to the editor.
-			self.hide();
 
 			if ( this.isNewPage ) {
-				msg = mw.msg( 'mobile-frontend-editor-success-new-page' );
+				msg = 'mobile-frontend-editor-success-new-page';
 			} else if ( this.isNewEditor ) {
-				msg = mw.msg( 'mobile-frontend-editor-success-landmark-1' );
+				msg = 'mobile-frontend-editor-success-landmark-1';
 			} else {
-				msg = mw.msg( 'mobile-frontend-editor-success' );
+				msg = 'mobile-frontend-editor-success';
 			}
+			msg = mw.msg( msg );
 			toast.showOnPageReload( msg, 'success' );
 
 			// Ensure we don't lose this event when logging
@@ -204,22 +195,20 @@
 				title = title + '#' + self.sectionLine;
 			}
 
-			$window.off( 'beforeunload.mfeditorwarning' );
+			$( window ).off( 'beforeunload.mfeditorwarning' );
 
-			// FIXME: Blocked on T189173
-			// eslint-disable-next-line no-restricted-properties
+			// Set a cookie for 30 days indicating that this user has edited from
+			// the mobile interface.
+			$.cookie( 'mobileEditor', 'true', {
+				expires: 30
+			} );
+
 			window.location = mw.util.getUrl( title );
-			if ( self.sectionLine ) {
-				// since the path and only the hash has changed it has not triggered a refresh so forcefully refresh
-				// FIXME: Blocked on T189173
-				// eslint-disable-next-line no-restricted-properties
-				window.location.reload();
-			}
 		},
 		/**
 		 * Report load errors back to the user. Silently record the error using EventLogging.
 		 * @method
-		 * @param {string} text Text of message to display to user
+		 * @param {String} text Text of message to display to user
 		 */
 		reportError: function ( text ) {
 			toast.show( text, 'error' );
@@ -258,6 +247,10 @@
 		},
 		/** @inheritdoc **/
 		postRender: function () {
+			// Add a class so editor can make some Android 2 specific customisations.
+			if ( browser.isAndroid2() ) {
+				this.$el.addClass( 'android-2' );
+			}
 			// log edit attempt
 			this.log( {
 				action: 'ready'
@@ -279,12 +272,12 @@
 		 * Back button click handler
 		 * @method
 		 */
-		onClickBack: util.noop,
+		onClickBack: $.noop,
 		/**
 		 * Exit handler
 		 */
-		onExitClick: function () {
-			Overlay.prototype.onExitClick.apply( this, arguments );
+		onExit: function () {
+			Overlay.prototype.onExit.apply( this, arguments );
 			// log cancel attempt
 			this.log( {
 				action: 'abort',
@@ -305,27 +298,48 @@
 			this[this.nextStep]();
 		},
 		/**
+		 * Set up the editor switching interface
+		 * The actual behavior of the editor buttons is initialized in postRender()
+		 * @method
+		 */
+		initializeSwitcher: function () {
+			var toolFactory = new OO.ui.ToolFactory(),
+				toolGroupFactory = new OO.ui.ToolGroupFactory(),
+				toolbar;
+
+			toolbar = new OO.ui.Toolbar( toolFactory, toolGroupFactory, {
+				classes: [ 'editor-switcher' ]
+			} );
+			toolFactory.register( EditVeTool );
+
+			toolbar.setup( [
+				{
+					icon: 'advanced',
+					indicator: 'down',
+					type: 'list',
+					include: [ { group: 'editorSwitcher' } ]
+				}
+			] );
+
+			this.$el.find( '.switcher-container' ).html( toolbar.$element );
+			this.switcherToolbar = toolbar;
+		},
+		/**
 		 * @inheritdoc
 		 */
 		hide: function () {
-			var self = this;
-			if ( this.hasChanged() ) {
-				OO.ui.confirm( mw.msg( 'mobile-frontend-editor-cancel-confirm' ) ).done( function ( confirmed ) {
-					if ( confirmed ) {
-						self.allowCloseWindow.release();
-						Overlay.prototype.hide.call( self );
-					}
-				} );
-			} else {
-				this.allowCloseWindow.release();
-				return Overlay.prototype.hide.call( self );
+			// trigger the customEvent for mw.confirmCloseWindow
+			if ( !this.allowCloseWindow.trigger() ) {
+				return;
 			}
+			this.allowCloseWindow.release();
+			return Overlay.prototype.hide.apply( this, arguments );
 		},
 		/**
 		 * Check, if the user should be asked if they really want to leave the page.
 		 * Returns false, if he hasn't made changes, otherwise true.
-		 * @param {boolean} [force] Whether this function should always return false
-		 * @return {boolean}
+		 * @param {Boolean} [force] Whether this function should always return false
+		 * @return {Boolean}
 		 */
 		shouldConfirmLeave: function ( force ) {
 			if ( force || !this.hasChanged() ) {
@@ -339,7 +353,7 @@
 		 * implemented by child class.
 		 * @method
 		 */
-		hasChanged: util.noop,
+		hasChanged: $.noop,
 		/**
 		 * Handles a failed save due to a CAPTCHA provided by ConfirmEdit extension.
 		 * @method
@@ -363,18 +377,11 @@
 				this.$( '.captcha-panel#question' ).detach();
 				this.$( '.captcha-panel img' ).attr( 'src', details.url );
 			} else {
-				// not image based CAPTCHA.
+				// handle mime types (other than image based ones) as plain text by default.
+				// e.g. QuestyCaptcha (question - answer), MathCaptcha (solve a math formula) or
+				// SimpleCaptcha (simple math formula)
 				this.$( '.captcha-panel #image' ).detach();
-				if ( details.mime.indexOf( 'text/html' ) === 0 ) {
-					// handle mime type of HTML as HTML content (display as-is).
-					// QuestyCaptcha now have default MIME type "text/html": see T147606
-					this.$( '.captcha-panel #question' ).html( details.question );
-				} else {
-					// handle mime types (other than image based ones and HTML based ones) as plain text by default.
-					// e.g. MathCaptcha (solve a math formula) or
-					// SimpleCaptcha (simple math formula)
-					this.$( '.captcha-panel #question' ).text( details.question );
-				}
+				this.$( '.captcha-panel #question' ).text( details.question );
 			}
 
 			this.showHidden( '.save-header, .captcha-panel' );
@@ -384,4 +391,4 @@
 
 	M.define( 'mobile.editor.common/EditorOverlayBase', EditorOverlayBase )
 		.deprecate( 'modules/editor/EditorOverlayBase' );
-}( mw.mobileFrontend ) );
+}( mw.mobileFrontend, jQuery ) );

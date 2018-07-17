@@ -8,44 +8,34 @@
 
 			// prevent event logging requests
 			this.sandbox.stub( EditorOverlay.prototype, 'log' ).returns( $.Deferred().resolve() );
-			this.toastStub = this.sandbox.stub( mw, 'notify' );
 			getContentStub = this.sandbox.stub( EditorGateway.prototype, 'getContent' );
 			// the first call returns a getContent deferred for a blocked user.
-			this.dBlockedContent = $.Deferred().resolve( {
-				text: 'section 0',
-				user: {
+			getContentStub.onCall( 0 ).returns( $.Deferred().resolve( 'section 0', {
 					blockid: 1,
 					blockedby: 'Test',
 					blockreason: 'Testreason'
-				}
-			} );
-			getContentStub.onCall( 0 ).returns( this.dBlockedContent );
+				} ) );
 			// all other calls returns a deferred for unblocked users.
 			getContentStub.returns( $.Deferred().resolve( 'section 0', {} ) );
 			this.sandbox.stub( EditorGateway.prototype, 'getPreview' )
-				.returns( $.Deferred().resolve( { text: 'previewtest' } ) );
+				.returns( $.Deferred().resolve( 'previewtest' ) );
 		}
 	} );
 
 	// has to be the first test here! See comment in setup stub.
-	QUnit.test( '#initialize, blocked user', function ( assert ) {
-		var toastStub = this.toastStub;
-		// eslint-disable-next-line no-new
+	QUnit.test( '#initialize, blocked user', 1, function ( assert ) {
 		new EditorOverlay( {
 			title: 'test.css'
 		} );
 
-		return this.dBlockedContent.then( function () {
-			assert.ok(
-				toastStub.calledWith(
-					'Your IP address is blocked from editing. The block was made by Test for the following reason: Testreason.'
-				),
-				'There is a toast notice, that i am blocked from editing'
-			);
-		} );
+		assert.strictEqual(
+			$( '.mw-notification-content' ).text(),
+			'Your IP address is blocked from editing. The block was made by Test for the following reason: Testreason.',
+			'There is a toast notice, that i am blocked from editing'
+		);
 	} );
 
-	QUnit.test( '#initialize, with given page and section', function ( assert ) {
+	QUnit.test( '#initialize, with given page and section', 5, function ( assert ) {
 		var editorOverlay = new EditorOverlay( {
 			title: 'test',
 			sectionId: 0
@@ -61,7 +51,7 @@
 		assert.strictEqual( editorOverlay.$content.val(), 'section 0', 'load correct section' );
 	} );
 
-	QUnit.test( '#initialize, without a section', function ( assert ) {
+	QUnit.test( '#initialize, without a section', 4, function ( assert ) {
 		var editorOverlay = new EditorOverlay( {
 			title: 'test.css'
 		} );
@@ -72,7 +62,7 @@
 		assert.strictEqual( editorOverlay.gateway.sectionId, undefined );
 	} );
 
-	QUnit.test( '#preview', function ( assert ) {
+	QUnit.test( '#preview', 1, function ( assert ) {
 		var editorOverlay = new EditorOverlay( {
 			title: 'test',
 			sectionId: 0
@@ -82,7 +72,7 @@
 		assert.strictEqual( editorOverlay.$preview.text(), '\npreviewtest\n', 'preview loaded correctly' );
 	} );
 
-	QUnit.test( '#without-preview', function ( assert ) {
+	QUnit.test( '#without-preview', 1, function ( assert ) {
 		var editorOverlay;
 
 		this.sandbox.stub( mw.config, 'get' ).withArgs( 'wgMFEditorOptions' ).returns( {
@@ -97,7 +87,7 @@
 		assert.strictEqual( editorOverlay.$( '.continue' ).text(), 'Save', 'no preview loaded' );
 	} );
 
-	QUnit.test( '#initialize, as anonymous', function ( assert ) {
+	QUnit.test( '#initialize, as anonymous', 2, function ( assert ) {
 		var editorOverlay = new EditorOverlay( {
 			title: 'Main_page',
 			isAnon: true

@@ -1,6 +1,4 @@
-( function ( M, mw ) {
-	var user = mw.user;
-
+( function ( M, mw, $ ) {
 	/**
 	 * Coordinates the logging of MobileWebSchema events.
 	 * Implements schema defined at https://meta.wikimedia.org/wiki/Schema:MobileWebSearch
@@ -20,7 +18,7 @@
 		 * @private
 		 */
 		_newUserSession: function () {
-			this.userSessionToken = user.generateRandomSessionId();
+			this.userSessionToken = mw.user.generateRandomSessionId();
 		},
 
 		/**
@@ -30,7 +28,7 @@
 		 * @private
 		 */
 		_newSearchSession: function () {
-			this.searchSessionToken = user.generateRandomSessionId();
+			this.searchSessionToken = mw.user.generateRandomSessionId();
 			this.searchSessionCreatedAt = new Date().getTime();
 		},
 
@@ -79,7 +77,7 @@
 		/**
 		 * Handles the 'search-result-click' event.
 		 *
-		 * @param {Object} event with property {number} event.index The zero-based index of the result in the
+		 * @param {Object} event with property {Number} event.index The zero-based index of the result in the
 		 *  set of results
 		 */
 		onSearchResultClick: function ( event ) {
@@ -101,17 +99,20 @@
 	 * Convenience function that wires up an instance of the
 	 * MobileWebSearchLogger class to the search-* events emitted by the
 	 * search overlay.
-	 * @param {SearchOverlay} searchOverlay
 	 */
-	MobileWebSearchLogger.register = function ( searchOverlay ) {
+	MobileWebSearchLogger.register = function () {
 		var logger = new MobileWebSearchLogger();
 
-		searchOverlay.on( 'search-show', logger.onSearchShow.bind( logger ) );
-		searchOverlay.on( 'search-start', logger.onSearchStart.bind( logger ) );
-		searchOverlay.on( 'search-results', logger.onSearchResults.bind( logger ) );
-		searchOverlay.on( 'search-result-click', logger.onSearchResultClick.bind( logger ) );
+		$.each( {
+			'search-show': logger.onSearchShow,
+			'search-start': logger.onSearchStart,
+			'search-results': logger.onSearchResults,
+			'search-result-click': logger.onSearchResultClick
+		}, function ( eventName, handler ) {
+			M.on( eventName, $.proxy( handler, logger ) );
+		} );
 	};
 
-	M.define( 'mobile.search/MobileWebSearchLogger', MobileWebSearchLogger ); // resource-modules-disable-line
+	M.define( 'mobile.search/MobileWebSearchLogger', MobileWebSearchLogger );
 
-}( mw.mobileFrontend, mw ) );
+}( mw.mobileFrontend, mw, jQuery ) );

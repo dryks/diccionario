@@ -1,11 +1,9 @@
-( function ( HTML, M ) {
+( function ( HTML, M, $ ) {
 
-	var time = M.require( 'mobile.startup/time' ),
-		util = M.require( 'mobile.startup/util' ),
-		View = M.require( 'mobile.startup/View' ),
+	var time = M.require( 'mobile.modifiedBar/time' ),
+		View = M.require( 'mobile.view/View' ),
 		Section = M.require( 'mobile.startup/Section' ),
-		Thumbnail = M.require( 'mobile.startup/Thumbnail' ),
-		BLACKLISTED_THUMBNAIL_CLASS_SELECTORS = [ 'noviewer', 'metadata' ];
+		Thumbnail = M.require( 'mobile.startup/Thumbnail' );
 
 	/**
 	 * Mobile page view object
@@ -13,16 +11,9 @@
 	 * @class Page
 	 * @uses Section
 	 * @extends View
-	 *
-	 * @constructor
-	 * @param {Object} options Configuration options
 	 */
 	function Page( options ) {
 		var thumb;
-		// thumbnail if not passed should be made false (truthy) so that it renders placeholder when absent
-		if ( options.thumbnail === undefined ) {
-			options.thumbnail = false;
-		}
 		this.options = options;
 		options.languageUrl = mw.util.getUrl( 'Special:MobileLanguages/' + options.title );
 		View.call( this, options );
@@ -35,7 +26,7 @@
 		this.thumbnail = options.thumbnail;
 		this.url = options.url || mw.util.getUrl( options.title );
 		this.id = options.id;
-		this.isMissing = options.isMissing !== undefined ? options.isMissing : options.id === 0;
+		this.isMissing = options.isMissing;
 		thumb = this.thumbnail;
 		if ( thumb && thumb.width ) {
 			this.thumbnail.isLandscape = thumb.width > thumb.height;
@@ -46,23 +37,24 @@
 	OO.mfExtend( Page, View, {
 		/**
 		 * @cfg {Object} defaults Default options hash.
-		 * @cfg {number} defaults.id Page ID. The default value of 0 represents a new page.
+		 * @cfg {Number} defaults.id Page ID. The default value of 0 represents a new page.
 		 * Be sure to override it to avoid side effects.
-		 * @cfg {string} defaults.title Title of the page. It includes prefix where needed and
+		 * @cfg {String} defaults.title Title of the page. It includes prefix where needed and
 		 * is human readable, e.g. Talk:The man who lived.
-		 * @cfg {string} defaults.displayTitle HTML title of the page for display. Falls back
+		 * @cfg {String} defaults.displayTitle HTML title of the page for display. Falls back
 		 * to defaults.title (escaped) if no value is provided. Must be safe HTML!
-		 * @cfg {number} defaults.namespaceNumber the number of the namespace the page belongs to
+		 * @cfg {Number} defaults.namespaceNumber the number of the namespace the page belongs to
 		 * @cfg {Object} defaults.protection List of permissions as returned by API,
 		 * e.g. [{ edit: ['*'] }]
 		 * @cfg {Array} defaults.sections Array of {Section} objects.
-		 * @cfg {boolean} defaults.isMainPage Whether the page is the Main Page.
-		 * @cfg {boolean} defaults.isMissing Whether the page exists in the wiki.
+		 * @cfg {Boolean} defaults.isMainPage Whether the page is the Main Page.
+		 * @cfg {Boolean} defaults.isMissing Whether the page exists in the wiki.
+		 * @cfg {String} defaults.hash Window location hash.
 		 * @cfg {Object} defaults.thumbnail thumbnail definition corresponding to page image
-		 * @cfg {boolean} defaults.thumbnail.isLandscape whether the image is in landscape format
-		 * @cfg {number} defaults.thumbnail.width of image in pixels.
-		 * @cfg {number} defaults.thumbnail.height of image in pixels.
-		 * @cfg {string} defaults.thumbnail.source url for image
+		 * @cfg {Boolean} defaults.thumbnail.isLandscape whether the image is in landscape format
+		 * @cfg {Number} defaults.thumbnail.width of image in pixels.
+		 * @cfg {Number} defaults.thumbnail.height of image in pixels.
+		 * @cfg {String} defaults.thumbnail.source url for image
 		 */
 		defaults: {
 			id: 0,
@@ -75,6 +67,7 @@
 			sections: [],
 			isMissing: false,
 			isMainPage: false,
+			hash: window.location.hash,
 			url: undefined,
 			thumbnail: {
 				isLandscape: undefined,
@@ -90,7 +83,7 @@
 		/**
 		 * Retrieve the title that should be displayed to the user
 		 * @method
-		 * @return {string} HTML
+		 * @return {String} HTML
 		 */
 		getDisplayTitle: function () {
 			return this.options.displayTitle || HTML.escape( this.options.title );
@@ -98,8 +91,8 @@
 		/**
 		 * Determine if current page is in a specified namespace
 		 * @method
-		 * @param {string} namespace Name of namespace
-		 * @return {boolean}
+		 * @param {String} namespace Name of namespace
+		 * @return {Boolean}
 		 */
 		inNamespace: function ( namespace ) {
 			return this.options.namespaceNumber === mw.config.get( 'wgNamespaceIds' )[namespace];
@@ -108,7 +101,7 @@
 		/**
 		 * Get the lead section of the page view.
 		 * @method
-		 * @return {jQuery.Object|null}
+		 * @return {jQuery.Object}
 		 */
 		getLeadSectionElement: function () {
 			/*
@@ -122,17 +115,21 @@
 			 *   </div>
 			 * </div>
 			 */
-			if ( this.$( '.mf-section-0' ).length ) {
-				return this.$( '.mf-section-0' );
+			if ( $( '.mf-section-0' ).length ) {
+				return $( '.mf-section-0' );
 			}
-			// no lead section found
-			return null;
+			// for cached pages that are still using mw-mobilefrontend-leadsection
+			if ( $( '.mw-mobilefrontend-leadsection' ).length ) {
+				return $( '.mw-mobilefrontend-leadsection' );
+			}
+			// FIXME: Remove this, when the cache has cleared - bug T122471
+			return this.$( '> div > div' ).eq( 0 );
 		},
 
 		/**
 		 * Determines if content model is wikitext
 		 * @method
-		 * @return {boolean}
+		 * @return {Boolean}
 		 */
 		isWikiText: function () {
 			return mw.config.get( 'wgPageContentModel' ) === 'wikitext';
@@ -141,7 +138,7 @@
 		/**
 		 * Checks whether the current page is the main page
 		 * @method
-		 * @return {boolean}
+		 * @return {Boolean}
 		 */
 		isMainPage: function () {
 			return this.options.isMainPage;
@@ -149,7 +146,7 @@
 		/**
 		 * Checks whether the current page is watched
 		 * @method
-		 * @return {boolean}
+		 * @return {Boolean}
 		 */
 		isWatched: function () {
 			return this.options.isWatched;
@@ -158,7 +155,7 @@
 		/**
 		 * Return the latest revision id for this page
 		 * @method
-		 * @return {number}
+		 * @return {Number}
 		 */
 		getRevisionId: function () {
 			return this.options.revId;
@@ -167,7 +164,7 @@
 		/**
 		 * Return prefixed page title
 		 * @method
-		 * @return {string}
+		 * @return {String}
 		 */
 		getTitle: function () {
 			return this.options.title;
@@ -176,7 +173,7 @@
 		/**
 		 * Return page id
 		 * @method
-		 * @return {number}
+		 * @return {Number}
 		 */
 		getId: function () {
 			return this.options.id;
@@ -185,7 +182,7 @@
 		/**
 		 * return namespace id
 		 * @method
-		 * @return {number} namespace Number
+		 * @return {Number} namespace Number
 		 */
 		getNamespaceId: function () {
 			var nsId,
@@ -202,7 +199,7 @@
 		/**
 		 * Determines if current page is a talk page
 		 * @method
-		 * @return {boolean} Whether the page is a talk page or not
+		 * @return {Boolean} Whether the page is a talk page or not
 		 */
 		isTalkPage: function () {
 			var ns = this.getNamespaceId();
@@ -214,57 +211,51 @@
 		 * @inheritdoc
 		 */
 		preRender: function () {
+			var self = this;
 			this.sections = [];
 			this._sectionLookup = {};
 			this.title = this.options.title;
 
-			this.options.sections.forEach( function ( sectionData ) {
-				var section = new Section( sectionData );
-				this.sections.push( section );
-				this._sectionLookup[section.id] = section;
-			}.bind( this ) );
+			$.each( this.options.sections, function () {
+				var section = new Section( this );
+				self.sections.push( section );
+				self._sectionLookup[section.id] = section;
+			} );
 		},
 
 		/**
-		 * Return all the thumbnails in the article. Images which have a class or link container (.image|.thumbimage)
-		 * that matches one of the items of the constant BLACKLISTED_THUMBNAIL_CLASS_SELECTORS will be excluded.
-		 * A thumbnail nested inside one of these classes will still be returned.
-		 * e.g. `<div class="noviewer"><a class="image"><img></a></div>` is not a valid thumbnail
-		 * `<a class="image noviewer"><img></a>` is not a valid thumbnail
-		 * `<a class="image"><img class="noviewer"></a>` is not a valid thumbnail
+		 * @inheritdoc
+		 */
+		postRender: function () {
+			var self = this;
+			// Restore anchor position after everything on page has been loaded.
+			// Otherwise, images that load after a while will push the anchor
+			// from the top of the viewport.
+			if ( this.options.hash ) {
+				$( window ).on( 'load', function () {
+					window.location.hash = self.options.hash;
+				} );
+			}
+		},
+
+		/**
+		 * Return all the thumbnails in the article
 		 * @method
 		 * @return {Thumbnail[]}
 		 */
 		getThumbnails: function () {
-			var $thumbs,
-				$el = this.$el,
-				blacklistSelector = '.' + BLACKLISTED_THUMBNAIL_CLASS_SELECTORS.join( ',.' ),
-				thumbs = [];
+			var thumbs = [];
 
 			if ( !this._thumbs ) {
-				$thumbs = $el.find( 'a.image, a.thumbimage' )
-					.not( blacklistSelector );
+				this.$el.find( 'a.image, a.thumbimage' ).each( function () {
+					var $a = $( this ),
+						match = $a.attr( 'href' ).match( /[^\/]+$/ );
 
-				$thumbs.each( function () {
-					var $a = $el.find( this ),
-						$lazyImage = $a.find( '.lazy-image-placeholder' ),
-						// Parents need to be checked as well.
-						valid = $a.parents( blacklistSelector ).length === 0 && $a.find( blacklistSelector ).length === 0,
-						legacyMatch = $a.attr( 'href' ).match( /title=([^/&]+)/ ),
-						match = $a.attr( 'href' ).match( /[^/]+$/ );
-
-					// filter out invalid lazy loaded images if so far image is valid
-					if ( $lazyImage.length && valid ) {
-						// if the regex matches it means the image has one of the classes - so we must invert the result
-						valid = !new RegExp( '\\b(' + BLACKLISTED_THUMBNAIL_CLASS_SELECTORS.join( '|' ) + ')\\b' )
-							.test( $lazyImage.data( 'class' ) );
-					}
-
-					if ( valid && ( legacyMatch || match ) ) {
+					if ( match ) {
 						thumbs.push(
 							new Thumbnail( {
 								el: $a,
-								filename: decodeURIComponent( legacyMatch ? legacyMatch[1] : match[0] )
+								filename: decodeURIComponent( match[0] )
 							} )
 						);
 					}
@@ -277,7 +268,7 @@
 		/**
 		 * FIXME: Change function signature to take the anchor of the heading
 		 * @method
-		 * @param {string} id of the section
+		 * @param {String} id of the section
 		 * @return {Section}
 		 */
 		getSection: function ( id ) {
@@ -294,7 +285,6 @@
 
 		/**
 		 * Returns a jQuery object representing all redlinks on the page.
-		 * @return {jQuery.Object}
 		 */
 		getRedLinks: function () {
 			return this.$( '.new' );
@@ -306,7 +296,7 @@
 	 *
 	 * @static
 	 * @param {Object} resp as representing a page in the API
-	 * @return {Page}
+	 * @returns {Page}
 	 */
 	Page.newFromJSON = function ( resp ) {
 		var revision, displayTitle,
@@ -323,7 +313,9 @@
 			displayTitle = terms && terms.label ? HTML.escape( terms.label[0] ) : pageprops.displaytitle;
 		}
 		// Add Wikidata descriptions if available (T101719)
-		resp.wikidataDescription = resp.description || undefined;
+		if ( terms && terms.description && terms.description.length ) {
+			resp.wikidataDescription = terms.description[0];
+		}
 
 		if ( thumb ) {
 			resp.thumbnail.isLandscape = thumb.width > thumb.height;
@@ -337,9 +329,9 @@
 		}
 
 		return new Page(
-			util.extend( resp, {
+			$.extend( resp, {
 				id: resp.pageid,
-				isMissing: !!resp.missing,
+				isMissing: resp.missing ? true : false,
 				url: mw.util.getUrl( resp.title ),
 				displayTitle: displayTitle // this is HTML!
 			} )
@@ -347,4 +339,4 @@
 	};
 	M.define( 'mobile.startup/Page', Page );
 
-}( mw.html, mw.mobileFrontend ) );
+}( mw.html, mw.mobileFrontend, jQuery ) );

@@ -1,45 +1,37 @@
-( function ( M ) {
-	var ForeignApi = mw.ForeignApi,
-		util = M.require( 'mobile.startup/util' );
-
+( function ( M, $ ) {
 	/**
 	 * Extends mw.ForeignApi to force it to use JSONP for non-POST requests
 	 * @class JSONPForeignApi
 	 * @extends mw.ForeignApi
-	 *
-	 * @constructor
-	 * @param {string} url
-	 * @param {Object} [options]
 	 */
-	function JSONPForeignApi( url, options ) {
+	function JSONPForeignApi( endpoint, options ) {
 		options = options || {};
 		options.origin = undefined;
-		ForeignApi.call( this, url, options );
+		mw.ForeignApi.call( this, endpoint, options );
 		delete this.defaults.parameters.origin;
 	}
-	OO.inheritClass( JSONPForeignApi, ForeignApi );
+	OO.inheritClass( JSONPForeignApi, mw.ForeignApi );
 
 	/**
 	 * See https://doc.wikimedia.org/mediawiki-core/master/js/#!/api/mw.Api-method-ajax
 	 * for inherited documentation.
-	 * @param {Object} parameters
-	 * @param {Object} [ajaxOptions]
-	 * @return {jQuery.Promise}
+	 * @param {Object} data
+	 * @param {Object} options
 	 */
-	JSONPForeignApi.prototype.ajax = function ( parameters, ajaxOptions ) {
-		if ( !ajaxOptions || ajaxOptions.type !== 'POST' ) {
+	JSONPForeignApi.prototype.ajax = function ( data, options ) {
+		if ( !options || options.type !== 'POST' ) {
 			// optional parameter so may need to define it.
-			ajaxOptions = ajaxOptions || {};
+			options = options || {};
 			// Fire jsonp where it can be.
-			ajaxOptions.dataType = 'jsonp';
+			options.dataType = 'jsonp';
 			// explicitly avoid requesting central auth tokens
-			parameters = util.extend( {}, parameters, {
+			data = $.extend( {}, data, {
 				centralauthtoken: false
 			} );
 		}
-		return ForeignApi.prototype.ajax.call( this, parameters, ajaxOptions );
+		return mw.ForeignApi.prototype.ajax.call( this, data, options );
 	};
 
 	M.define( 'mobile.foreignApi/JSONPForeignApi', JSONPForeignApi );
 
-}( mw.mobileFrontend ) );
+}( mw.mobileFrontend, jQuery ) );

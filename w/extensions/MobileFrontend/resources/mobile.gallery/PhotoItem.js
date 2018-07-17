@@ -1,5 +1,5 @@
 ( function ( M ) {
-	var View = M.require( 'mobile.startup/View' );
+	var View = M.require( 'mobile.view/View' );
 
 	/**
 	 * Single photo item in gallery

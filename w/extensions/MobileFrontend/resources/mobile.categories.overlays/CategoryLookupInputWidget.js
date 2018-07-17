@@ -1,19 +1,17 @@
-( function ( M, OO ) {
+( function ( M, $, OO ) {
 	/**
 	 * @class CategoryLookupInputWidget
 	 * @extends OO.ui.mixin.LookupElement
-	 *
-	 * @constructor
-	 * @param {Object} options Configuration options
+	 * @param {Object} options
 	 * @param {CategoryGateway} options.gateway to use to retrieve search results
 	 * @param {jQuery.Object} options.suggestions container element for search suggestions
 	 * @param {jQuery.Object} options.saveButton element. Will get disabled when suggested item clicked.
 	 */
 	function CategoryLookupInputWidget( options ) {
-		// Note: this.$element is set to $( '<div>' ) by OOUI.
+		this.$element = $( '<div>' );
 		this.gateway = options.gateway;
 		this.$suggestions = options.suggestions;
-		this.categories = options.categories || [];
+		this.categories = options.categories;
 		this.$saveButton = options.saveButton;
 		options.placeholder = mw.msg( 'mobile-frontend-categories-search' );
 		OO.ui.TextInputWidget.call( this, options );
@@ -71,13 +69,12 @@
 	 */
 	CategoryLookupInputWidget.prototype.getLookupMenuOptionsFromData = function ( data ) {
 		var result = [],
-			$el = this.$element,
 			self = this;
 
-		data.results.forEach( function ( value ) {
+		$.each( data.results, function ( i, value ) {
 			if (
-				!$el.find( 'div[data-title="' + value.title + '"]' ).length &&
-				self.categories.indexOf( value.displayTitle ) === -1
+				!$( 'div[data-title="' + value.title + '"]' ).length &&
+				$.inArray( value.displayTitle, self.categories ) === -1
 			) {
 				result.push(
 					new OO.ui.MenuOptionWidget( {
@@ -92,4 +89,4 @@
 
 	M.define( 'mobile.categories.overlays/CategoryLookupInputWidget', CategoryLookupInputWidget );
 
-}( mw.mobileFrontend, OO ) );
+}( mw.mobileFrontend, jQuery, OO ) );

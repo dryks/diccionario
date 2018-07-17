@@ -5,434 +5,428 @@
  * @file
  * @ingroup Extensions
  */
+// @codingStandardsIgnoreFile
 
-$specialPageAliases = [];
+$specialPageAliases = array();
 
 /** English (English) */
-$specialPageAliases['en'] = [
-	'History' => [ 'History' ],
-	'MobileCite' => [ 'MobileCite' ],
-	'MobileOptions' => [ 'MobileOptions' ],
-	'Uploads' => [ 'Uploads' ],
-	'MobileDiff' => [ 'MobileDiff' ],
-	'MobileMenu' => [ 'MobileMenu' ],
-	'MobileLanguages' => [ 'MobileLanguages' ],
-	'Nearby' => [ 'Nearby' ],
-];
+$specialPageAliases['en'] = array(
+	'History' => array( 'History' ),
+	'MobileOptions' => array( 'MobileOptions' ),
+	'Uploads' => array( 'Uploads' ),
+	'MobileDiff' => array( 'MobileDiff' ),
+	'MobileEditor' => array( 'MobileEditor' ),
+	'MobileMenu' => array( 'MobileMenu' ),
+	'MobileLanguages' => array( 'MobileLanguages' ),
+	'Nearby' => array( 'Nearby' ),
+	'TopicTag' => array( 'TopicTag' ),
+);
 
 /** Afrikaans (Afrikaans) */
-$specialPageAliases['af'] = [
-	'History' => [ 'Geskiedenis' ],
-	'Uploads' => [ 'Oplaaie' ],
-	'Nearby' => [ 'Naby' ],
-];
+$specialPageAliases['af'] = array(
+	'History' => array( 'Geskiedenis' ),
+	'Uploads' => array( 'Oplaaie' ),
+	'Nearby' => array( 'Naby' ),
+);
 
 /** Arabic (العربية) */
-$specialPageAliases['ar'] = [
-	'History' => [ 'تاريخ' ],
-	'MobileOptions' => [ 'خيارات_المحمول' ],
-	'Uploads' => [ 'مرفوعات' ],
-	'MobileDiff' => [ 'فرق_المحمول' ],
-	'MobileMenu' => [ 'قائمة_المحمول' ],
-	'MobileLanguages' => [ 'لغات_المحمول' ],
-	'Nearby' => [ 'قريب' ],
-	];
+$specialPageAliases['ar'] = array(
+	'History' => array( 'تاريخ' ),
+	'MobileOptions' => array( 'خيارات_المحمول' ),
+	'Uploads' => array( 'مرفوعات' ),
+	'MobileDiff' => array( 'فرق_المحمول' ),
+	'MobileEditor' => array( 'محرر_المحمول' ),
+	'MobileMenu' => array( 'قائمة_المحمول' ),
+	'MobileLanguages' => array( 'لغات_المحمول' ),
+	'Nearby' => array( 'قريب' ),
+	'TopicTag' => array( 'وسم_الموضوع' ),
+);
 
 /** Egyptian Arabic (مصرى) */
-$specialPageAliases['arz'] = [
-	'History' => [ 'تاريخ' ],
-	'MobileOptions' => [ 'خيارات_الموبايل' ],
-	'Uploads' => [ 'مرفوعات' ],
-	'MobileDiff' => [ 'فرق_الموبايل' ],
-	'MobileMenu' => [ 'قايمه_الموبايل' ],
-	'MobileLanguages' => [ 'لغات_الموبايل' ],
-	'Nearby' => [ 'قريب' ],
-];
+$specialPageAliases['arz'] = array(
+	'History' => array( 'تاريخ' ),
+	'MobileOptions' => array( 'خيارات_الموبايل' ),
+	'Uploads' => array( 'مرفوعات' ),
+	'MobileDiff' => array( 'فرق_الموبايل' ),
+	'MobileEditor' => array( 'محرر_الموبايل' ),
+	'MobileMenu' => array( 'قايمه_الموبايل' ),
+	'MobileLanguages' => array( 'لغات_الموبايل' ),
+	'Nearby' => array( 'قريب' ),
+);
 
 /** Asturian (asturianu) */
-$specialPageAliases['ast'] = [
-	'Nearby' => [ 'Cercano' ],
-];
+$specialPageAliases['ast'] = array(
+	'Nearby' => array( 'Cercano' ),
+);
 
 /** Avaric (авар) */
-$specialPageAliases['av'] = [
-	'MobileOptions' => [ 'Настройки_мобильной_версии' ],
-	'Uploads' => [ 'Загрузки' ],
-	'MobileDiff' => [ 'Сравнение_версий' ],
-	'MobileMenu' => [ 'Мобильное_меню' ],
-	'Nearby' => [ 'Поблизости' ],
-];
+$specialPageAliases['av'] = array(
+	'MobileOptions' => array( 'Настройки_мобильной_версии' ),
+	'Uploads' => array( 'Загрузки' ),
+	'MobileDiff' => array( 'Сравнение_версий' ),
+	'MobileMenu' => array( 'Мобильное_меню' ),
+	'Nearby' => array( 'Поблизости' ),
+);
 
 /** Azerbaijani (azərbaycanca) */
-$specialPageAliases['az'] = [
-	'History' => [ 'Tarixçə' ],
-	'MobileMenu' => [ 'MobilMenyu' ],
-	'MobileLanguages' => [ 'MobilDillər' ],
-];
+$specialPageAliases['az'] = array(
+	'History' => array( 'Tarixçə' ),
+	'MobileMenu' => array( 'MobilMenyu' ),
+	'MobileLanguages' => array( 'MobilDillər' ),
+);
 
 /** Western Balochi (بلوچی رخشانی) */
-$specialPageAliases['bgn'] = [
-	'History' => [ 'تاریخچه_گ' ],
-	'MobileOptions' => [ 'موبایل_ئی_تنزیمان' ],
-	'Uploads' => [ 'بُرز_بوته_ئینان' ],
-	'MobileDiff' => [ 'موبایل_ئی_پرک' ],
-	'MobileMenu' => [ 'موبایل_ئی_مینو' ],
-	'MobileLanguages' => [ 'موبایل_ئی_زبانان' ],
-	'Nearby' => [ 'بئ_نزینکی_ئا' ],
-];
-
-/** Bengali (বাংলা) */
-$specialPageAliases['bn'] = [
-	'History' => [ 'ইতিহাস' ],
-	'MobileCite' => [ 'মোবাইল_উদ্ধৃতি' ],
-	'MobileOptions' => [ 'মোবাইল_বিকল্প' ],
-	'Uploads' => [ 'আপলোডসমূহ' ],
-	'MobileDiff' => [ 'মোবাইল_পার্থক্য' ],
-	'MobileMenu' => [ 'মোবাইল_মেনু' ],
-	'MobileLanguages' => [ 'মোবাইল_ভাষাসমূহ' ],
-	'Nearby' => [ 'কাছাকাছি' ],
-];
+$specialPageAliases['bgn'] = array(
+	'History' => array( 'تاریخچه_گ' ),
+	'MobileOptions' => array( 'موبایل_ئی_تنزیمان' ),
+	'Uploads' => array( 'بُرز_بوته_ئینان' ),
+	'MobileDiff' => array( 'موبایل_ئی_پرک' ),
+	'MobileEditor' => array( 'موبایل_ئی_دستکار' ),
+	'MobileMenu' => array( 'موبایل_ئی_مینو' ),
+	'MobileLanguages' => array( 'موبایل_ئی_زبانان' ),
+	'Nearby' => array( 'بئ_نزینکی_ئا' ),
+);
 
 /** Catalan (català) */
-$specialPageAliases['ca'] = [
-	'Nearby' => [ 'A_prop' ],
-];
+$specialPageAliases['ca'] = array(
+	'Nearby' => array( 'A_prop' ),
+);
 
 /** Chechen (нохчийн) */
-$specialPageAliases['ce'] = [
-	'MobileOptions' => [ 'Мобильни_верси_нисяр' ],
-	'Uploads' => [ 'Чуйохурш' ],
-	'MobileDiff' => [ 'Версеш_юстар' ],
-	'MobileMenu' => [ 'Мобилан_меню' ],
-	'Nearby' => [ 'Гергахьо' ],
-];
-
-/** Czech (čeština) */
-$specialPageAliases['cs'] = [
-	'History' => [ 'Historie' ],
-	'MobileCite' => [ 'Mobilní_citace' ],
-	'MobileOptions' => [ 'Mobilní_nastavení' ],
-	'Uploads' => [ 'Vaše_soubory' ],
-	'MobileDiff' => [ 'Mobilní_rozdíl' ],
-	'MobileMenu' => [ 'Mobilní_menu' ],
-	'MobileLanguages' => [ 'Mobilní_jazyky' ],
-	'Nearby' => [ 'Poblíž' ],
-];
+$specialPageAliases['ce'] = array(
+	'MobileOptions' => array( 'Мобильни_верси_нисяр' ),
+	'Uploads' => array( 'Чуйохурш' ),
+	'MobileDiff' => array( 'Версеш_юстар' ),
+	'MobileMenu' => array( 'Мобилан_меню' ),
+	'Nearby' => array( 'Гергахьо' ),
+);
 
 /** German (Deutsch) */
-$specialPageAliases['de'] = [
-	'History' => [ 'Versionsgeschichte' ],
-	'MobileOptions' => [ 'Mobile_Optionen' ],
-	'Uploads' => [ 'Hochgeladene_Dateien' ],
-	'MobileDiff' => [ 'Mobiler_Unterschied' ],
-	'MobileMenu' => [ 'Mobiles_Menü' ],
-	'MobileLanguages' => [ 'Mobile_Sprachen' ],
-	'Nearby' => [ 'In_der_Nähe' ],
-];
+$specialPageAliases['de'] = array(
+	'History' => array( 'Versionsgeschichte' ),
+	'MobileOptions' => array( 'Mobile_Optionen' ),
+	'Uploads' => array( 'Hochgeladene_Dateien' ),
+	'MobileDiff' => array( 'Mobiler_Unterschied' ),
+	'MobileEditor' => array( 'Mobiler_Editor' ),
+	'MobileMenu' => array( 'Mobiles_Menü' ),
+	'MobileLanguages' => array( 'Mobile_Sprachen' ),
+	'Nearby' => array( 'In_der_Nähe' ),
+);
 
 /** Zazaki (Zazaki) */
-$specialPageAliases['diq'] = [
-	'History' => [ 'Tarix' ],
-	'MobileOptions' => [ 'MobilWeçenegi' ],
-	'Uploads' => [ 'Barkerdışi' ],
-	'MobileDiff' => [ 'MobilVer' ],
-	'MobileMenu' => [ 'MıobilMenu' ],
-	'MobileLanguages' => [ 'MobilZıwani' ],
-	'Nearby' => [ 'Nezdıra' ],
-];
+$specialPageAliases['diq'] = array(
+	'History' => array( 'Tarix' ),
+	'MobileOptions' => array( 'MobilWeçenegi' ),
+	'Uploads' => array( 'Barkerdışi' ),
+	'MobileDiff' => array( 'MobilVer' ),
+	'MobileEditor' => array( 'MobilVurnayoğ' ),
+	'MobileMenu' => array( 'MıobilMenu' ),
+	'MobileLanguages' => array( 'MobilZıwani' ),
+	'Nearby' => array( 'Nezdıra' ),
+);
 
 /** Esperanto (Esperanto) */
-$specialPageAliases['eo'] = [
-	'MobileOptions' => [ 'Opcioj_pri_poŝaparato' ],
-	'Uploads' => [ 'Alŝutoj' ],
-	'MobileMenu' => [ 'Menuo_por_poŝaparato' ],
-	'Nearby' => [ 'Apude' ],
-];
+$specialPageAliases['eo'] = array(
+	'MobileOptions' => array( 'Opcioj_pri_poŝaparato' ),
+	'Uploads' => array( 'Alŝutoj' ),
+	'MobileMenu' => array( 'Menuo_por_poŝaparato' ),
+	'Nearby' => array( 'Apude' ),
+);
 
 /** Spanish (español) */
-$specialPageAliases['es'] = [
-	'MobileOptions' => [ 'OpcionesParaMóvil' ],
-	'Uploads' => [ 'Subidas' ],
-	'Nearby' => [ 'Cerca' ],
-];
+$specialPageAliases['es'] = array(
+	'MobileOptions' => array( 'OpcionesParaMóvil' ),
+	'Uploads' => array( 'Subidas' ),
+	'Nearby' => array( 'Cerca' ),
+);
 
 /** Estonian (eesti) */
-$specialPageAliases['et'] = [
-	'History' => [ 'Ajalugu' ],
-	'MobileOptions' => [ 'Mobiili_suvandid' ],
-	'Uploads' => [ 'Üleslaaditud_failid' ],
-	'MobileDiff' => [ 'Mobiilierinevus' ],
-	'MobileMenu' => [ 'Mobiili_menüü' ],
-	'MobileLanguages' => [ 'Mobiilikeeled' ],
-	'Nearby' => [ 'Lähikond' ],
-];
+$specialPageAliases['et'] = array(
+	'History' => array( 'Ajalugu' ),
+	'MobileOptions' => array( 'Mobiili_suvandid' ),
+	'Uploads' => array( 'Üleslaaditud_failid' ),
+	'MobileDiff' => array( 'Mobiilierinevus' ),
+	'MobileEditor' => array( 'Mobiiliredaktor' ),
+	'MobileMenu' => array( 'Mobiili_menüü' ),
+	'MobileLanguages' => array( 'Mobiilikeeled' ),
+	'Nearby' => array( 'Lähikond' ),
+);
 
 /** Persian (فارسی) */
-$specialPageAliases['fa'] = [
-	'History' => [ 'تاریخچه' ],
-	'MobileOptions' => [ 'گزینه‌های_گوشی_همراه' ],
-	'Uploads' => [ 'بارگذاری‌ها' ],
-	'MobileDiff' => [ 'تفاوت_گوشی_همراه' ],
-	'MobileMenu' => [ 'گزینگان_گوشی_همراه' ],
-	'MobileLanguages' => [ 'زبان‌های_گوشی_همراه' ],
-	'Nearby' => [ 'درنزدیکی', 'در_نزدیکی' ],
-];
+$specialPageAliases['fa'] = array(
+	'History' => array( 'تاریخچه' ),
+	'MobileOptions' => array( 'گزینه‌های_گوشی_همراه' ),
+	'Uploads' => array( 'بارگذاری‌ها' ),
+	'MobileDiff' => array( 'تفاوت_گوشی_همراه' ),
+	'MobileEditor' => array( 'ویرایشگر_گوشی_همراه' ),
+	'MobileMenu' => array( 'گزینگان_گوشی_همراه' ),
+	'MobileLanguages' => array( 'زبان‌های_گوشی_همراه' ),
+	'Nearby' => array( 'درنزدیکی', 'در_نزدیکی' ),
+);
 
 /** Galician (galego) */
-$specialPageAliases['gl'] = [
-	'Uploads' => [ 'Subidas', 'Cargas' ],
-	'Nearby' => [ 'Preto', 'Cerca' ],
-];
+$specialPageAliases['gl'] = array(
+	'Uploads' => array( 'Subidas', 'Cargas' ),
+	'Nearby' => array( 'Preto', 'Cerca' ),
+);
 
 /** Hebrew (עברית) */
-$specialPageAliases['he'] = [
-	'History' => [ 'היסטוריה' ],
-	'MobileOptions' => [ 'הגדרות_נייד', 'הגדרות_פלאפון', 'הגדרות_סלולרי' ],
-	'Uploads' => [ 'העלאות' ],
-	'MobileDiff' => [ 'השוואה_ניידת' ],
-	'MobileMenu' => [ 'תפריט_נייד' ],
-	'MobileLanguages' => [ 'שפות_בנייד' ],
-	'Nearby' => [ 'בסביבה', 'קרוב' ],
-];
+$specialPageAliases['he'] = array(
+	'History' => array( 'היסטוריה' ),
+	'MobileOptions' => array( 'הגדרות_נייד', 'הגדרות_פלאפון', 'הגדרות_סלולרי' ),
+	'Uploads' => array( 'העלאות' ),
+	'MobileDiff' => array( 'השוואה_ניידת' ),
+	'MobileEditor' => array( 'עריכה_ניידת' ),
+	'MobileMenu' => array( 'תפריט_נייד' ),
+	'MobileLanguages' => array( 'שפות_בנייד' ),
+	'Nearby' => array( 'בסביבה', 'קרוב' ),
+);
 
 /** Hindi (हिन्दी) */
-$specialPageAliases['hi'] = [
-	'History' => [ 'इतिहास' ],
-	'MobileOptions' => [ 'मोबाइल_विकल्प' ],
-	'MobileLanguages' => [ 'मोबाइल_भाषा' ],
-	'Nearby' => [ 'आस-पास' ],
-];
+$specialPageAliases['hi'] = array(
+	'History' => array( 'इतिहास' ),
+	'MobileOptions' => array( 'मोबाइल_विकल्प' ),
+	'MobileEditor' => array( 'मोबाइल_सम्पादक' ),
+	'MobileLanguages' => array( 'मोबाइल_भाषा' ),
+	'Nearby' => array( 'आस-पास' ),
+);
 
 /** Upper Sorbian (hornjoserbsce) */
-$specialPageAliases['hsb'] = [
-	'History' => [ 'Stawizny' ],
-	'MobileOptions' => [ 'Mobilne_opcije' ],
-	'Uploads' => [ 'Nahrate_dataje' ],
-	'MobileDiff' => [ 'Mobilny_rozdźěl' ],
-	'MobileMenu' => [ 'Mobilny_meni' ],
-	'MobileLanguages' => [ 'Mobilne_rěče' ],
-	'Nearby' => [ 'W_bliskosći' ],
-];
+$specialPageAliases['hsb'] = array(
+	'History' => array( 'Stawizny' ),
+	'MobileOptions' => array( 'Mobilne_opcije' ),
+	'Uploads' => array( 'Nahrate_dataje' ),
+	'MobileDiff' => array( 'Mobilny_rozdźěl' ),
+	'MobileEditor' => array( 'Mobilny_editor' ),
+	'MobileMenu' => array( 'Mobilny_meni' ),
+	'MobileLanguages' => array( 'Mobilne_rěče' ),
+	'Nearby' => array( 'W_bliskosći' ),
+);
 
 /** Italian (italiano) */
-$specialPageAliases['it'] = [
-	'History' => [ 'Cronologia' ],
-	'MobileOptions' => [ 'OpzioniMobile' ],
-	'Uploads' => [ 'Caricamenti' ],
-	'MobileDiff' => [ 'DiffMobile' ],
-	'MobileMenu' => [ 'MenuMobile' ],
-	'MobileLanguages' => [ 'LingueMobile' ],
-	'Nearby' => [ 'NelleVicinanze' ],
-];
+$specialPageAliases['it'] = array(
+	'History' => array( 'Cronologia' ),
+	'MobileOptions' => array( 'OpzioniMobile' ),
+	'Uploads' => array( 'Caricamenti' ),
+	'MobileDiff' => array( 'DiffMobile' ),
+	'MobileEditor' => array( 'EditorMobile' ),
+	'MobileMenu' => array( 'MenuMobile' ),
+	'MobileLanguages' => array( 'LingueMobile' ),
+	'Nearby' => array( 'NelleVicinanze' ),
+);
 
 /** Japanese (日本語) */
-$specialPageAliases['ja'] = [
-	'History' => [ '履歴' ],
-	'MobileOptions' => [ '携帯機器オプション' ],
-	'Uploads' => [ '携帯機器アップロード' ],
-	'MobileDiff' => [ '携帯機器差分' ],
-	'MobileMenu' => [ '携帯機器メニュー' ],
-	'MobileLanguages' => [ '携帯機器言語', '言語' ],
-	'Nearby' => [ '付近' ],
-];
+$specialPageAliases['ja'] = array(
+	'History' => array( '履歴' ),
+	'MobileOptions' => array( '携帯機器オプション' ),
+	'Uploads' => array( '携帯機器アップロード' ),
+	'MobileDiff' => array( '携帯機器差分' ),
+	'MobileEditor' => array( '携帯機器編集' ),
+	'MobileMenu' => array( '携帯機器メニュー' ),
+	'MobileLanguages' => array( '携帯機器言語', '言語' ),
+	'Nearby' => array( '付近' ),
+);
 
 /** Georgian (ქართული) */
-$specialPageAliases['ka'] = [
-	'History' => [ 'ისტორია' ],
-	'Uploads' => [ 'ატვირთვები' ],
-];
+$specialPageAliases['ka'] = array(
+	'History' => array( 'ისტორია' ),
+	'Uploads' => array( 'ატვირთვები' ),
+);
 
 /** Korean (한국어) */
-$specialPageAliases['ko'] = [
-	'History' => [ '역사' ],
-	'MobileOptions' => [ '모바일설정' ],
-	'Uploads' => [ '올린파일' ],
-	'MobileDiff' => [ '모바일차이' ],
-	'MobileMenu' => [ '모바일메뉴' ],
-	'MobileLanguages' => [ '모바일언어' ],
-	'Nearby' => [ '근처' ],
-];
+$specialPageAliases['ko'] = array(
+	'History' => array( '역사' ),
+	'MobileOptions' => array( '모바일설정' ),
+	'Uploads' => array( '올린파일' ),
+	'MobileDiff' => array( '모바일차이' ),
+	'MobileEditor' => array( '모바일편집기' ),
+	'MobileMenu' => array( '모바일메뉴' ),
+	'MobileLanguages' => array( '모바일언어' ),
+	'Nearby' => array( '근처' ),
+);
 
 /** Luxembourgish (Lëtzebuergesch) */
-$specialPageAliases['lb'] = [
-	'History' => [ 'Versiounen' ],
-	'MobileOptions' => [ 'Mobil_Optiounen' ],
-	'Uploads' => [ 'Eropgeluede_Fichieren' ],
-	'MobileDiff' => [ 'Mobilen_Ënnerscheed' ],
-	'MobileMenu' => [ 'Mobile_Menü' ],
-	'MobileLanguages' => [ 'Mobil_Sproochen' ],
-	'Nearby' => [ 'Nobäi' ],
-];
+$specialPageAliases['lb'] = array(
+	'History' => array( 'Versiounen' ),
+	'MobileOptions' => array( 'Mobil_Optiounen' ),
+	'Uploads' => array( 'Eropgeluede_Fichieren' ),
+	'MobileDiff' => array( 'Mobilen_Ënnerscheed' ),
+	'MobileEditor' => array( 'Mobilen_Editeur' ),
+	'MobileMenu' => array( 'Mobile_Menü' ),
+	'MobileLanguages' => array( 'Mobil_Sproochen' ),
+	'Nearby' => array( 'Nobäi' ),
+);
 
 /** Northern Luri (لۊری شومالی) */
-$specialPageAliases['lrc'] = [
-	'History' => [ 'ڤیرگار' ],
-	'MobileOptions' => [ 'خوصوٙصیات_موبایلی' ],
-	'Uploads' => [ 'سوڤارکئردیا' ],
-	'MobileDiff' => [ 'فأرخ_موبایلی' ],
-	'MobileMenu' => [ 'نومیار_موبایلی' ],
-	'MobileLanguages' => [ 'زوٙنا_موبایل' ],
-	'Nearby' => [ 'نئزیک_ڤئ' ],
-];
+$specialPageAliases['lrc'] = array(
+	'History' => array( 'ڤیرگار' ),
+	'MobileOptions' => array( 'خوصوٙصیات_موبایلی' ),
+	'Uploads' => array( 'سوڤارکئردیا' ),
+	'MobileDiff' => array( 'فأرخ_موبایلی' ),
+	'MobileEditor' => array( 'ڤیرایئشتکار_موبایلی' ),
+	'MobileMenu' => array( 'نومیار_موبایلی' ),
+	'MobileLanguages' => array( 'زوٙنا_موبایل' ),
+	'Nearby' => array( 'نئزیک_ڤئ' ),
+);
 
 /** Literary Chinese (文言) */
-$specialPageAliases['lzh'] = [
-	'Nearby' => [ '近郊' ],
-];
+$specialPageAliases['lzh'] = array(
+	'Nearby' => array( '近郊' ),
+);
 
 /** Macedonian (македонски) */
-$specialPageAliases['mk'] = [
-	'History' => [ 'Историја' ],
-	'MobileOptions' => [ 'МобилниПоставки' ],
-	'Uploads' => [ 'Подигања' ],
-	'MobileDiff' => [ 'МобилнаРазлика' ],
-	'MobileMenu' => [ 'МобилноМени' ],
-	'MobileLanguages' => [ 'МобилниЈазици' ],
-	'Nearby' => [ 'ВоБлизина' ],
-];
+$specialPageAliases['mk'] = array(
+	'History' => array( 'Историја' ),
+	'MobileOptions' => array( 'МобилниПоставки' ),
+	'Uploads' => array( 'Подигања' ),
+	'MobileDiff' => array( 'МобилнаРазлика' ),
+	'MobileEditor' => array( 'МобиленУредувач' ),
+	'MobileMenu' => array( 'МобилноМени' ),
+	'MobileLanguages' => array( 'МобилниЈазици' ),
+	'Nearby' => array( 'ВоБлизина' ),
+);
 
 /** Malayalam (മലയാളം) */
-$specialPageAliases['ml'] = [
-	'History' => [ 'ഹിസ്റ്ററി' ],
-	'MobileOptions' => [ 'മൊബൈൽഐച്ഛികങ്ങൾ' ],
-	'Uploads' => [ 'അപ്‌ലോഡുകൾ' ],
-	'MobileDiff' => [ 'മൊബൈൽവ്യത്യാസം' ],
-	'MobileMenu' => [ 'മൊബൈൽമെനു' ],
-	'MobileLanguages' => [ 'മൊബൈൽഭാഷകൾ' ],
-	'Nearby' => [ 'സമീപസ്ഥം' ],
-];
+$specialPageAliases['ml'] = array(
+	'History' => array( 'ഹിസ്റ്ററി' ),
+	'MobileOptions' => array( 'മൊബൈൽഐച്ഛികങ്ങൾ' ),
+	'Uploads' => array( 'അപ്‌ലോഡുകൾ' ),
+	'MobileDiff' => array( 'മൊബൈൽവ്യത്യാസം' ),
+	'MobileEditor' => array( 'മൊബൈൽതിരുത്തൽ' ),
+	'MobileMenu' => array( 'മൊബൈൽമെനു' ),
+	'MobileLanguages' => array( 'മൊബൈൽഭാഷകൾ' ),
+	'Nearby' => array( 'സമീപസ്ഥം' ),
+);
 
 /** Marathi (मराठी) */
-$specialPageAliases['mr'] = [
-	'History' => [ 'इतिहास' ],
-];
+$specialPageAliases['mr'] = array(
+	'History' => array( 'इतिहास' ),
+);
 
 /** Min Nan Chinese (Bân-lâm-gú) */
-$specialPageAliases['nan'] = [
-	'Uploads' => [ 'Kā--ê_tóng-àn' ],
-];
+$specialPageAliases['nan'] = array(
+	'Uploads' => array( 'Kā--ê_tóng-àn' ),
+);
 
 /** Dutch (Nederlands) */
-$specialPageAliases['nl'] = [
-	'History' => [ 'Geschiedenis' ],
-	'MobileOptions' => [ 'MobieleVoorkeuren' ],
-	'MobileDiff' => [ 'MobielVerschillen' ],
-	'MobileMenu' => [ 'MobielMenu' ],
-	'MobileLanguages' => [ 'MobielTalen' ],
-	'Nearby' => [ 'InDeBuurt' ],
-];
+$specialPageAliases['nl'] = array(
+	'History' => array( 'Geschiedenis' ),
+	'MobileOptions' => array( 'MobieleVoorkeuren' ),
+	'MobileDiff' => array( 'MobielVerschillen' ),
+	'MobileEditor' => array( 'MobielBewerken' ),
+	'MobileMenu' => array( 'MobielMenu' ),
+	'MobileLanguages' => array( 'MobielTalen' ),
+	'Nearby' => array( 'InDeBuurt' ),
+);
 
 /** Norwegian Nynorsk (norsk nynorsk) */
-$specialPageAliases['nn'] = [
-	'MobileOptions' => [ 'Mobilval' ],
-	'Uploads' => [ 'Opplastingar' ],
-	'Nearby' => [ 'Nær_her' ],
-];
+$specialPageAliases['nn'] = array(
+	'MobileOptions' => array( 'Mobilval' ),
+	'Uploads' => array( 'Opplastingar' ),
+	'Nearby' => array( 'Nær_her' ),
+);
 
 /** Punjabi (ਪੰਜਾਬੀ) */
-$specialPageAliases['pa'] = [
-	'History' => [ 'ਇਤਿਹਾਸ' ],
-];
+$specialPageAliases['pa'] = array(
+	'History' => array( 'ਇਤਿਹਾਸ' ),
+);
 
 /** Polish (polski) */
-$specialPageAliases['pl'] = [
-	'History' => [ 'Historia' ],
-	'Nearby' => [ 'W_pobliżu' ],
-];
+$specialPageAliases['pl'] = array(
+	'History' => array( 'Historia' ),
+	'Nearby' => array( 'W_pobliżu' ),
+);
 
 /** Russian (русский) */
-$specialPageAliases['ru'] = [
-	'MobileOptions' => [ 'Настройки_мобильной_версии' ],
-	'Uploads' => [ 'Загрузки' ],
-	'MobileDiff' => [ 'Сравнение_версий' ],
-	'MobileMenu' => [ 'Мобильное_меню' ],
-	'Nearby' => [ 'Поблизости' ],
-];
+$specialPageAliases['ru'] = array(
+	'MobileOptions' => array( 'Настройки_мобильной_версии' ),
+	'Uploads' => array( 'Загрузки' ),
+	'MobileDiff' => array( 'Сравнение_версий' ),
+	'MobileMenu' => array( 'Мобильное_меню' ),
+	'Nearby' => array( 'Поблизости' ),
+);
 
 /** Sicilian (sicilianu) */
-$specialPageAliases['scn'] = [
-	'MobileOptions' => [ 'OpzioniMobile' ],
-];
+$specialPageAliases['scn'] = array(
+	'MobileOptions' => array( 'OpzioniMobile' ),
+);
 
 /** Serbian (Cyrillic script) (српски (ћирилица)‎) */
-$specialPageAliases['sr-ec'] = [
-	'History' => [ 'Историја' ],
-	'MobileOptions' => [ 'МобилнаПодешавања' ],
-	'Uploads' => [ 'Отпремања' ],
-	'MobileMenu' => [ 'МобилниМени' ],
-];
+$specialPageAliases['sr-ec'] = array(
+	'History' => array( 'Историја' ),
+	'MobileOptions' => array( 'МобилнаПодешавања' ),
+	'Uploads' => array( 'Отпремања' ),
+	'MobileMenu' => array( 'МобилниМени' ),
+);
 
 /** Swedish (svenska) */
-$specialPageAliases['sv'] = [
-	'History' => [ 'Historik' ],
-	'MobileDiff' => [ 'Mobil_diff' ],
-	'MobileMenu' => [ 'Mobil_meny' ],
-	'MobileLanguages' => [ 'Mobil_språk' ],
-	'Nearby' => [ 'Nära' ],
-];
+$specialPageAliases['sv'] = array(
+	'History' => array( 'Historik' ),
+	'MobileDiff' => array( 'Mobil_diff' ),
+	'MobileMenu' => array( 'Mobil_meny' ),
+	'MobileLanguages' => array( 'Mobil_språk' ),
+	'Nearby' => array( 'Nära' ),
+);
 
 /** Ukrainian (українська) */
-$specialPageAliases['uk'] = [
-	'History' => [ 'Історія' ],
-	'MobileOptions' => [ 'Налаштування_мобільної_версії', 'Настройки_мобильной_версии' ],
-	'Uploads' => [ 'Мобільне_Завантаження', 'Загрузки' ],
-	'MobileDiff' => [ 'Мобільна_різниця_версій', 'Сравнение_версий' ],
-	'MobileMenu' => [ 'Мобільне_меню', 'Мобильное_меню' ],
-	'Nearby' => [ 'Поблизу', 'Поблизости' ],
-];
+$specialPageAliases['uk'] = array(
+	'History' => array( 'Історія' ),
+	'MobileOptions' => array( 'Налаштування_мобільної_версії' ),
+	'Uploads' => array( 'Мобільне_Завантаження' ),
+	'MobileDiff' => array( 'Мобільна_різниця_версій' ),
+	'MobileMenu' => array( 'Мобільне_меню' ),
+	'Nearby' => array( 'Поблизу' ),
+);
 
 /** Urdu (اردو) */
-$specialPageAliases['ur'] = [
-	'History' => [ 'تاریخچہ', 'تاریخ' ],
-	'MobileCite' => [ 'موبائل_حوالہ' ],
-	'MobileOptions' => [ 'اختیارات_موبائل', 'موبائل_اختیارات' ],
-	'Uploads' => [ 'اپلوڈ_کردہ' ],
-	'MobileDiff' => [ 'موبائل_فرق' ],
-	'MobileMenu' => [ 'موبائل_مینو' ],
-	'MobileLanguages' => [ 'موبائل_کی_زبانیں' ],
-	'Nearby' => [ 'آس_پاس', 'پاس_پڑوس' ],
-];
+$specialPageAliases['ur'] = array(
+	'History' => array( 'تاریخ' ),
+);
 
 /** Vietnamese (Tiếng Việt) */
-$specialPageAliases['vi'] = [
-	'History' => [ 'Lịch_sử' ],
-	'MobileOptions' => [ 'Tùy_chọn_di_động' ],
-	'Uploads' => [ 'Tập_tin_tải_lên' ],
-	'MobileDiff' => [ 'So_sánh_di_động' ],
-	'MobileMenu' => [ 'Trình_đơn_di_động' ],
-	'MobileLanguages' => [ 'Ngôn_ngữ_di_động' ],
-	'Nearby' => [ 'Lân_cận', 'Kề_bên' ],
-];
+$specialPageAliases['vi'] = array(
+	'History' => array( 'Lịch_sử' ),
+	'MobileOptions' => array( 'Tùy_chọn_di_động' ),
+	'Uploads' => array( 'Tập_tin_tải_lên' ),
+	'MobileDiff' => array( 'So_sánh_di_động' ),
+	'MobileEditor' => array( 'Sửa_đổi_di_động' ),
+	'MobileMenu' => array( 'Trình_đơn_di_động' ),
+	'MobileLanguages' => array( 'Ngôn_ngữ_di_động' ),
+	'Nearby' => array( 'Lân_cận', 'Kề_bên' ),
+);
 
 /** Chinese (中文) */
-$specialPageAliases['zh'] = [
-	'History' => [ '历史', '歷史' ],
-	'MobileOptions' => [ '移动版选项', '手機版選項', '行動版選項' ],
-	'Uploads' => [ '上传', '上傳', '上載' ],
-	'MobileDiff' => [ '移动版差异', '手機版差異', '行動版差異' ],
-	'MobileMenu' => [ '移动版菜单', '手機版菜單', '手機版選單', '行動版選單' ],
-	'MobileLanguages' => [ '移动版语言', '手機版語言', '行動版語言' ],
-	'Nearby' => [ '附近' ],
-];
+$specialPageAliases['zh'] = array(
+	'History' => array( '历史', '歷史' ),
+	'MobileOptions' => array( '移动版选项', '手機版選項', '行動版選項' ),
+	'Uploads' => array( '上传', '上傳', '上載' ),
+	'MobileDiff' => array( '移动版差异', '手機版差異', '行動版差異' ),
+	'MobileEditor' => array( '移动版编辑器', '手機版編輯器', '行動版編輯器' ),
+	'MobileMenu' => array( '移动版菜单', '手機版菜單', '手機版選單', '行動版選單' ),
+	'MobileLanguages' => array( '移动版语言', '手機版語言', '行動版語言' ),
+	'Nearby' => array( '附近' ),
+);
 
 /** Simplified Chinese (中文（简体）‎) */
-$specialPageAliases['zh-hans'] = [
-	'History' => [ '历史' ],
-	'MobileOptions' => [ '移动版选项' ],
-	'Uploads' => [ '上传' ],
-	'MobileDiff' => [ '移动版差异' ],
-	'MobileMenu' => [ '移动版菜单' ],
-	'MobileLanguages' => [ '移动版语言' ],
-	'Nearby' => [ '附近' ],
-];
+$specialPageAliases['zh-hans'] = array(
+	'History' => array( '历史' ),
+	'MobileOptions' => array( '移动版选项' ),
+	'Uploads' => array( '上传' ),
+	'MobileDiff' => array( '移动版差异' ),
+	'MobileEditor' => array( '移动版编辑器' ),
+	'MobileMenu' => array( '移动版菜单' ),
+	'MobileLanguages' => array( '移动版语言' ),
+	'Nearby' => array( '附近' ),
+);
 
 /** Traditional Chinese (中文（繁體）‎) */
-$specialPageAliases['zh-hant'] = [
-	'History' => [ '歷史' ],
-	'MobileOptions' => [ '行動版選項' ],
-	'Uploads' => [ '上載' ],
-	'MobileDiff' => [ '手機版差異' ],
-	'MobileMenu' => [ '手機版選單' ],
-	'MobileLanguages' => [ '手機版語言' ],
-	'Nearby' => [ '附近' ],
-];
+$specialPageAliases['zh-hant'] = array(
+	'History' => array( '歷史' ),
+	'MobileOptions' => array( '行動版選項' ),
+	'Uploads' => array( '上載' ),
+	'MobileDiff' => array( '手機版差異' ),
+	'MobileEditor' => array( '手機版編輯器' ),
+	'MobileMenu' => array( '手機版選單' ),
+	'MobileLanguages' => array( '手機版語言' ),
+	'Nearby' => array( '附近' ),
+);

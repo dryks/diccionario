@@ -1,6 +1,10 @@
 <?php
 
 /**
+ * SpecialMobileEditWatchlist.php
+ */
+
+/**
  * The mobile version of the watchlist editing page.
  */
 class SpecialMobileEditWatchlist extends SpecialEditWatchlist {
@@ -21,8 +25,7 @@ class SpecialMobileEditWatchlist extends SpecialEditWatchlist {
 	 */
 	protected function outputSubtitle() {
 		$user = $this->getUser();
-		// Make sure a header is rendered with a-z focused (as we know we're on that page)
-		$this->getOutput()->addHTML( SpecialMobileWatchlist::getWatchlistHeader( $user, 'a-z' ) );
+		$this->getOutput()->addHtml( SpecialMobileWatchlist::getWatchlistHeader( $user ) );
 	}
 
 	/**
@@ -47,32 +50,32 @@ class SpecialMobileEditWatchlist extends SpecialEditWatchlist {
 				$this->getLanguage()->userTime( $timestamp, $user )
 			)->parse();
 			$edit = $mp->getLatestEdit();
-			$dataAttrs = [
+			$dataAttrs = array(
 				'data-timestamp' => $edit['timestamp'],
 				'data-user-name' => $edit['name'],
 				'data-user-gender' => $edit['gender'],
-			];
+			);
 			$className = 'title';
 		} else {
 			$className = 'title new';
 			$lastModified = '';
-			$dataAttrs = [];
+			$dataAttrs = array();
 		}
 
 		$html =
-			Html::openElement( 'li', [
+			Html::openElement( 'li', array(
 				'class' => 'page-summary',
 				'title' => $titleText,
 				'data-id' => $title->getArticleId()
-			] ) .
-			Html::openElement( 'a', [ 'href' => $title->getLocalUrl(), 'class' => $className ] );
+			) ) .
+			Html::openElement( 'a', array( 'href' => $title->getLocalUrl(), 'class' => $className ) );
 		$html .= $thumb;
 		$html .=
-			Html::element( 'h3', [], $titleText );
+			Html::element( 'h3', array(), $titleText );
 
 		if ( $lastModified ) {
-			$html .= Html::openElement( 'div', [ 'class' => 'info' ] ) .
-				Html::element( 'span', array_merge( $dataAttrs, [ 'class' => 'modified-enhancement' ] ),
+			$html .= Html::openElement( 'div', array( 'class' => 'info' ) ) .
+				Html::element( 'span', array_merge( $dataAttrs, array( 'class' => 'modified-enhancement' ) ),
 					$lastModified ) .
 				Html::closeElement( 'div' );
 		}
@@ -163,7 +166,8 @@ class SpecialMobileEditWatchlist extends SpecialEditWatchlist {
 	protected function executeViewEditWatchlist() {
 		$ns = NS_MAIN;
 		$html = '';
-		$images = [];
+		$total = 0;
+		$images = array();
 
 		$watchlist = $this->getWatchlistInfo();
 
@@ -172,18 +176,20 @@ class SpecialMobileEditWatchlist extends SpecialEditWatchlist {
 			$from = $this->getNextPage( $allPages );
 			$allPages = $this->getPagesToDisplay( $allPages );
 		} else {
-			$allPages = [];
+			$allPages = array();
 			$from = false;
 		}
 
 		// Begin rendering of watchlist.
-		$watchlist = [ $ns => $allPages ];
-		Hooks::run( 'SpecialMobileEditWatchlist::images', [
-				$this->getContext(),
-				&$watchlist,
-				&$images
-			]
-		);
+		$watchlist = array( $ns => $allPages );
+		if ( !MobileContext::singleton()->imagesDisabled() ) {
+			Hooks::run( 'SpecialMobileEditWatchlist::images', array(
+					$this->getContext(),
+					&$watchlist,
+					&$images
+				)
+			);
+		}
 
 		// create list of pages
 		$mobilePages = new MobileCollection();
@@ -207,29 +213,31 @@ class SpecialMobileEditWatchlist extends SpecialEditWatchlist {
 		}
 		if ( $from ) {
 			// show more link if there are more items to show
-			$qs = [ 'from' => $from ];
+			$qs = array( 'from' => $from );
 			$html .= Html::element( 'a',
-				[
+				array(
 					'class' => MobileUI::anchorClass( 'progressive', 'more' ),
 					'href' => SpecialPage::getTitleFor( 'EditWatchlist' )->getLocalURL( $qs ),
-				],
+				),
 				$this->msg( 'mobile-frontend-watchlist-more' ) );
 		}
 		$out = $this->getOutput();
-		$out->addHTML( $html );
-		$out->addModules( 'mobile.special.watchlist.scripts' );
+		$out->addHtml( $html );
+		$out->addModules( 'skins.minerva.special.watchlist.scripts' );
 		$out->addModuleStyles(
-			[
-				'mobile.special.watchlist.styles',
+			array(
+				'skins.minerva.special.styles',
+				'skins.minerva.special.watchlist.styles',
+				// Note: This could result in this module loading twice due to T87871
 				'mobile.pagelist.styles',
 				'mobile.pagesummary.styles',
 				'mobile.special.pagefeed.styles'
-			]
+			)
 		);
 	}
 
 	/**
-	 * @param MobileCollection $collection Collection of pages to get view for
+	 * @param MobileCollection $collection
 	 * @return string html representation of collection in watchlist view
 	 */
 	protected function getViewHtml( MobileCollection $collection ) {

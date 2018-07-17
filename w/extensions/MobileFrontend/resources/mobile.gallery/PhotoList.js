@@ -1,9 +1,9 @@
-( function ( M ) {
+( function ( M, $ ) {
 	var icons = M.require( 'mobile.startup/icons' ),
 		PhotoListGateway = M.require( 'mobile.gallery/PhotoListGateway' ),
 		PhotoItem = M.require( 'mobile.gallery/PhotoItem' ),
 		InfiniteScroll = M.require( 'mobile.infiniteScroll/InfiniteScroll' ),
-		View = M.require( 'mobile.startup/View' );
+		View = M.require( 'mobile.view/View' );
 
 	/**
 	 * Creates a list of photo items
@@ -12,9 +12,6 @@
 	 * @uses PhotoItem
 	 * @uses InfiniteScroll
 	 * @extends View
-	 *
-	 * @constructor
-	 * @param {Object} options Configuration options
 	 */
 	function PhotoList( options ) {
 		var gatewayOptions = {
@@ -29,7 +26,7 @@
 		this.gateway = new PhotoListGateway( gatewayOptions );
 		// Set up infinite scroll
 		this.infiniteScroll = new InfiniteScroll( 1000 );
-		this.infiniteScroll.on( 'load', this._loadPhotos.bind( this ) );
+		this.infiniteScroll.on( 'load', $.proxy( this, '_loadPhotos' ) );
 		View.call( this, options );
 	}
 
@@ -37,7 +34,7 @@
 		template: mw.template.get( 'mobile.gallery', 'PhotoList.hogan' ),
 		/**
 		 * @cfg {Object} defaults Default options hash.
-		 * @cfg {string} defaults.spinner HTML of the spinner icon.
+		 * @cfg {String} defaults.spinner HTML of the spinner icon.
 		 * @cfg {mw.Api} defaults.api instance of an api
 		 */
 		defaults: {
@@ -59,7 +56,7 @@
 		/**
 		 * Check to see if the current view is an empty list.
 		 * @method
-		 * @return {boolean} whether no images have been rendered
+		 * @return {Boolean} whether no images have been rendered
 		 */
 		isEmpty: function () {
 			return this.$list.find( 'li' ).length === 0;
@@ -70,7 +67,7 @@
 		 * @method
 		 */
 		showEmptyMessage: function () {
-			this.parseHTML( '<p class="content empty">' ).text( mw.msg( 'mobile-frontend-donate-image-nouploads' ) )
+			$( '<p class="content empty">' ).text( mw.msg( 'mobile-frontend-donate-image-nouploads' ) )
 				.insertBefore( this.$list );
 		},
 		/**
@@ -79,52 +76,36 @@
 		 * @method
 		 */
 		hideEmptyMessage: function () {
-			this.$( '.empty' ).hide();
+			this.$( '.empty' ).remove();
 		},
 		/**
-		 * Shows loading spinner
+		 * Prepend a photo to the view.
 		 * @method
+		 * @param {Object} photoData Options describing a new {PhotoItem}
+		 * FIXME: Code duplication with PhotoList::appendPhoto
 		 */
-		showSpinner: function () {
-			this.$end.show();
+		prependPhoto: function ( photoData ) {
+			var photoItem;
+
+			photoData.width = this.gateway.getWidth();
+			photoItem = new PhotoItem( photoData ).prependTo( this.$list );
+			this.hideEmptyMessage();
+			M.emit( 'photo-loaded', photoItem.$el );
 		},
 		/**
-		 * Hides loading spinner
+		 * Append a photo to the view.
 		 * @method
+		 * @param {Object} photoData Options describing a new {PhotoItem}
 		 */
-		hideSpinner: function () {
-			this.$end.hide();
-		},
-		/**
-		 * Shows/hides empty state if PhotoList is empty.
-		 * @method
-		 */
-		updateEmptyUI: function () {
-			if ( this.isEmpty() ) {
-				this.showEmptyMessage();
-			} else {
-				this.hideEmptyMessage();
-			}
-		},
-		/**
-		 * Append an array of photos to the view.
-		 * @method
-		 * @param {Array} photosData Array of objects describing a new {PhotoItem}
-		 */
-		appendPhotos: function ( photosData ) {
-			var self = this;
-			photosData.forEach( function ( photo ) {
-				new PhotoItem( photo ).appendTo( self.$list );
-			} );
-		},
-		/**
-		 * Enables infinite scroll if it's disabled
-		 * @method
-		 */
-		enableScroll: function () {
-			if ( this.infiniteScroll.enabled === false ) {
-				this.infiniteScroll.enable();
-			}
+		appendPhoto: function ( photoData ) {
+			var photoItem = new PhotoItem( photoData ).appendTo( this.$list );
+			this.hideEmptyMessage();
+			/**
+			 * @event photo-loaded
+			 * @param {jQuery.Object} element belonging to view
+			 * Fired when a new {PhotoItem} has been added to the current view.
+			 */
+			M.emit( 'photo-loaded', photoItem.$el );
 		},
 		/**
 		 * Load photos into the view using {{PhotoListApi}} when the end is near
@@ -135,29 +116,26 @@
 		_loadPhotos: function () {
 			var self = this;
 
-			self.showSpinner();
-
-			this.gateway.getPhotos().then( function ( response ) {
-				var photos = response.photos || [],
-					canContinue = response.canContinue;
-
-				self.appendPhotos( photos );
-				self.updateEmptyUI();
-				if ( canContinue ) {
-					self.enableScroll();
+			this.gateway.getPhotos().done( function ( photos ) {
+				if ( photos.length ) {
+					$.each( photos, function ( i, photo ) {
+						self.appendPhoto( photo );
+					} );
+					// try loading more when end is near only if we got photos last time
+					self.infiniteScroll.enable();
+				} else {
+					self.$end.remove();
+					if ( self.isEmpty() ) {
+						self.emit( 'empty' );
+						self.showEmptyMessage();
+					}
 				}
-
-				self.hideSpinner();
-
-			} ).catch( function () {
-				self.updateEmptyUI();
-				self.hideSpinner();
-
+			} ).fail( function () {
 				// try loading again if request failed
-				self.enableScroll();
+				self.infiniteScroll.enable();
 			} );
 		}
 	} );
 
 	M.define( 'mobile.gallery/PhotoList', PhotoList );
-}( mw.mobileFrontend ) );
+}( mw.mobileFrontend, jQuery ) );

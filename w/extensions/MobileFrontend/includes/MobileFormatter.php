@@ -1,46 +1,17 @@
 <?php
+/**
+ * MobileFormatter.php
+ */
 
 use HtmlFormatter\HtmlFormatter;
-use MobileFrontend\ContentProviders\IContentProvider;
-use MobileFrontend\Transforms\MoveLeadParagraphTransform;
-use MobileFrontend\Transforms\AddMobileTocTransform;
-use MobileFrontend\Transforms\NoTransform;
-use MobileFrontend\Transforms\LegacyMainPageTransform;
 
 /**
  * Converts HTML into a mobile-friendly version
  */
 class MobileFormatter extends HtmlFormatter {
-	/**
-	 * Class name for collapsible section wrappers
-	 */
-	const STYLE_COLLAPSIBLE_SECTION_CLASS = 'collapsible-block';
-
-	/**
-	 * Do not lazy load images smaller than this size (in pixels)
-	 * @var int
-	 */
-	const SMALL_IMAGE_DIMENSION_THRESHOLD_IN_PX = 50;
-	/**
-	 * Do not lazy load images smaller than this size (in relative to x-height of the current font)
-	 * @var int
-	 */
-	const SMALL_IMAGE_DIMENSION_THRESHOLD_IN_EX = 10;
-	/**
-	 * Whether scripts can be added in the output.
-	 * @var boolean $scriptsEnabled
-	 */
-	private $scriptsEnabled = true;
-
-	/**
-	 * The current revision id of the Title being worked on
-	 * @var integer $revId
-	 */
-	private $revId;
-
 	/** @var array $topHeadingTags Array of strings with possible tags,
 		can be recognized as top headings. */
-	public $topHeadingTags = [];
+	public $topHeadingTags = array();
 
 	/**
 	 * Saves a Title Object
@@ -60,18 +31,14 @@ class MobileFormatter extends HtmlFormatter {
 	 */
 	protected $expandableSections = false;
 	/**
-	 * Whether actual page is the main page and should be special cased
+	 * Whether actual page is the main page
 	 * @var boolean $mainPage
 	 */
 	protected $mainPage = false;
 
 	/**
-	 * Name of the transformation option
-	 * @const string SHOW_FIRST_PARAGRAPH_BEFORE_INFOBOX
-	 */
-	const SHOW_FIRST_PARAGRAPH_BEFORE_INFOBOX = 'showFirstParagraphBeforeInfobox';
-
-	/**
+	 * Constructor
+	 *
 	 * @param string $html Text to process
 	 * @param Title $title Title to which $html belongs
 	 */
@@ -79,50 +46,34 @@ class MobileFormatter extends HtmlFormatter {
 		parent::__construct( $html );
 
 		$this->title = $title;
-		$this->revId = $title->getLatestRevID();
 		$this->topHeadingTags = MobileContext::singleton()
 			->getMFConfig()->get( 'MFMobileFormatterHeadings' );
 	}
 
 	/**
-	 * Disables the generation of script tags in output HTML.
-	 */
-	public function disableScripts() {
-		$this->scriptsEnabled = false;
-	}
-	/**
 	 * Creates and returns a MobileFormatter
 	 *
-	 * @param MobileContext $context in which the page is being rendered. Needed to access page title
-	 *  and MobileFrontend configuration.
-	 * @param IContentProvider $provider
-	 * @param bool $enableSections (optional)
-	 *  whether to wrap the content of sections
-	 * @param bool $includeTOC (optional) whether to include the
-	 *  table of contents in output HTML
+	 * @param MobileContext $context
+	 * @param string $html
 	 *
 	 * @return MobileFormatter
 	 */
-	public static function newFromContext( MobileContext $context,
-		IContentProvider $provider,
-		$enableSections = false, $includeTOC = false
-	) {
+	public static function newFromContext( MobileContext $context, $html ) {
 		$mfSpecialCaseMainPage = $context->getMFConfig()->get( 'MFSpecialCaseMainPage' );
 
 		$title = $context->getTitle();
-		$isMainPage = $title->isMainPage();
+		$isMainPage = $title->isMainPage() && $mfSpecialCaseMainPage;
 		$isFilePage = $title->inNamespace( NS_FILE );
+		$isSpecialPage = $title->isSpecialPage();
 
-		$html = self::wrapHTML( $provider->getHTML() );
+		$html = self::wrapHTML( $html );
 		$formatter = new MobileFormatter( $html, $title );
-		if ( $isMainPage ) {
-			$formatter->enableExpandableSections( !$mfSpecialCaseMainPage );
-		} else {
-			$formatter->enableExpandableSections( $enableSections );
-		}
+		$formatter->enableExpandableSections( !$isMainPage && !$isSpecialPage );
 
-		$formatter->setIsMainPage( $isMainPage && $mfSpecialCaseMainPage );
-		$formatter->enableTOCPlaceholder( $includeTOC );
+		$formatter->setIsMainPage( $isMainPage );
+		if ( $context->getContentTransformations() && !$isFilePage ) {
+			$formatter->setRemoveMedia( $context->imagesDisabled() );
+		}
 
 		return $formatter;
 	}
@@ -130,7 +81,7 @@ class MobileFormatter extends HtmlFormatter {
 	/**
 	 * Mark whether a placeholder table of contents should be included at the end of the lead
 	 * section
-	 * @param bool $flag should TOC be included?
+	 * @param boolean $value
 	 */
 	public function enableTOCPlaceholder( $flag = true ) {
 		$this->isTOCEnabled = $flag;
@@ -139,7 +90,7 @@ class MobileFormatter extends HtmlFormatter {
 	/**
 	 * Set support of page for expandable sections to $flag (standard: true)
 	 * @todo kill with fire when there will be minimum of pre-1.1 app users remaining
-	 * @param bool $flag should expandable sections be supported?
+	 * @param bool $flag
 	 */
 	public function enableExpandableSections( $flag = true ) {
 		$this->expandableSections = $flag;
@@ -147,9 +98,7 @@ class MobileFormatter extends HtmlFormatter {
 
 	/**
 	 * Change mainPage (is this the main page) to $value (standard: true)
-	 * This enables special casing for the main page.
-	 * @deprecated
-	 * @param bool $value
+	 * @param boolean $value
 	 */
 	public function setIsMainPage( $value = true ) {
 		$this->mainPage = $value;
@@ -160,13 +109,10 @@ class MobileFormatter extends HtmlFormatter {
 	 * @param bool $removeDefaults Whether default settings at $wgMFRemovableClasses should be used
 	 * @param bool $removeReferences Whether to remove references from the output
 	 * @param bool $removeImages Whether to move images into noscript tags
-	 * @param bool $showFirstParagraphBeforeInfobox Whether the first paragraph from the lead
-	 *  section should be shown before all infoboxes that come earlier.
 	 * @return array
 	 */
 	public function filterContent(
-		$removeDefaults = true, $removeReferences = false, $removeImages = false,
-		$showFirstParagraphBeforeInfobox = false
+		$removeDefaults = true, $removeReferences = false, $removeImages = false
 	) {
 		$ctx = MobileContext::singleton();
 		$config = $ctx->getMFConfig();
@@ -184,203 +130,76 @@ class MobileFormatter extends HtmlFormatter {
 			$this->remove( $removableClasses );
 		}
 
+		if ( $removeReferences ) {
+			$this->doRewriteReferencesForLazyLoading();
+		}
+
 		if ( $this->removeMedia ) {
 			$this->doRemoveImages();
 		}
 
-		// Apply all removals before continuing with transforms (see T185040 for example)
-		$removed = parent::filterContent();
-		$transformOptions = [
-			'images' => $removeImages,
-			'references' => $removeReferences,
-			self::SHOW_FIRST_PARAGRAPH_BEFORE_INFOBOX => $showFirstParagraphBeforeInfobox
-		];
+		$transformOptions = array( 'images' => $removeImages );
 		// Sectionify the content and transform it if necessary per section
 		if ( !$this->mainPage && $this->expandableSections ) {
 			list( $headings, $subheadings ) = $this->getHeadings( $doc );
-			$this->makeHeadingsEditable( $subheadings );
 			$this->makeSections( $doc, $headings, $transformOptions );
+			$this->makeHeadingsEditable( $subheadings );
 		} else {
 			// Otherwise apply the per-section transformations to the document as a whole
 			$this->filterContentInSection( $doc, $doc, 0, $transformOptions );
 		}
-		if ( $transformOptions['references'] ) {
-			$this->doRewriteReferencesLinksForLazyLoading( $doc );
-		}
-		return $removed;
+
+		return parent::filterContent();
 	}
 
-	/**
+	/*
 	 * Apply filtering per element (section) in a document.
 	 * @param DOMElement|DOMDocument $el
 	 * @param DOMDocument $doc
-	 * @param int $sectionNumber Which section is it on the document
+	 * @param number $sectionNumber Which section is it on the document
 	 * @param array $options options about the transformations per section
 	 */
 	private function filterContentInSection(
-		$el, DOMDocument $doc, $sectionNumber, $options = []
+		$el, DOMDocument $doc, $sectionNumber, $options = array()
 	) {
 		if ( !$this->removeMedia && $options['images'] && $sectionNumber > 0 ) {
 			$this->doRewriteImagesForLazyLoading( $el, $doc );
 		}
-		if ( $options['references'] ) {
-			$this->doRewriteReferencesListsForLazyLoading( $el, $doc );
-		}
 	}
 
 	/**
-	 * Replaces any references links with a link to Special:MobileCite
-	 *
-	 * @param DOMDocument $doc Document to create and replace elements in
+	 * Replaces any references list with a link to Special:References
 	 */
-	private function doRewriteReferencesLinksForLazyLoading( DOMDocument $doc ) {
-		$citePath = "$this->revId";
-
-		$xPath = new DOMXPath( $doc );
-		$nodes = $xPath->query(
-			// sup.reference > a
-			'//sup[contains(concat(" ", normalize-space(./@class), " "), " reference ")]/a[1]' );
-
-		foreach ( $nodes as $node ) {
-			$fragment = $node->getAttribute( 'href' );
-			$node->setAttribute(
-				'href',
-				SpecialPage::getTitleFor( 'MobileCite', $citePath )->getLocalUrl() . $fragment
-			);
-		}
-	}
-
-	/**
-	 * Replaces any references list with a link to Special:MobileCite
-	 *
-	 * @param DOMElement|DOMDocument $el Element or document to rewrite references in.
-	 * @param DOMDocument $doc Document to create elements in
-	 */
-	private function doRewriteReferencesListsForLazyLoading( $el, DOMDocument $doc ) {
-		$citePath = "$this->revId";
-		$isReferenceSection = false;
-
+	private function doRewriteReferencesForLazyLoading() {
+		$doc = $this->getDoc();
 		// Accessing by tag is cheaper than class
-		$nodes = $el->getElementsByTagName( 'ol' );
+		$nodes = $doc->getElementsByTagName( 'ol' );
 		// PHP's DOM classes are recursive
 		// but since we are manipulating the DOMList we have to
 		// traverse it backwards
 		// see http://php.net/manual/en/class.domnodelist.php
-		for ( $i = $nodes->length - 1; $i >= 0; $i-- ) {
+		$listId = $nodes->length - 1;
+		for ( $i = $listId; $i >= 0; $i-- ) {
 			$list = $nodes->item( $i );
 
 			// Use class to decide it is a list of references
 			if ( strpos( $list->getAttribute( 'class' ), 'references' ) !== false ) {
-				// Only mark the section as a reference container if we're transforming a section, not the
-				// document.
-				$isReferenceSection = $el instanceof DOMElement;
-
 				$parent = $list->parentNode;
 				$placeholder = $doc->createElement( 'a',
 					wfMessage( 'mobile-frontend-references-list' ) );
 				$placeholder->setAttribute( 'class', 'mf-lazy-references-placeholder' );
-				// Note to render a reference we need to know only its reference
-				// Note: You can have multiple <references> tag on the same page, we render all of these in
-				// the special page together.
+				// Note to render a reference we need to know its listId and title.
+				// Note: You can have multiple <references> tag on the same page
+				$citePath = "$listId/" . $this->title->getPrefixedText();
+				// FIXME: Currently a broken link see https://phabricator.wikimedia.org/T125897
 				$placeholder->setAttribute( 'href',
-					SpecialPage::getTitleFor( 'MobileCite', $citePath )->getLocalUrl() );
+					SpecialPage::getTitleFor( 'Cite', $citePath )->getLocalUrl() );
 				$parent->replaceChild( $placeholder, $list );
+				$listId -= 1;
 			}
 		}
-
-		// Mark section as having references
-		if ( $isReferenceSection ) {
-			$el->setAttribute( 'data-is-reference-section', '1' );
-		}
 	}
 
-	/**
-	 * @see MobileFormatter#getImageDimensions
-	 *
-	 * @param DOMElement $img
-	 * @param string $dimension Either "width" or "height"
-	 * @return string|null
-	 */
-	private function getImageDimension( DOMElement $img, $dimension ) {
-		$style = $img->getAttribute( 'style' );
-		$numMatches = preg_match( "/.*?{$dimension} *\: *([^;]*)/", $style, $matches );
-
-		if ( !$numMatches && !$img->hasAttribute( $dimension ) ) {
-			return null;
-		}
-
-		return $numMatches
-			? trim( $matches[1] )
-			: $img->getAttribute( $dimension ) . 'px';
-	}
-
-	/**
-	 * Determine the user perceived width and height of an image element based on `style`, `width`,
-	 * and `height` attributes.
-	 *
-	 * As in the browser, the `style` attribute takes precedence over the `width` and `height`
-	 * attributes. If the image has no `style`, `width` or `height` attributes, then the image is
-	 * dimensionless.
-	 *
-	 * @param DOMElement $img <img> element
-	 * @return array with width and height parameters if dimensions are found
-	 */
-	public function getImageDimensions( DOMElement $img ) {
-		$result = [];
-
-		foreach ( [ 'width', 'height' ] as $dimensionName ) {
-			$dimension = $this->getImageDimension( $img, $dimensionName );
-
-			if ( $dimension ) {
-				$result[$dimensionName] = $dimension;
-			}
-		}
-
-		return $result;
-	}
-
-	/**
-	 * Is image dimension small enough to not lazy load it
-	 *
-	 * @param string $dimension in css format, supports only px|ex units
-	 * @return bool
-	 */
-	public function isDimensionSmallerThanThreshold( $dimension ) {
-		$matches = null;
-		if ( preg_match( '/(\d+)(\.\d+)?(px|ex)/', $dimension, $matches ) === 0 ) {
-			return false;
-		}
-
-		$size = $matches[1];
-		$unit = array_pop( $matches );
-
-		switch ( strtolower( $unit ) ) {
-			case 'px':
-				return $size <= self::SMALL_IMAGE_DIMENSION_THRESHOLD_IN_PX;
-			case 'ex':
-				return $size <= self::SMALL_IMAGE_DIMENSION_THRESHOLD_IN_EX;
-			default:
-				return false;
-		}
-	}
-
-	/**
-	 * @param array $dimensions
-	 * @return bool
-	 */
-	private function skipLazyLoadingForSmallDimensions( array $dimensions ) {
-		if ( array_key_exists( 'width', $dimensions )
-			&& $this->isDimensionSmallerThanThreshold( $dimensions['width'] )
-		) {
-			return true;
-		};
-		if ( array_key_exists( 'height', $dimensions )
-			&& $this->isDimensionSmallerThanThreshold( $dimensions['height'] )
-		) {
-			return true;
-		}
-		return false;
-	}
 	/**
 	 * Enables images to be loaded asynchronously
 	 *
@@ -388,21 +207,13 @@ class MobileFormatter extends HtmlFormatter {
 	 * @param DOMDocument $doc Document to create elements in
 	 */
 	private function doRewriteImagesForLazyLoading( $el, DOMDocument $doc ) {
-		$lazyLoadSkipSmallImages = MobileContext::singleton()->getMFConfig()
-			->get( 'MFLazyLoadSkipSmallImages' );
 
 		foreach ( $el->getElementsByTagName( 'img' ) as $img ) {
 			$parent = $img->parentNode;
-			$dimensions = $this->getImageDimensions( $img );
-
-			$dimensionsStyle = ( isset( $dimensions['width'] ) ? "width: {$dimensions['width']};" : '' ) .
-				( isset( $dimensions['height'] ) ? "height: {$dimensions['height']};" : '' );
-
-			if ( $lazyLoadSkipSmallImages
-				&& $this->skipLazyLoadingForSmallDimensions( $dimensions )
-			) {
-				continue;
-			}
+			$width = $img->getAttribute( 'width' );
+			$height = $img->getAttribute( 'height' );
+			$dimensionsStyle = ( $width ? "width: {$width}px;" : '' ) .
+				( $height ? "height: {$height}px;" : '' );
 
 			// HTML only clients
 			$noscript = $doc->createElement( 'noscript' );
@@ -419,10 +230,6 @@ class MobileFormatter extends HtmlFormatter {
 			// Assume data saving and remove srcset attribute from the non-js experience
 			$img->removeAttribute( 'srcset' );
 
-			// T145222: Add a non-breaking space inside placeholders to ensure that they do not report
-			// themselves as invisible when inline.
-			$imgPlaceholder->appendChild( $doc->createEntityReference( 'nbsp' ) );
-
 			// Set the placeholder where the original image was
 			$parent->replaceChild( $imgPlaceholder, $img );
 			// Add the original image to the HTML only markup
@@ -437,7 +244,7 @@ class MobileFormatter extends HtmlFormatter {
 	 */
 	private function doRemoveImages() {
 		$doc = $this->getDoc();
-		$domElemsToReplace = [];
+		$domElemsToReplace = array();
 		foreach ( $doc->getElementsByTagName( 'img' ) as $element ) {
 			$domElemsToReplace[] = $element;
 		}
@@ -464,79 +271,160 @@ class MobileFormatter extends HtmlFormatter {
 	 */
 	public function getText( $element = null ) {
 		if ( $this->mainPage ) {
-			$transform = new LegacyMainPageTransform();
-			$doc = $this->getDoc();
-			$transform->apply( $doc->getElementsByTagName( 'body' )->item( 0 ) );
+			$element = $this->parseMainPage( $this->getDoc() );
+		}
+		$html = parent::getText( $element );
+
+		return $html;
+	}
+
+	/**
+	 * Returns interface message text
+	 * @param string $key Message key
+	 * @return string Wiki text
+	 */
+	protected function msg( $key ) {
+		return wfMessage( $key )->text();
+	}
+
+	/**
+	 * Performs transformations specific to main page
+	 * @param DOMDocument $mainPage Tree to process
+	 * @return DOMElement|null
+	 */
+	protected function parseMainPage( DOMDocument $mainPage ) {
+		$featuredArticle = $mainPage->getElementById( 'mp-tfa' );
+		$newsItems = $mainPage->getElementById( 'mp-itn' );
+		$centralAuthImages = $mainPage->getElementById( 'central-auth-images' );
+
+		// Collect all the Main Page DOM elements that have an id starting with 'mf-'
+		$xpath = new DOMXpath( $mainPage );
+		$elements = $xpath->query( '//*[starts-with(@id, "mf-")]' );
+
+		// These elements will be handled specially
+		$commonAttributes = array( 'mp-tfa', 'mp-itn' );
+
+		// Start building the new Main Page content in the $content var
+		$content = $mainPage->createElement( 'div' );
+		$content->setAttribute( 'id', 'mainpage' );
+
+		// If there is a featured article section, add it to the new Main Page content
+		if ( $featuredArticle ) {
+			$h2FeaturedArticle = $mainPage->createElement(
+				'h2',
+				$this->msg( 'mobile-frontend-featured-article' )
+			);
+			$content->appendChild( $h2FeaturedArticle );
+			$content->appendChild( $featuredArticle );
 		}
 
-		return parent::getText( $element );
+		// If there is a news section, add it to the new Main Page content
+		if ( $newsItems ) {
+			$h2NewsItems = $mainPage->createElement( 'h2', $this->msg( 'mobile-frontend-news-items' ) );
+			$content->appendChild( $h2NewsItems );
+			$content->appendChild( $newsItems );
+		}
+
+		// Go through all the collected Main Page DOM elements and format them for mobile
+		/** @var $element DOMElement */
+		foreach ( $elements as $element ) {
+			if ( $element->hasAttribute( 'id' ) ) {
+				$id = $element->getAttribute( 'id' );
+				// Filter out elements processed specially
+				if ( !in_array( $id, $commonAttributes ) ) {
+					// Convert title attributes into h2 headers
+					$sectionTitle = $element->hasAttribute( 'title' ) ? $element->getAttribute( 'title' ) : '';
+					if ( $sectionTitle !== '' ) {
+						$element->removeAttribute( 'title' );
+						$h2UnknownMobileSection =
+							$mainPage->createElement( 'h2', htmlspecialchars( $sectionTitle ) );
+						$content->appendChild( $h2UnknownMobileSection );
+					}
+					$br = $mainPage->createElement( 'br' );
+					$br->setAttribute( 'clear', 'all' );
+					$content->appendChild( $element );
+					$content->appendChild( $br );
+				}
+			}
+		}
+
+		// If no mobile-appropriate content has been assembled at this point, return null.
+		// This will cause HtmlFormatter to fall back to using the entire page.
+		if ( $content->childNodes->length == 0 ) {
+			return null;
+		}
+
+		// If there are CentralAuth 1x1 images, preserve them unmodified
+		if ( $centralAuthImages ) {
+			$content->appendChild( $centralAuthImages );
+		}
+
+		return $content;
 	}
 
 	/**
 	 * Splits the body of the document into sections demarcated by the $headings elements.
-	 * Also moves the first paragraph in the lead section above the infobox.
 	 *
 	 * All member elements of the sections are added to a <code><div></code> so
 	 * that the section bodies are clearly defined (to be "expandable" for
 	 * example).
 	 *
-	 * @param DOMDocument $doc representing the HTML of the current article. In the HTML the sections
-	 *  should not be wrapped.
-	 * @param DOMElement[] $headings The headings returned by
+	 * @param DOMDocument $doc
+	 * @param [DOMElement] $headings The headings returned by
 	 *  {@see MobileFormatter::getHeadings}
 	 * @param array $transformOptions Options to pass when transforming content per section
 	 */
-	protected function makeSections( DOMDocument $doc, array $headings, array $transformOptions ) {
-		$noTransform = new NoTransform();
-		$tocTransform = $this->isTOCEnabled ? new AddMobileTocTransform() : $noTransform;
-		$leadTransform = $transformOptions[ self::SHOW_FIRST_PARAGRAPH_BEFORE_INFOBOX ] ?
-				new MoveLeadParagraphTransform( $this->title, $this->revId ) : $noTransform;
+	protected function makeSections( DOMDocument $doc, array $headings, $transformOptions ) {
 
-		// Find the parser output wrapper div
-		$xpath = new DOMXPath( $doc );
-		$containers = $xpath->query( 'body/div[@class="mw-parser-output"][1]' );
-		if ( !$containers->length ) {
-			// No wrapper? This could be an old parser cache entry, or perhaps the
-			// OutputPage contained something that was not generated by the parser.
-			// Try using the <body> as the container.
-			$containers = $xpath->query( 'body' );
-			if ( !$containers->length ) {
-				throw new Exception( "HTML lacked body element even though we put it there ourselves" );
-			}
+		$body = $doc->getElementsByTagName( 'body' )->item( 0 );
+		$sibling = $body->firstChild;
+
+		$firstHeading = reset( $headings );
+
+		$sectionNumber = 0;
+		$sectionBody = $doc->createElement( 'div' );
+		$sectionBody->setAttribute( 'class', 'mf-section-' . $sectionNumber );
+
+		// Mark the top level headings which will become collapsible soon.
+		foreach ( $headings as $heading ) {
+			$className = $heading->hasAttribute( 'class' ) ? $heading->getAttribute( 'class' ) . ' ' : '';
+			$heading->setAttribute( 'class', $className . 'section-heading' );
+			// prepend indicator
+			$indicator = $doc->createElement( 'div' );
+			$indicator->setAttribute( 'class', MobileUI::iconClass( '', 'element', 'indicator' ) );
+			$heading->insertBefore( $indicator, $heading->firstChild );
 		}
 
-		$container = $containers->item( 0 );
-		$containerChild = $container->firstChild;
-		$firstHeading = reset( $headings );
-		$sectionNumber = 0;
-		$sectionBody = $this->createSectionBodyElement( $doc, $sectionNumber, false );
-
-		while ( $containerChild ) {
-			$node = $containerChild;
-			$containerChild = $containerChild->nextSibling;
+		while ( $sibling ) {
+			$node = $sibling;
+			$sibling = $sibling->nextSibling;
 
 			// If we've found a top level heading, insert the previous section if
 			// necessary and clear the container div.
 			// Note well the use of DOMNode#nodeName here. Only DOMElement defines
 			// DOMElement#tagName.  So, if there's trailing text - represented by
 			// DOMText - then accessing #tagName will trigger an error.
-			if ( $firstHeading && $node->nodeName === $firstHeading->nodeName ) {
-				// The heading we are transforming is always 1 section ahead of the
-				// section we are currently processing
-				$this->prepareHeading( $doc, $node, $sectionNumber + 1, $this->scriptsEnabled );
+			if ( $headings && $node->nodeName === $firstHeading->nodeName ) {
 				if ( $sectionBody->hasChildNodes() ) {
 					// Apply transformations to the section body
 					$this->filterContentInSection( $sectionBody, $doc, $sectionNumber, $transformOptions );
 				}
 				// Insert the previous section body and reset it for the new section
-				$container->insertBefore( $sectionBody, $node );
+				$body->insertBefore( $sectionBody, $node );
 
-				if ( $sectionNumber === 0 ) {
-					$tocTransform->apply( $sectionBody );
-					$leadTransform->apply( $sectionBody );
+				if ( $sectionNumber === 0 && $this->isTOCEnabled ) {
+					// Insert table of content placeholder which will be progressively enhanced via JS
+					$toc = $doc->createElement( 'div' );
+					$toc->setAttribute( 'id', 'toc' );
+					$toc->setAttribute( 'class', 'toc-mobile' );
+					$tocHeading = $doc->createElement( 'h2', wfMessage( 'toc' )->text() );
+					$toc->appendChild( $tocHeading );
+					$sectionBody->appendChild( $toc );
 				}
 				$sectionNumber += 1;
-				$sectionBody = $this->createSectionBodyElement( $doc, $sectionNumber, $this->scriptsEnabled );
+				$sectionBody = $doc->createElement( 'div' );
+				$sectionBody->setAttribute( 'class', 'mf-section-' . $sectionNumber );
+
 				continue;
 			}
 
@@ -545,63 +433,12 @@ class MobileFormatter extends HtmlFormatter {
 			$sectionBody->appendChild( $node );
 		}
 
-		// If the document had the lead section only:
-		if ( $sectionNumber == 0 ) {
-			$leadTransform->apply( $sectionBody );
-		}
-
 		if ( $sectionBody->hasChildNodes() ) {
 			// Apply transformations to the last section body
 			$this->filterContentInSection( $sectionBody, $doc, $sectionNumber, $transformOptions );
 		}
 		// Append the last section body.
-		$container->appendChild( $sectionBody );
-	}
-
-	/**
-	 * Prepare section headings, add required classes and onclick actions
-	 *
-	 * @param DOMDocument $doc
-	 * @param DOMElement $heading
-	 * @param integer $sectionNumber
-	 * @param bool $isCollapsible
-	 */
-	private function prepareHeading( DOMDocument $doc, $heading, $sectionNumber, $isCollapsible ) {
-		$className = $heading->hasAttribute( 'class' ) ? $heading->getAttribute( 'class' ) . ' ' : '';
-		$heading->setAttribute( 'class', $className . 'section-heading' );
-		if ( $isCollapsible ) {
-			$heading->setAttribute( 'onclick', 'javascript:mfTempOpenSection(' . $sectionNumber . ')' );
-		}
-
-		// prepend indicator - this avoids a reflow by creating a placeholder for a toggling indicator
-		$indicator = $doc->createElement( 'div' );
-		$indicator->setAttribute( 'class', MobileUI::iconClass( '', 'element', 'indicator' ) );
-		$heading->insertBefore( $indicator, $heading->firstChild );
-	}
-
-	/**
-	 * Creates a Section body element
-	 *
-	 * @param DOMDocument $doc
-	 * @param int $sectionNumber
-	 * @param bool $isCollapsible
-	 *
-	 * @return DOMElement
-	 */
-	private function createSectionBodyElement( DOMDocument $doc, $sectionNumber, $isCollapsible ) {
-		$sectionClass = 'mf-section-' . $sectionNumber;
-		if ( $isCollapsible ) {
-			// TODO: Probably good to rename this to the more generic 'section'.
-			// We have no idea how the skin will use this.
-			$sectionClass .= ' ' . self::STYLE_COLLAPSIBLE_SECTION_CLASS;
-		}
-
-		// FIXME: The class `/mf\-section\-[0-9]+/` is kept for caching reasons
-		// but given class is unique usage is discouraged. [T126825]
-		$sectionBody = $doc->createElement( 'div' );
-		$sectionBody->setAttribute( 'class', $sectionClass );
-		$sectionBody->setAttribute( 'id', 'mf-section-' . $sectionNumber );
-		return $sectionBody;
+		$body->appendChild( $sectionBody );
 	}
 
 	/**
@@ -611,11 +448,12 @@ class MobileFormatter extends HtmlFormatter {
 	 * FIXME: <code>in-block</code> isn't semantic in that it isn't
 	 * obviously connected to being editable.
 	 *
-	 * @param DOMElement[] $headings Heading elements
+	 * @param [DOMElement] $headings
 	 */
 	protected function makeHeadingsEditable( array $headings ) {
 		foreach ( $headings as $heading ) {
 			$class = $heading->getAttribute( 'class' );
+
 			if ( strpos( $class, 'in-block' ) === false ) {
 				$heading->setAttribute(
 					'class',
@@ -636,7 +474,8 @@ class MobileFormatter extends HtmlFormatter {
 	 *  rank headings and the second is all other headings
 	 */
 	private function getHeadings( DOMDocument $doc ) {
-		$headings = $subheadings = [];
+		$result = array();
+		$headings = $subheadings = array();
 
 		foreach ( $this->topHeadingTags as $tagName ) {
 			$elements = $doc->getElementsByTagName( $tagName );
@@ -658,6 +497,6 @@ class MobileFormatter extends HtmlFormatter {
 			}
 		}
 
-		return [ $headings, $subheadings ];
+		return array( $headings, $subheadings );
 	}
 }

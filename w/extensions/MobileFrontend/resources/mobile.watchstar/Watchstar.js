@@ -1,6 +1,6 @@
 ( function ( M ) {
 
-	var View = M.require( 'mobile.startup/View' ),
+	var View = M.require( 'mobile.view/View' ),
 		WatchstarGateway = M.require( 'mobile.watchstar/WatchstarGateway' ),
 		Icon = M.require( 'mobile.startup/Icon' ),
 		watchIcon = new Icon( {
@@ -11,9 +11,9 @@
 			name: 'watched',
 			additionalClassNames: 'watch-this-article watched'
 		} ),
-		toast = M.require( 'mobile.startup/toast' ),
-		user = M.require( 'mobile.startup/user' ),
-		CtaDrawer = M.require( 'mobile.startup/CtaDrawer' );
+		toast = M.require( 'mobile.toast/toast' ),
+		user = M.require( 'mobile.user/user' ),
+		CtaDrawer = M.require( 'mobile.drawers/CtaDrawer' );
 
 	/**
 	 * A clickable watchstar
@@ -23,12 +23,25 @@
 	 * @uses Icon
 	 * @uses WatchstarGateway
 	 * @uses Toast
-	 *
-	 * @constructor
-	 * @param {Object} options Configuration options
 	 */
-	function Watchstar() {
-		View.apply( this, arguments );
+	function Watchstar( options ) {
+		var self = this,
+			_super = View,
+			page = options.page;
+
+		this.gateway = new WatchstarGateway( options.api );
+
+		if ( user.isAnon() ) {
+			_super.call( self, options );
+		} else if ( options.isWatched === undefined ) {
+			this.gateway.loadWatchStatus( page.getId() ).done( function () {
+				options.isWatched = self.gateway.isWatchedPage( page );
+				_super.call( self, options );
+			} );
+		} else {
+			this.gateway.setWatchedPage( options.page, options.isWatched );
+			_super.call( self, options );
+		}
 	}
 
 	OO.mfExtend( Watchstar, View, {
@@ -44,7 +57,7 @@
 		 * @cfg {Object} defaults Default options hash.
 		 * @cfg {mw.Api} defaults.api
 		 * @cfg {Page} defaults.page Current page.
-		 * @cfg {string} defaults.funnel to log events with
+		 * @cfg {String} defaults.funnel to log events with
 		 */
 		defaults: {
 			page: undefined,
@@ -75,15 +88,17 @@
 
 			this.gateway = new WatchstarGateway( options.api );
 
-			if ( options.isWatched === undefined ) {
+			if ( user.isAnon() ) {
+				_super.call( self, options );
+			} else if ( options.isWatched === undefined ) {
 				this.gateway.loadWatchStatus( page.getId() ).done( function () {
 					options.isWatched = self.gateway.isWatchedPage( page );
+					_super.call( self, options );
 				} );
-			} else if ( !user.isAnon() ) {
+			} else {
 				this.gateway.setWatchedPage( options.page, options.isWatched );
+				_super.call( self, options );
 			}
-
-			_super.call( self, options );
 		},
 		/** @inheritdoc */
 		preRender: function () {
@@ -166,7 +181,7 @@
 					toast.show( mw.msg( 'mobile-frontend-watchlist-removed', page.title ) );
 				}
 			} ).fail( function () {
-				toast.show( mw.msg( 'mobile-frontend-watchlist-error' ), 'error' );
+				toast.show( 'mobile-frontend-watchlist-error', 'error' );
 			} );
 		},
 

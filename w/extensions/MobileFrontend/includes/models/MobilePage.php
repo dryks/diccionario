@@ -1,4 +1,7 @@
 <?php
+/**
+ * MobilePage.php
+ */
 
 /**
  * Retrieves information specific to a mobile page
@@ -14,25 +17,22 @@ class MobilePage {
 	 */
 	private $title;
 	/**
-	 * @var Revision|bool
-	 */
-	private $rev;
-	/**
-	 * @var string|bool
-	 */
-	private $revisionTimestamp;
-	/**
 	 * @var File Associated page image file (see PageImages extension)
 	 */
 	private $file;
+	/**
+	 * @var string Page content
+	 */
+	private $content;
 	/**
 	 * @var boolean Whether to use page images
 	 */
 	private $usePageImages;
 
 	/**
-	 * @param Title $title Page title
-	 * @param File|bool $file Page image file
+	 * Constructor
+	 * @param Title $title
+	 * @param File|bool $file
 	 */
 	public function __construct( Title $title, $file = false ) {
 		$this->title = $title;
@@ -44,58 +44,31 @@ class MobilePage {
 	}
 
 	/**
-	 * @return Revision|bool
-	 */
-	private function getRevision() {
-		if ( $this->rev === null ) {
-			$this->rev = Revision::newKnownCurrent(
-				wfGetDB( DB_REPLICA ),
-				$this->title->getArticleID(),
-				$this->title->getLatestRevID()
-			);
-		}
-		return $this->rev;
-	}
-
-	/**
-	 * Retrieve timestamp when the page content was last modified. Does not reflect null edits.
-	 * @return string|bool Timestamp (MW format) or false
+	 * Retrieve the last time the page content was modified. Do not reflect null edits.
+	 * @return string timestamp representing last edited time.
 	 */
 	public function getLatestTimestamp() {
-		if ( $this->revisionTimestamp === null ) {
-			$rev = $this->getRevision();
-			$this->revisionTimestamp = $rev ? $rev->getTimestamp() : false;
-		}
-		return $this->revisionTimestamp;
-	}
-
-	/**
-	 * Set rev_timestamp of latest edit to this page
-	 * @param string $timestamp Timestamp (MW format)
-	 */
-	public function setLatestTimestamp( $timestamp ) {
-		$this->revisionTimestamp = $timestamp;
+		$title = $this->getTitle();
+		return Revision::getTimestampFromId( $title, $title->getLatestRevID() );
 	}
 
 	/**
 	 * Retrieve the last edit to this page.
-	 * @return array defining edit with keys:
-	 * - string name
-	 * - string timestamp (Unix format)
-	 * - string gender
+	 * @return array defining edit with keys name, timestamp and gender
 	 */
 	public function getLatestEdit() {
-		$rev = $this->getRevision();
-		$edit = [
-			'timestamp' => false,
+		$rev = Revision::newFromId( $this->getTitle()->getLatestRevID() );
+		$unixTimestamp = wfTimestamp( TS_UNIX, $this->getLatestTimestamp() );
+		$edit = array(
+			'timestamp' => $unixTimestamp,
 			'name' => '',
 			'gender' => '',
-		];
+		);
 		if ( $rev ) {
-			$edit['timestamp'] = wfTimestamp( TS_UNIX, $rev->getTimestamp() );
 			$userId = $rev->getUser();
 			if ( $userId ) {
 				$revUser = User::newFromId( $userId );
+				$revUser->load( User::READ_NORMAL );
 				$edit['name'] = $revUser->getName();
 				$edit['gender'] = $revUser->getOption( 'gender' );
 			}
@@ -114,14 +87,14 @@ class MobilePage {
 
 	/**
 	 * Get a placeholder div container for thumbnails
-	 * @param string $className Class for element
-	 * @param string $iconClassName controls size of thumbnail, defaults to empty string
+	 * @param string $className
+	 * @param string $iconClassName controls size of thumbnail, defaults to icon-32px
 	 * @return string
 	 */
-	public static function getPlaceHolderThumbnailHtml( $className, $iconClassName = '' ) {
-		return Html::element( 'div', [
+	public static function getPlaceHolderThumbnailHtml( $className, $iconClassName = 'icon-32px' ) {
+		return Html::element( 'div', array(
 			'class' => 'list-thumb list-thumb-placeholder ' . $iconClassName . ' ' . $className,
-		] );
+		) );
 	}
 
 	/**
@@ -136,7 +109,7 @@ class MobilePage {
 	/**
 	 * Get a small sized thumbnail in div container.
 	 *
-	 * @param bool $useBackgroundImage Whether the thumbnail should have a background image
+	 * @param boolean $useBackgroundImage Whether the thumbnail should have a background image
 	 * @return string
 	 */
 	public function getSmallThumbnailHtml( $useBackgroundImage = false ) {
@@ -156,15 +129,15 @@ class MobilePage {
 		if ( $this->usePageImages ) {
 			$file = $this->file;
 			if ( $file ) {
-				$thumb = $file->transform( [ 'width' => $size ] );
+				$thumb = $file->transform( array( 'width' => $size ) );
 				if ( $thumb && $thumb->getUrl() ) {
 					$className = 'list-thumb ';
 					$className .= $thumb->getWidth() > $thumb->getHeight()
 						? 'list-thumb-y'
 						: 'list-thumb-x';
-					$props = [
+					$props = array(
 						'class' => $className,
-					];
+					);
 
 					$imgUrl = wfExpandUrl( $thumb->getUrl(), PROTO_CURRENT );
 					if ( $useBackgroundImage ) {

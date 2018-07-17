@@ -1,17 +1,13 @@
-( function ( M ) {
-	var util = M.require( 'mobile.startup/util' );
-
+( function ( M, $ ) {
 	/**
 	 * API that helps save and retrieve page content
 	 * @class EditorGateway
-	 *
-	 * @constructor
-	 * @param {Object} options Configuration options
+	 * @param {Object} options
 	 * @param {mw.Api} options.api an Api to use.
-	 * @param {string} options.title the title to edit
-	 * @param {number} options.sectionId the id of the section to operate edits on.
-	 * @param {number} [options.oldId] revision to operate on. If absent defaults to latest.
-	 * @param {boolean} [options.isNewPage] whether the page being created is new
+	 * @param {String} options.title the title to edit
+	 * @param {Number} options.sectionId the id of the section to operate edits on.
+	 * @param {Number} [options.oldId] revision to operate on. If absent defaults to latest.
+	 * @param {Boolean} [options.isNewPage] whether the page being created is new
 	 */
 	function EditorGateway( options ) {
 		this.api = options.api;
@@ -27,33 +23,24 @@
 		/**
 		 * Get the content of a page.
 		 * @method
-		 * @return {jQuery.Deferred}
+		 * @returns {jQuery.Deferred}
 		 */
 		getContent: function () {
 			var options,
 				self = this,
-				// Using this.api.get which returns a promise
-				result = util.Deferred();
+				result = $.Deferred();
 
 			if ( this.content !== undefined ) {
-				result.resolve( {
-					text: self.content,
-					user: self.userinfo,
-					block: self.block
-				} );
+				result.resolve( this.content );
 			} else {
 				options = {
 					action: 'query',
 					prop: 'revisions',
 					rvprop: [ 'content', 'timestamp' ],
-					titles: self.title,
+					titles: this.title,
 					// get block information for this user
 					meta: 'userinfo',
 					uiprop: 'blockinfo',
-					// get additional block information for talk pages
-					list: 'blocks',
-					bkusers: mw.user.getName(),
-					bkprop: 'flags',
 					formatversion: 2
 				};
 				// Load text of old revision if desired
@@ -61,7 +48,7 @@
 					options.rvstartid = this.oldId;
 				}
 				// See Bug 50136 - passing rvsection will fail with non wikitext
-				if ( util.isNumeric( this.sectionId ) ) {
+				if ( $.isNumeric( this.sectionId ) ) {
 					options.rvsection = this.sectionId;
 				}
 				this.api.get( options ).done( function ( resp ) {
@@ -83,16 +70,11 @@
 					}
 					// save content a second time to be able to check for changes
 					self.originalContent = self.content;
-					self.userinfo = resp.query.userinfo;
-					self.block = resp.query.blocks && resp.query.blocks[0] || {};
 
-					result.resolve( {
-						text: self.content || '',
-						user: self.userinfo,
-						block: self.block
-					} );
+					result.resolve( self.content, resp.query.userinfo );
 				} );
 			}
+
 			return result;
 		},
 
@@ -100,7 +82,7 @@
 		 * Mark content as modified and set changes to be submitted when #save
 		 * is invoked.
 		 * @method
-		 * @param {string} content New section content.
+		 * @param {String} content New section content.
 		 */
 		setContent: function ( content ) {
 			if ( this.originalContent !== content ) {
@@ -115,7 +97,7 @@
 		 * Mark content as modified and set text that should be prepended to given
 		 * section when #save is invoked.
 		 * @method
-		 * @param {string} text Text to be prepended.
+		 * @param {String} text Text to be prepended.
 		 */
 		setPrependText: function ( text ) {
 			this.prependtext = text;
@@ -125,11 +107,11 @@
 		/**
 		 * Save the new content of the section, previously set using #setContent.
 		 * @method
-		 * @param {Object} options Configuration options
-		 * @param {string} [options.summary] Optional summary for the edit.
-		 * @param {string} [options.captchaId] If CAPTCHA was requested, ID of the
+		 * @param {Object} options
+		 *      [options.summary] String Optional summary for the edit.
+		 *     [options.captchaId] String If CAPTCHA was requested, ID of the
 		 * captcha.
-		 * @param {string} [options.captchaWord] If CAPTCHA was requested, term
+		 *     [options.captchaWord] String If CAPTCHA was requested, term
 		 * displayed in the CAPTCHA.
 		 * @return {jQuery.Deferred} On failure callback is passed an object with
 		 * `type` and `details` properties. `type` is a string describing the type
@@ -137,14 +119,13 @@
 		 */
 		save: function ( options ) {
 			var self = this,
-				result = util.Deferred();
+				result = $.Deferred();
 
 			options = options || {};
 
 			/**
 			 * Save content. Make an API request.
 			 * @ignore
-			 * @return {jQuery.Deferred}
 			 */
 			function saveContent() {
 				var apiOptions = {
@@ -163,7 +144,7 @@
 					apiOptions.prependtext = self.prependtext;
 				}
 
-				if ( util.isNumeric( self.sectionId ) ) {
+				if ( $.isNumeric( self.sectionId ) ) {
 					apiOptions.section = self.sectionId;
 				}
 
@@ -230,16 +211,14 @@
 							details: 'unknown'
 						} );
 					}
-				} ).fail( function () {
-					result.reject( {
-						type: 'error',
-						details: 'http'
-					} );
-				} );
-				return result;
+				} ).fail( $.proxy( result, 'reject', {
+					type: 'error',
+					details: 'http'
+				} ) );
 			}
 
-			return saveContent();
+			saveContent();
+			return result;
 		},
 
 		/**
@@ -256,14 +235,14 @@
 		 * Get page preview from the API and abort any existing previews.
 		 * @method
 		 * @param {Object} options API query parameters
-		 * @return {jQuery.Deferred}
+		 * @returns {jQuery.Deferred}
 		 */
 		getPreview: function ( options ) {
-			var result = util.Deferred(),
+			var result = $.Deferred(),
 				sectionLine = '',
 				self = this;
 
-			util.extend( options, {
+			$.extend( options, {
 				action: 'parse',
 				// Enable section preview mode to avoid errors (bug 49218)
 				sectionpreview: true,
@@ -286,16 +265,11 @@
 					) {
 						sectionLine = resp.parse.sections[0].line;
 					}
-					result.resolve( {
-						text: resp.parse.text['*'],
-						line: sectionLine
-					} );
+					result.resolve( resp.parse.text['*'], sectionLine );
 				} else {
 					result.reject();
 				}
-			} ).fail( function () {
-				result.reject();
-			} );
+			} ).fail( $.proxy( result, 'reject' ) );
 
 			return result;
 		}
@@ -303,4 +277,4 @@
 
 	M.define( 'mobile.editor.api/EditorGateway', EditorGateway );
 
-}( mw.mobileFrontend ) );
+}( mw.mobileFrontend, jQuery ) );

@@ -1,14 +1,12 @@
-( function ( M, ve ) {
+( function ( M, $, ve ) {
 	var EditorOverlayBase = M.require( 'mobile.editor.common/EditorOverlayBase' ),
-		util = M.require( 'mobile.startup/util' );
+		settings = M.require( 'mobile.settings/settings' ),
+		overlayManager = M.require( 'mobile.startup/overlayManager' );
 
 	/**
 	 * Overlay for VisualEditor view
 	 * @class VisualEditorOverlay
 	 * @extends EditorOverlayBase
-	 *
-	 * @constructor
-	 * @param {Object} options Configuration options
 	 */
 	function VisualEditorOverlay( options ) {
 		this.applyHeaderOptions( options, true );
@@ -20,7 +18,7 @@
 		/** @inheritdoc **/
 		isBorderBox: false,
 		/** @inheritdoc **/
-		templatePartials: util.extend( {}, EditorOverlayBase.prototype.templatePartials, {
+		templatePartials: $.extend( {}, EditorOverlayBase.prototype.templatePartials, {
 			editHeader: mw.template.get( 'mobile.editor.ve', 'toolbarVE.hogan' ),
 			content: mw.template.get( 'mobile.editor.ve', 'contentVE.hogan' )
 		} ),
@@ -32,8 +30,8 @@
 		 * EditorOverlay so that an EditorOverlay instance can be created effortlessly.
 		 * FIXME: Must be smarter way to do this.
 		 * @method
-		 * @param {Object} options Configuration options
-		 * @param {boolean} isVE whether the options are being generated for a VisualEditorOverlay
+		 * @param {Object} options
+		 * @param {Boolean} isVE whether the options are being generated for a VisualEditorOverlay
 		 *  or a EditorOverlay
 		 */
 		applyHeaderOptions: function ( options, isVE ) {
@@ -66,10 +64,11 @@
 				.then( function () {
 					overlay.target = ve.init.mw.targetFactory.create( 'article', overlay, {
 						$element: overlay.$el,
-						// || null so that scrolling is not triggered for the lead (0) section
+						// || undefined so that scrolling is not triggered for the lead (0) section
 						// (which has no header to scroll to)
-						section: overlay.options.sectionId || null
+						section: overlay.options.sectionId || undefined
 					} );
+					overlay.target.activating = true;
 					overlay.target.load();
 				}, function ( e ) {
 					mw.log.warn( 'VisualEditor failed to load: ' + e );
@@ -119,7 +118,7 @@
 				mechanism: 'navigate'
 			} );
 			// Save a user setting indicating that this user prefers using the SourceEditor
-			mw.storage.set( 'preferredEditor', 'SourceEditor' );
+			settings.save( 'preferredEditor', 'SourceEditor', true );
 			this.showSpinner();
 			this.$( '.surface' ).hide();
 			// Load the SourceEditor and replace the VisualEditor overlay with it
@@ -128,7 +127,7 @@
 
 				self.clearSpinner();
 				self.applyHeaderOptions( self.options, false );
-				self.overlayManager.replaceCurrent( new EditorOverlay( self.options ) );
+				overlayManager.replaceCurrent( new EditorOverlay( self.options ) );
 			} );
 		},
 		/** @inheritdoc **/
@@ -146,4 +145,4 @@
 
 	M.define( 'mobile.editor.ve/VisualEditorOverlay', VisualEditorOverlay );
 
-}( mw.mobileFrontend, window.ve ) );
+}( mw.mobileFrontend, jQuery, window.ve ) );

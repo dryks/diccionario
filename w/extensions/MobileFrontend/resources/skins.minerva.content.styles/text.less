@@ -1,10 +1,10 @@
-@import 'mediawiki.mixins.less';
-@import 'minerva.variables.less';
-@import 'minerva.mixins.less';
+@import "mediawiki.mixins.less";
+@import "minerva.variables.less";
+@import "minerva.mixins.less";
 
 .content {
 	p {
-		margin: 0.5em 0 1em 0;
+		margin: .5em 0 1em 0;
 	}
 }
 
@@ -42,14 +42,10 @@ i {
 // }
 // </pre>
 //
-// Note .mw-code is not added here as it is assumed that will be used with a suitable tag
-// tt is a non-standard element so is not included in the selector.
 // Styleguide 1.7.
-kbd,
-samp,
 code,
 pre {
-	font-family: @fontFamilyMonospace;
+	font-family: monospace;
 	border: solid 1px @colorGray12;
 	white-space: pre-wrap;
 }
@@ -62,7 +58,6 @@ pre {
 	padding: 1em;
 }
 
-.mw-ref,
 sup {
 	vertical-align: super;
 }
@@ -71,7 +66,6 @@ sub {
 	vertical-align: sub;
 }
 
-.mw-ref,
 sub,
 sup {
 	font-size: 0.75em;

@@ -10,9 +10,7 @@ class ArticlePage
   # pre-content
   h1(:first_heading, id: 'section_0')
   # standalone history link
-  a(:standalone_edit_history_link, css: '.last-modified-bar a')
-  # beta mode indicator
-  a(:beta_mode_indicator, css: '.branding-box sup')
+  a(:standalone_edit_history_link, css: '#mw-mf-last-modified a')
 
   # left nav
   nav(:navigation, css: 'nav')
@@ -31,13 +29,11 @@ class ArticlePage
   end
   li(:upload_page_action, id: 'ca-upload')
 
-  div(:signup_edit_tutorial, class: 'pointer-overlay-tutorial')
-
   a(:edit_link, text: 'Edit')
   div(:anon_editor_warning, css: '.anon-msg')
   div(:editor_overlay, class: 'editor-overlay')
   button(:editor_overlay_close_button) do |page|
-    page.editor_overlay_element.button_element(css: '.cancel')
+    page.editor_overlay_element.button_element(css: '.back')
   end
 
   ## upload
@@ -60,9 +56,8 @@ class ArticlePage
   button(:watch_confirm, class: 'mw-htmlform-submit')
 
   # search
-  button(:search_icon, css: '#searchIcon')
+  button(:search_button, css: '.search-box input[type=submit]')
   p(:search_within_pages, css: '.without-results')
-  div(:search_content_header, css: '.search-content')
   text_field(:search_box_placeholder, name: 'search', index: 0)
   text_field(:search_box2, name: 'search', index: 1)
   li(:search_results, css: '.search-overlay .page-list li')
@@ -81,7 +76,7 @@ class ArticlePage
     page.search_overlay_page_list_element.element.h3
   end
 
-  a(:notifications_button, css: '.user-button')
+  a(:notifications_button, id: 'secondary-button', class: 'user-button')
   div(:notifications_overlay, class: 'notifications-overlay')
   button(:notifications_overlay_close_button) do |page|
     page.notifications_overlay_element.button_element(class: 'cancel')
@@ -93,14 +88,21 @@ class ArticlePage
   # page-actions
   ul(:page_actions, id: 'page-actions')
   a(:talk, css: '.talk')
-  a(:category, css: '.category-button')
   a(:nearby_button, css: '#page-secondary-actions .nearby')
-
-  # wikidata descriptions
-  div(:wikidata_description, css: '.tagline')
 
   # toc
   div(:toc, css: '.toc-mobile')
+
+  # editor (common)
+  span(:overlay_editor_mode_switcher, css: '.editor-switcher .oo-ui-indicatorElement-indicator')
+  span(:source_editor_button, css: '.source-editor .oo-ui-icon-edit-source')
+  span(:visual_editor_button, css: '.visual-editor .oo-ui-icon-edit-ve')
+
+  # editor
+  textarea(:editor_textarea, class: 'wikitext-editor')
+  button(:escape_button, class: 'mw-ui-icon-back')
+  button(:continue_button, class: 'continue')
+  button(:submit_button, class: 'submit')
 
   # drawer
   div(:drawer, css: '.drawer.visible')
@@ -112,9 +114,21 @@ class ArticlePage
   end
   h2(:overlay_heading, css: '.overlay-title h2')
 
-  # category
-  li(:overlay_category_topic_item, css: '.topic-title-list li')
-
+  # visual editor
+  div(:overlay_ve, css: '.editor-overlay-ve')
+  div(:overlay_ve_header) do |page|
+    page.overlay_ve_element.div_element(css: '.overlay-header-container')
+  end
+  div(:overlay_ve_header_toolbar) do |page|
+    page.overlay_ve_header_element.div_element(css: '.oo-ui-toolbar-bar')
+  end
+  span(:overlay_ve_header_toolbar_bold_button) do |page|
+    page.overlay_ve_header_element.span_element(class: 'oo-ui-iconElement-icon oo-ui-icon-bold-b')
+  end
+  span(:overlay_ve_header_toolbar_italic_button) do |page|
+    page.overlay_ve_header_element.span_element(class: 'oo-ui-iconElement-icon oo-ui-icon-italic-i')
+  end
+  div(:editor_ve, css: '.ve-ce-documentNode')
   div(:spinner_loading, class: 'spinner loading')
 
   # toast
@@ -126,17 +140,18 @@ class ArticlePage
 
   # secondary menu
   ## languages
-  a(:switch_language_page_action, css: '#page-actions .language-selector')
-  a(:disabled_switch_langage_page_action, css: '#page-actions .language-selector.disabled')
+  a(:language_button, css: '#page-secondary-actions #language-switcher')
+  a(:alternative_language_button, css: '#page-actions #language-switcher')
+  a(:disabled_alternative_language_button, css: '#page-actions #language-switcher.disabled')
   # Can't use generic overlay class as this will match with the LoadingOverlay that shows before loading the language overlay
   div(:overlay_languages, css: '.language-overlay')
-  a(:non_suggested_language_link, css: '.all-languages a', index: 0)
-  a(:suggested_language_link, css: '.suggested-languages a', index: 0)
+  a(:non_preferred_language_link, css: '.all-languages a', index: 0)
+  a(:preferred_language_link, css: '.preferred-languages a', index: 0)
 
   # footer
   a(:desktop_link, text: 'Desktop')
   a(:terms_link, css: '#footer-places-terms-use')
-  a(:license_link, css: 'footer .license a')
+  a(:license_link, css: '#footer-info-mobile-license a')
   a(:privacy_link, text: 'Privacy')
 
   # pagelist
@@ -163,6 +178,5 @@ class ArticlePage
   div(:error_message, css: '.error')
 
   # talk overlay
-  li(:talk_overlay_first_topic_title, css: '.talk-overlay .topic-title-list li:first-child')
-  button(:talk_overlay_save_button, css: '.talk-overlay .confirm-save')
+  a(:talkadd, css: '.add.continue')
 end

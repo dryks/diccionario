@@ -1,75 +1,48 @@
 #!/usr/bin/env bash
 # Enable this pre-commit hook by running 'make installhooks'
-set -euo pipefail
 
-git-staged-files() {
-	git diff --cached -C -C -z --name-only --diff-filter=ACMRTUXB "$@"
-}
+# check for trailing whitespace
+if [[ `git diff --cached --check` ]]; then
+	git diff --cached --check
+	exit 1
+fi
 
-git-is-staged() {
-	local diff=0
-	git-staged-files --quiet "$@" 2> /dev/null || diff=$?
-	[[ diff -eq 1 ]] || return 1
-}
+make jshint || exit 1
+make jscs || exit 1
 
-map() { IFS= read -rd $'\0' "$@"; }
+if git diff --name-only --cached | grep --regexp '\.js$' ; then
+	make qunit || exit 1
+fi
 
-compress-png() {
-	git-staged-files \*.png|while map file; do
-		echo "Compressing $file"
-		optipng -q -o7 "$file" && advpng -z -4 "$file" && advdef -z -4 "$file" | grep Output
+if git diff --name-only --cached | grep --regexp '\.*php$' ; then
+	make phplint || exit 1
+fi
+
+if git diff --name-only --cached | grep --regexp 'includes/skins/.*php$' ; then
+	make validatehtml > $result
+fi
+
+for file in `git diff --cached --name-only | grep -i ".png\$"`
+do
+	echo "Compressing $file"
+	if [ -f $file ]; then
+		optipng -q -o7 "$file" && advpng -z -4 "$file" && advdef -z -4 "$file" | grep "Output"
 		git add "$file"
-	done
-}
+	else
+		echo 'file was removed'
+	fi
+done
 
-compress-svg() {
-	git-staged-files \*.svg|while map file; do
-		make nodecheck
-		echo "Compressing $file"
-		node_modules/.bin/svgo --config=.svgo.yml "$file"
+for file in `git diff --cached --name-only | grep -i ".svg\$"`
+do
+	make nodecheck
+	echo "Compressing $file"
+	if [ -f $file ]; then
+		# If anyone can figure out how to get the pretty option to work from the config
+		# file, feel free to remove it here.
+		node_modules/.bin/svgo --config=.svgo.yml "$file" --pretty
 		git add "$file"
-	done
-}
-
-test-whitespace() { git diff --cached --check; }
-
-test-js() {
-	local err=0
-
-	make eslint || err+=1
-
-	if git-is-staged \*.js; then
-		make qunit || err+=1
+	else
+		echo 'file was removed'
 	fi
-
-	return $err
-}
-
-test-php() {
-	local err=0
-	if git-is-staged \*.php; then
-		make phplint || err+=1
-	fi
-
-	# todo: where is result set?
-	if git-is-staged 'includes/skins/*.php'; then
-		make validatehtml > $result || err+=1
-	fi
-
-	return $err
-}
-
-main() {
-	local err=0
-
-	compress-png
-	compress-svg
-
-	test-whitespace || err+=1
-	test-js || err+=1
-	test-php || err+=1
-
-	return $err
-}
-
-main "$@"
+done

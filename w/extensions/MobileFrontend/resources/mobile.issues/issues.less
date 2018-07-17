@@ -1,4 +1,6 @@
-@import 'mobile.variables';
+@import "minerva.variables";
+@import "minerva.mixins";
+@import "mediawiki.mixins";
 
 @smallIconSize: 24px;
 @largeIconSize: 50px;
@@ -7,48 +9,47 @@
 	display: block;
 	margin: 0;
 	padding: 0;
-	font-size: 0.8em;
+	font-size: .8em;
 	color: @colorGray7;
 }
 
 // overlay styles
-.overlay-cleanup {
-
+.overlay {
 	.cleanup {
 		li {
 			border-bottom: solid 1px @grayLight;
 			.issue-notice {
-				padding: @smallIconSize @smallIconSize @smallIconSize 0;
-				.mw-ui-icon {
-					float: left;
+				padding: (@smallIconSize * 2.5) @contentMargin @smallIconSize @contentMargin;
+
+				// on mobile move the icon above the content
+				&:before {
+					top: @smallIconSize;
+					left: 50%;
+					position: absolute;
+					height: auto;
 				}
-			}
-
-			small,
-			.hide-when-compact {
-				font-size: 0.8em;
-			}
-
-			.hide-when-compact {
-				display: block;
-				margin: 8px 0;
 			}
 		}
 	}
+}
 
-	.issue-details {
-		// align the first line to the top of the element
-		// but line-height should be normal for text that follows (T190469)
-		> :first-line {
-			line-height: 1;
-		}
+@media all and (min-width: @deviceWidthTablet) {
+	.overlay {
+		.cleanup {
+			li {
+				.issue-notice {
+					padding: 2em 1em 2em (@largeIconSize + 10px);
+					margin: 0 1em 0 @headerHeight;
 
-		// This should match the icon width for the overlay close icon
-		//  which is derived from these two variables:
-		padding-left: @iconSize + ( 2 * @iconGutterWidth );
-		// assume date
-		small i {
-			color: @colorGray7;
+					// FIXME: Please remove this. It should not care about how icons are rendered.
+					&:before {
+						top: 0;
+						left: 0;
+						height: 100%;
+						width: @largeIconSize;
+					}
+				}
+			}
 		}
 	}
 }

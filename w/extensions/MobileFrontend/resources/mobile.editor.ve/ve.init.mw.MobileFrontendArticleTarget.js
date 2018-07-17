@@ -1,5 +1,3 @@
-/* global $ */
-
 /*!
  * VisualEditor MediaWiki Initialization MobileFrontendArticleTarget class.
  *
@@ -7,7 +5,9 @@
  * @license The MIT License (MIT); see LICENSE.txt
  */
 
-/* global ve */
+/* global ve, $ */
+
+// jscs:disable
 
 /**
  * MediaWiki mobile frontend article target.
@@ -84,21 +84,19 @@ ve.init.mw.MobileFrontendArticleTarget.prototype.onContainerScroll = function ()
  * Handle window scroll events
  */
 ve.init.mw.MobileFrontendArticleTarget.prototype.onWindowScroll = function () {
-	var $window, windowTop, contentTop,
-		surface = this.surface,
-		target = this;
+	var target = this;
 	// The window can only scroll in iOS if the keyboard has been opened
 	if ( this.useScrollContainer ) {
 		// iOS applies a scroll offset to the window to move the cursor
 		// into view. Apply this offset to the surface instead.
-		$window = $( target.getElementWindow() );
-		windowTop = $window.scrollTop();
-		contentTop = target.$scrollContainer.scrollTop();
+		var $window = $( target.getElementWindow() ),
+			windowTop = $window.scrollTop(),
+			contentTop = target.$scrollContainer.scrollTop();
 
 		$window.scrollTop( 0 );
-		surface.scrollTo( contentTop + windowTop );
+		target.scrollTo( contentTop + windowTop );
 		// Make sure we didn't overshoot the cursor
-		surface.scrollCursorIntoView( target.getSurface() );
+		target.scrollCursorIntoView( target.getSurface() );
 	}
 };
 
@@ -114,7 +112,7 @@ ve.init.mw.MobileFrontendArticleTarget.prototype.onSurfaceScroll = function () {
 		// reapply the selection in that case.
 		nativeSelection = this.getSurface().getView().nativeSelection;
 		if ( nativeSelection.rangeCount && document.activeElement.contentEditable === 'true' ) {
-			range = nativeSelection.getRangeAt( 0 );
+			range = nativeSelection.getRangeAt(0);
 			nativeSelection.removeAllRanges();
 			nativeSelection.addRange( range );
 		}
@@ -144,10 +142,10 @@ ve.init.mw.MobileFrontendArticleTarget.prototype.createSurface = function ( dmDo
  * FIXME: @inheritdoc once this file is in the right repo
  */
 ve.init.mw.MobileFrontendArticleTarget.prototype.surfaceReady = function () {
-	var surface = this.getSurface();
-
 	// Parent method
 	ve.init.mw.MobileFrontendArticleTarget.super.prototype.surfaceReady.apply( this, arguments );
+
+	var surface = this.getSurface();
 
 	this.overlay.clearSpinner();
 
@@ -161,7 +159,7 @@ ve.init.mw.MobileFrontendArticleTarget.prototype.surfaceReady = function () {
 	// we have to do it here because contenteditable elements still do not
 	// exist when postRender is executed
 	// FIXME: Don't call a private method that is outside the class.
-	this.overlay._fixIosHeader( $( '[contenteditable]' ) );
+	this.overlay._fixIosHeader( '[contenteditable]' );
 
 	this.maybeShowWelcomeDialog();
 };
@@ -192,16 +190,11 @@ ve.init.mw.MobileFrontendArticleTarget.prototype.loadFail = function ( key, text
  * FIXME: @inheritdoc once this file is in the right repo
  */
 ve.init.mw.MobileFrontendArticleTarget.prototype.editSource = function () {
-	var target = this;
 	// If changes have been made tell the user they have to save first
 	if ( !this.getSurface().getModel().hasBeenModified() ) {
 		this.overlay.switchToSourceEditor();
-	} else {
-		OO.ui.confirm( mw.msg( 'mobile-frontend-editor-switch-confirm' ) ).done( function ( confirmed ) {
-			if ( confirmed ) {
-				target.showSaveDialog();
-			}
-		} );
+	} else if ( window.confirm( mw.msg( 'mobile-frontend-editor-switch-confirm' ) ) ) {
+		this.showSaveDialog();
 	}
 };
 
@@ -242,12 +235,11 @@ ve.init.mw.MobileFrontendArticleTarget.prototype.saveComplete = function () {
 /*
  * FIXME: @inheritdoc once this file is in the right repo
  */
-ve.init.mw.MobileFrontendArticleTarget.prototype.tryTeardown = function () {
+ve.init.mw.MobileFrontendArticleTarget.prototype.close = function () {
 	// Parent method
-	ve.init.mw.MobileFrontendArticleTarget.super.prototype.tryTeardown.apply( this, arguments ).then( function () {
-		// eslint-disable-next-line no-restricted-properties
-		window.history.back();
-	} );
+	ve.init.mw.MobileFrontendArticleTarget.super.prototype.close.apply( this, arguments );
+
+	window.history.back();
 };
 
 /* Registration */

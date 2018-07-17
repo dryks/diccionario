@@ -1,4 +1,7 @@
 <?php
+/**
+ * SpecialMobileLanguages.php
+ */
 
 /**
  * Provides a list of languages available for a page
@@ -22,31 +25,29 @@ class SpecialMobileLanguages extends MobileSpecialPage {
 		$api = new ApiMain(
 			new DerivativeRequest(
 				$this->getRequest(),
-				[
+				array(
 					'action' => 'query',
 					'prop' => 'langlinks',
 					'llprop' => 'url',
 					'lllimit' => 'max',
 					'titles' => $this->title->getPrefixedText()
-				]
+				)
 			)
 		);
 
 		$api->execute();
-		$data = (array)$api->getResult()->getResultData( [ 'query', 'pages' ],
-			[ 'Strip' => 'all' ] );
+		if ( defined( 'ApiResult::META_CONTENT' ) ) {
+			$data = (array)$api->getResult()->getResultData( array( 'query', 'pages' ),
+				array( 'Strip' => 'all' ) );
+		} else {
+			$data = $api->getResult()->getData();
+			// Paranoia
+			if ( !isset( $data['query']['pages'] ) ) {
+				return array();
+			}
+			$data = $data['query']['pages'];
+		}
 
-		return $this->processLanguages( $data );
-	}
-
-	/**
-	 * Processes languages to add 'langname' property, update 'url' property to mobile domain,
-	 * and sort languages in case-insensitive order.
-	 *
-	 * @param array $data list of languages to process
-	 * @return array list of processed languages
-	 */
-	protected function processLanguages( $data ) {
 		// Silly strict php
 		$pages = array_values( $data );
 		$page = array_shift( $pages );
@@ -55,54 +56,23 @@ class SpecialMobileLanguages extends MobileSpecialPage {
 			// Set the name of each language based on the system list of language names
 			$languageMap = Language::fetchLanguageNames();
 			$languages = $page['langlinks'];
-			foreach ( $page['langlinks'] as $index => $langObject ) {
-				if ( !$this->isLanguageObjectValid( $languageMap, $langObject ) ) {
-					unset( $languages[$index] );
+			foreach ( $page['langlinks'] as $code => $langObject ) {
+				if ( !isset( $languageMap[$langObject['lang']] ) ) {
+					// Bug T93500: DB might still have preantiquated rows with bogus languages
+					unset( $languages[$code] );
 					continue;
 				}
 				$langObject['langname'] = $languageMap[$langObject['lang']];
 				$langObject['url'] = MobileContext::singleton()->getMobileUrl( $langObject['url'] );
-				$languages[$index] = $langObject;
+				$languages[$code] = $langObject;
 			}
-			$compareLanguage = function ( $a, $b ) {
-				return strcasecmp( $a['langname'], $b['langname'] );
-			};
-			usort( $languages, $compareLanguage );
 			return $languages;
 		} else {
 			// No langlinks available
-			return [];
+			return array();
 		}
 	}
 
-	/**
-	 * Verify if passed language object contains all necessary information
-	 *
-	 * @see https://phabricator.wikimedia.org/T93500
-	 * @see https://phabricator.wikimedia.org/T172316
-	 * @param array $languageMap array of language names, indexed by code.
-	 * @param array $langObject with lang and url keys. If url key is not present a warning
-	 *   will be logged.
-	 * @return bool
-	 */
-	private function isLanguageObjectValid( $languageMap, $langObject ) {
-		if ( !isset( $languageMap[$langObject['lang']] ) ) {
-			// Bug T93500: DB might still have preantiquated rows with bogus languages
-			return false;
-		}
-		if ( !array_key_exists( 'url', $langObject ) ) {
-			// Bug T172316: Some lang objects do not have url. We would like to log those instances
-			\MediaWiki\Logger\LoggerFactory::getInstance( MobileContext::LOGGER_CHANNEL )->warning(
-				'`url` key is undefined in language object',
-				[
-					'uri' => RequestContext::getMain()->getRequest()->getFullRequestURL(),
-					'langObject' => $langObject,
-				]
-			);
-			return false;
-		}
-		return true;
-	}
 	/**
 	 * Returns an array of language variants that the page is available in
 	 * @return array
@@ -112,7 +82,7 @@ class SpecialMobileLanguages extends MobileSpecialPage {
 		$variants = $pageLang->getVariants();
 		if ( count( $variants ) > 1 ) {
 			$pageLangCode = $pageLang->getCode();
-			$output = [];
+			$output = array();
 			// Loops over each variant
 			foreach ( $variants as $code ) {
 				// Gets variant name from language code
@@ -120,17 +90,17 @@ class SpecialMobileLanguages extends MobileSpecialPage {
 				// Don't list the current variant
 				if ( $varname !== $pageLangCode ) {
 					// Appends variant link
-					$output[] = [
+					$output[] = array(
 						'langname' => $varname,
-						'url' => $this->title->getLocalURL( [ 'variant' => $code ] ),
-						'lang' => LanguageCode::bcp47( $code ),
-					];
+						'url' => $this->title->getLocalURL( array( 'variant' => $code ) ),
+						'lang' => wfBCP47( $code )
+					);
 				}
 			}
 			return $output;
 		} else {
 			// No variants
-			return [];
+			return array();
 		}
 	}
 
@@ -142,12 +112,12 @@ class SpecialMobileLanguages extends MobileSpecialPage {
 	 */
 	private function makeLangListItem( $langObject ) {
 		$html = Html::openElement( 'li' ) .
-			Html::element( 'a', [
+			Html::element( 'a', array(
 				'href' => $langObject['url'],
 				'hreflang' => $langObject['lang'],
 				'lang' => $langObject['lang'],
 				'title' => isset( $langObject['*'] ) ? $langObject['*'] : $langObject['langname']
-			], $langObject['langname'] ) .
+			), $langObject['langname'] ) .
 			Html::closeElement( 'li' );
 
 		return $html;
@@ -156,19 +126,19 @@ class SpecialMobileLanguages extends MobileSpecialPage {
 	/**
 	 * Render the page with a list of languages the page is available in
 	 * @param string $pagename The name of the page
-	 * @throws ErrorPageError
 	 */
 	public function executeWhenAvailable( $pagename ) {
-		$output = $this->getOutput();
 		if ( !is_string( $pagename ) || $pagename === '' ) {
-			$output->setStatusCode( 404 );
-			throw new ErrorPageError(
-				$this->msg( 'mobile-frontend-languages-404-title' ),
-				$this->msg( 'mobile-frontend-languages-404-desc' )
+			wfHttpError( 404, $this->msg( 'mobile-frontend-languages-404-title' )->text(),
+				$this->msg( 'mobile-frontend-languages-404-desc' )->text()
 			);
+
+			return;
 		}
 
 		$this->title = Title::newFromText( $pagename );
+
+		$output = $this->getOutput();
 
 		$html = '';
 		if ( $this->title && $this->title->exists() ) {
@@ -180,13 +150,13 @@ class SpecialMobileLanguages extends MobileSpecialPage {
 			$languagesCount = count( $languages );
 			$variantsCount = count( $variants );
 
-			$html .= Html::element( 'p', [],
+			$html .= Html::element( 'p', array(),
 				$this->msg( 'mobile-frontend-languages-text' )
 					->params( $titlename )->numParams( $languagesCount )->text()
 			);
 			$html .= Html::openElement( 'p' );
 			$html .= Html::element( 'a',
-				[ 'href' => $this->title->getLocalUrl() ],
+				array( 'href' => $this->title->getLocalUrl() ),
 				$this->msg( 'returnto', $titlename )->text()
 			);
 			$html .= Html::closeElement( 'p' );
@@ -198,11 +168,11 @@ class SpecialMobileLanguages extends MobileSpecialPage {
 						? $this->msg( 'mobile-frontend-languages-variant-header' )->text()
 						: '';
 					$html .= Html::element( 'h2',
-							[ 'id' => 'mw-mf-language-variant-header' ],
+							array( 'id' => 'mw-mf-language-variant-header' ),
 							$variantHeader
 					);
 					$html .= Html::openElement( 'ul',
-						[ 'id' => 'mw-mf-language-variant-selection' ]
+						array( 'id' => 'mw-mf-language-variant-selection' )
 					);
 
 					foreach ( $variants as $val ) {
@@ -214,8 +184,8 @@ class SpecialMobileLanguages extends MobileSpecialPage {
 				// Then other languages
 				if ( $languagesCount > 0 ) {
 					$languageHeader = $this->msg( 'mobile-frontend-languages-header' )->text();
-					$html .= Html::element( 'h2', [ 'id' => 'mw-mf-language-header' ], $languageHeader )
-						. Html::openElement( 'ul', [ 'id' => 'mw-mf-language-selection' ] );
+					$html .= Html::element( 'h2', array( 'id' => 'mw-mf-language-header' ), $languageHeader )
+						. Html::openElement( 'ul', array( 'id' => 'mw-mf-language-selection' ) );
 					foreach ( $languages as $val ) {
 						$html .= $this->makeLangListItem( $val );
 					}
@@ -224,7 +194,7 @@ class SpecialMobileLanguages extends MobileSpecialPage {
 			}
 		} else {
 			$pageTitle = $this->msg( 'mobile-frontend-languages-header' )->text();
-			$html .= Html::element( 'p', [],
+			$html .= Html::element( 'p', array(),
 				$this->msg( 'mobile-frontend-languages-nonexistent-title' )->params( $pagename )->text() );
 		}
 

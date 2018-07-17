@@ -1,6 +1,5 @@
-( function ( M ) {
-	var ReferencesGateway = M.require( 'mobile.references.gateway/ReferencesGateway' ),
-		util = M.require( 'mobile.startup/util' );
+( function ( M, $ ) {
+	var ReferencesGateway = M.require( 'mobile.references.gateway/ReferencesGateway' );
 
 	/**
 	 * Gateway for retrieving references via the content of the Page
@@ -15,32 +14,35 @@
 
 	OO.mfExtend( ReferencesHtmlScraperGateway, ReferencesGateway, {
 		/**
-		 * @param {string} id of a DOM element in the page with '#' prefix.
-		 *  can be encoded or decoded.
+		 * @param {String} id of a DOM element in the page
 		 * @param {jQuery.Object} $container to scan for an element
 		 * @return {jQuery.Promise} that can be used by getReference
 		 */
 		getReferenceFromContainer: function ( id, $container ) {
-			var $el,
-				result = util.Deferred();
+			var $el, ref,
+				// Escape (almost) all CSS selector meta characters
+				// see http://www.w3.org/TR/CSS21/syndata.html#value-def-identifier
+				meta = /[!"$%&'()*+,.\/:;<=>?@[\\\]^`{|}~]/g;
 
-			$el = $container.find( '#' + util.escapeSelector( id.substr( 1 ) ) );
-			if ( $el.length ) {
-				result.resolve( { text: $el.html() } );
-			} else {
-				result.reject( ReferencesGateway.ERROR_NOT_EXIST );
-			}
-			return result.promise();
+			id = id.replace( meta, '\\$&' );
+			id = id.substr( 1, id.length );
+
+			$el = $container.find( '#' + id );
+			ref = $el.length ?
+				{
+					text: $el.html()
+				} : false;
+
+			return $.Deferred().resolve( ref ).promise();
 		},
 		/**
 		 * @inheritdoc
 		 */
 		getReference: function ( id, page ) {
-			// If an id is not found it's possible the id passed needs decoding (per T188547).
-			return this.getReferenceFromContainer( decodeURIComponent( id ), page.$( 'ol.references' ) );
+			return this.getReferenceFromContainer( id, page.$( 'ol.references' ) );
 		}
 	} );
 
 	M.define( 'mobile.references.gateway/ReferencesHtmlScraperGateway',
 		ReferencesHtmlScraperGateway );
-}( mw.mobileFrontend ) );
+}( mw.mobileFrontend, jQuery ) );

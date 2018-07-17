@@ -1,6 +1,9 @@
-@import 'mediawiki.mixins.less';
-@import 'minerva.variables.less';
-@import 'minerva.mixins.less';
+@import "mediawiki.mixins.less";
+@import "minerva.variables.less";
+@import "minerva.mixins.less";
+
+@imageReplacementColor: #706E6E;
+@inputsBoxBorderColor: #e1e1e1;
 
 // Reusable components
 //
@@ -14,8 +17,8 @@
 // under a different circumstance
 //
 // Markup:
-// <div style="width:50px; height:50px; border:1px solid red;">
-//   <input type="file" class="cloaked-element">
+// <div style="width:50px;height:50px;border: solid 1px red">
+// <input type="file" class="cloaked-element">
 // </div>
 //
 // Styleguide 6.1.
@@ -30,41 +33,54 @@
 
 .view-border-box *,
 .view-border-box {
-	.box-sizing( border-box );
+	.box-sizing(border-box);
+}
+
+.mw-mf-image-replacement {
+	font-style: italic;
+	color: @colorGray7;
+	text-decoration: underline;
+	border: dotted 1px @colorGray12;
+	padding: 10px;
+	display: inline-block;
 }
 
 textarea {
 	padding: 5px 0 5px 5px;
 	width: 100%;
 	resize: none;
-	// stylelint-disable-next-line no-descending-specificity
-	.box-sizing( border-box );
 }
+
 
 // We hide the table of contents unless the user is viewing in tablet resolution or higher
 .toc-mobile,
-// Table of contents as provided by parser has no styling, this is a temporary measure until we are able
-// to commit more time to Minerva on desktop
-.toc,
 // We also need a more specific rule for tablet non-JS users who will load skins.minerva.tablet.styles
 .client-nojs .toc-mobile,
-.client-js .mw-redirectedfrom,
+.client-js .no-js-only,
 // FIXME: Use generic rule for print stylesheets
 .printfooter,
 .jsonly {
 	display: none;
 }
 
-/* TODO: Fix specificity */
-/* stylelint-disable no-descending-specificity */
+.no-js-only,
 .client-js .jsonly {
 	display: inherit;
 }
 
-/* stylelint-enable no-descending-specificity */
 .position-fixed {
 	// use !important to override more specific rules (e.g. in Overlay.less)
 	position: fixed !important;
+}
+
+.no-position-fixed {
+	.drawer {
+		bottom: 0;
+	}
+
+	.position-fixed {
+		position: absolute !important;
+	}
 }
 
 .touch-events {
@@ -76,10 +92,4 @@ textarea {
 // currently used to hide talk button
 .hidden {
 	display: none !important;
-}
-
-// We need to ensure the content has the chrome background - otherwise it will
-// overlap the menu during the main menu reveal/hide animation
-#mw-mf-page-center {
-	background-color: @chromeColor;
 }

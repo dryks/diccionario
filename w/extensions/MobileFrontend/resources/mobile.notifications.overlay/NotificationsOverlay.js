@@ -1,6 +1,5 @@
-( function ( M ) {
-	var Overlay = M.require( 'mobile.startup/Overlay' ),
-		util = M.require( 'mobile.startup/util' ),
+( function ( M, $ ) {
+	var Overlay = M.require( 'mobile.overlays/Overlay' ),
 		Anchor = M.require( 'mobile.startup/Anchor' ),
 		NotificationsOverlay;
 
@@ -9,76 +8,40 @@
 	 * @class NotificationsOverlay
 	 * @extend Overlay
 	 * @uses mw.Api
-	 *
-	 * @constructor
-	 * @param {Object} options Configuration options
 	 */
 	NotificationsOverlay = function ( options ) {
-		var modelManager, unreadCounter, wrapperWidget,
-			self = this,
+		var model, unreadCounter, wrapperWidget,
 			maxNotificationCount = mw.config.get( 'wgEchoMaxNotificationCount' ),
 			echoApi = new mw.echo.api.EchoApi();
 
 		Overlay.apply( this, options );
 
 		// Anchor tag that corresponds to a notifications badge
-		this.badge = options.badge;
-		this.$overlay = this.parseHTML( '<div>' )
+		this.$badge = options.$badge;
+		this.$overlay = $( '<div>' )
 			.addClass( 'notifications-overlay-overlay position-fixed' );
 
 		// On error use the url as a fallback
 		if ( options.error ) {
-			options.onError();
+			this.onError();
 			return;
 		}
 
-		mw.echo.config.maxPrioritizedActions = 1;
-
-		this.doneLoading = false;
-
 		unreadCounter = new mw.echo.dm.UnreadNotificationCounter( echoApi, 'all', maxNotificationCount );
-		modelManager = new mw.echo.dm.ModelManager( unreadCounter, { type: [ 'message', 'alert' ] } );
-		this.controller = new mw.echo.Controller(
+
+		model = new mw.echo.dm.NotificationsModel(
 			echoApi,
-			modelManager,
-			{
-				type: [ 'message', 'alert' ]
-			}
+			unreadCounter,
+			{ type: 'all' }
 		);
 
-		wrapperWidget = new mw.echo.ui.NotificationsWrapper( this.controller, modelManager, {
+		wrapperWidget = new mw.echo.ui.NotificationsWrapper( model, {
 			$overlay: this.$overlay
 		} );
-
-		// Mark all read
-		this.markAllReadButton = new OO.ui.ButtonWidget( {
-			icon: 'checkAll',
-			title: mw.msg( 'echo-mark-all-as-read' )
-		} );
-		this.markAllReadButton.toggle( false );
-		this.$( '.overlay-header' )
-			.append(
-				this.parseHTML( '<div>' )
-					.addClass( 'notifications-overlay-header-markAllRead' )
-					.append(
-						this.markAllReadButton.$element
-					)
-			);
-
-		// TODO: We should be using 'toast' (which uses mw.notify)
-		// when this bug is fixed: https://phabricator.wikimedia.org/T143837
-		this.confirmationWidget = new mw.echo.ui.ConfirmationPopupWidget();
-		this.$overlay.append( this.confirmationWidget.$element );
 
 		// Events
 		unreadCounter.connect( this, {
 			countChange: 'onUnreadCountChange'
-		} );
-		modelManager.connect( this, {
-			update: 'checkShowMarkAllRead'
-		} );
-		this.markAllReadButton.connect( this, {
-			click: 'onMarkAllReadButtonClick'
 		} );
 
 		// Initialize
@@ -88,23 +51,18 @@
 		);
 
 		// Populate notifications
-		wrapperWidget.populate().then( function () {
-			self.setDoneLoading();
-			self.controller.updateSeenTime();
-			self.badge.markAsSeen();
-			self.checkShowMarkAllRead();
-		} );
+		wrapperWidget.populate()
+			.then( model.updateSeenTime.bind( model, 'all' ) );
 	};
 
 	OO.mfExtend( NotificationsOverlay, Overlay, {
 		className: 'overlay notifications-overlay navigation-drawer',
-		isBorderBox: false,
 		/**
 		 * @inheritdoc
 		 * @cfg {Object} defaults Default options hash.
-		 * @cfg {string} defaults.heading Heading text.
+		 * @cfg {String} defaults.heading Heading text.
 		 */
-		defaults: util.extend( {}, Overlay.prototype.defaults, {
+		defaults: $.extend( {}, Overlay.prototype.defaults, {
 			heading: mw.msg( 'notifications' ),
 			footerAnchor: new Anchor( {
 				href: mw.util.getUrl( 'Special:Notifications' ),
@@ -114,65 +72,29 @@
 			} ).options
 		} ),
 		/**
-		 * Set done loading flag for notifications list
-		 *
+		 * Fall back to notifications archive page.
 		 * @method
 		 */
-		setDoneLoading: function () {
-			this.doneLoading = true;
-		},
-		/**
-		 * Check if notifications have finished loading
-		 *
-		 * @method
-		 * @return {boolean} Notifications list has finished loading
-		 */
-		isDoneLoading: function () {
-			return this.doneLoading;
-		},
-		/**
-		 * Toggle mark all read button
-		 *
-		 * @method
-		 */
-		checkShowMarkAllRead: function () {
-			this.markAllReadButton.toggle(
-				this.isDoneLoading() &&
-				this.controller.manager.hasLocalUnread()
-			);
-		},
-		/**
-		 * Respond to mark all read button click
-		 */
-		onMarkAllReadButtonClick: function () {
-			var overlay = this,
-				numNotifications = this.controller.manager.getLocalUnread().length;
-
-			this.controller.markLocalNotificationsRead()
-				.then( function () {
-					overlay.confirmationWidget.setLabel(
-						mw.msg( 'echo-mark-all-as-read-confirmation', numNotifications )
-					);
-					overlay.confirmationWidget.showAnimated();
-				} );
+		onError: function () {
+			window.location.href = this.$badge.attr( 'href' );
 		},
 		/**
 		 * Update the unread number on the notifications badge
 		 *
-		 * @param {number} count Number of unread notifications
+		 * @param {Number} count Number of unread notifications
 		 * @method
 		 */
 		onUnreadCountChange: function ( count ) {
-			this.badge.setCount(
-				this.controller.manager.getUnreadCounter().getCappedNotificationCount( count )
-			);
-
-			this.checkShowMarkAllRead();
+			var $badgeCounter = this.$badge.find( '.notification-count' );
+			if ( count > 0 ) {
+				$badgeCounter.text( count ).show();
+			} else {
+				$badgeCounter.hide();
+			}
 		},
-
 		/** @inheritdoc */
 		preRender: function () {
-			this.options.heading = '<strong>' + mw.message( 'notifications' ).escaped() + '</strong>';
+			this.options.heading = '<strong>' + mw.msg( 'notifications' ) + '</strong>';
 		},
 		/** @inheritdoc */
 		postRender: function () {
@@ -180,10 +102,12 @@
 
 			if ( this.options.notifications || this.options.errorMessage ) {
 				this.$( '.loading' ).remove();
+				// Reset the badge
+				this.markAsRead();
 			}
 		}
 	} );
 
 	M.define( 'mobile.notifications.overlay/NotificationsOverlay', NotificationsOverlay );
 
-}( mw.mobileFrontend ) );
+}( mw.mobileFrontend, jQuery ) );

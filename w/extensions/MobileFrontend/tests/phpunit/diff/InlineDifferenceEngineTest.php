@@ -36,7 +36,6 @@ END;
 	}
 
 	private function strip( $text ) {
-		// Windows, $@#!%#!
-		return str_replace( "\r", '', $text );
+		return str_replace( "\r", '', $text ); // Windows, $@#!%#!
 	}
 }

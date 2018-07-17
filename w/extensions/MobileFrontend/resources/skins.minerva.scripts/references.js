@@ -1,37 +1,32 @@
 ( function ( M, $ ) {
 	var drawer,
-		skin = M.require( 'skins.minerva.scripts/skin' ),
-		page = M.getCurrentPage(),
-		router = require( 'mediawiki.router' ),
-		util = M.require( 'mobile.startup/util' ),
-		ReferencesGateway = M.require( 'mobile.references.gateway/ReferencesGateway' ),
-		ReferencesMobileViewGateway = M.require(
-			'mobile.references.gateway/ReferencesMobileViewGateway'
-		),
-		referencesMobileViewGateway = ReferencesMobileViewGateway.getSingleton(),
-		ReferencesHtmlScraperGateway = M.require(
-			'mobile.references.gateway/ReferencesHtmlScraperGateway'
-		),
-		ReferencesDrawer = M.require( 'mobile.references/ReferencesDrawer' );
+		page = M.getCurrentPage();
 
 	/**
-	 * Creates a ReferenceDrawer based on the currently available
-	 * ReferenceGateway
+	 * Retrieves the references gateway module info to be used on the page from config
+	 *
+	 * @method
+	 * @ignore
+	 * @returns {String} name of the class implementing ReferenceGateway to use
+	 */
+	function getReferenceGatewayClassName() {
+		return mw.config.get( 'wgMFLazyLoadReferences', false ) ?
+			'ReferencesMobileViewGateway' : 'ReferencesHtmlScraperGateway';
+	}
+
+	/**
+	 * Creates a ReferenceDrawer based on the currently available ReferenceGateway
 	 *
 	 * @ignore
-	 * @return {ReferencesDrawer}
+	 * @returns {ReferencesDrawer}
 	 */
 	function referenceDrawerFactory() {
-		var gateway = null;
-
-		if ( mw.config.get( 'wgMFLazyLoadReferences', false ) ) {
-			gateway = referencesMobileViewGateway;
-		} else {
-			gateway = new ReferencesHtmlScraperGateway( new mw.Api() );
-		}
+		var gatewayClassName = getReferenceGatewayClassName(),
+			ReferencesGateway = M.require( 'mobile.references.gateway/' + gatewayClassName ),
+			ReferencesDrawer = M.require( 'mobile.references/ReferencesDrawer' );
 
 		return new ReferencesDrawer( {
-			gateway: gateway
+			gateway: new ReferencesGateway( new mw.Api() )
 		} );
 	}
 
@@ -40,34 +35,16 @@
 	 * @ignore
 	 * @param {jQuery.Event} ev Click event of the reference element
 	 * @param {ReferencesDrawer} drawer to show the reference in
-	 * @param {Page} page
 	 */
-	function showReference( ev, drawer, page ) {
-		var urlComponents, result,
-			$dest = $( ev.currentTarget ),
+	function showReference( ev, drawer ) {
+		var $dest = $( ev.target ),
 			href = $dest.attr( 'href' );
 
 		ev.preventDefault();
 
-		// If necessary strip the URL portion of the href so we are left with the
-		// fragment
-		urlComponents = href.split( '#' );
-		if ( urlComponents.length > 1 ) {
-			href = '#' + urlComponents[1];
-		}
-		result = drawer.showReference( href, page, $dest.text() );
-		// Previously showReference method returns nothing so we check its truthy
-		// Can be removed when I5a7b23f60722eb5017a85c68f38844dd460f8b63 is merged.
-		if ( result ) {
-			result.then( util.noop, function ( err ) {
-				if ( err === ReferencesGateway.ERROR_NOT_EXIST ) {
-					router.navigate( href );
-				}
-			} );
-		}
+		drawer.showReference( href, page, $dest.text() );
 
-		// don't hide drawer (stop propagation of click) if it is already shown
-		// (e.g. click another reference)
+		// don't hide drawer (stop propagation of click) if it is already shown (e.g. click another reference)
 		if ( drawer.isVisible() ) {
 			ev.stopPropagation();
 		} else {
@@ -75,6 +52,8 @@
 			drawer.render( {
 				text: undefined
 			} );
+			// use setTimeout so that browser calculates dimensions before show()
+			setTimeout( $.proxy( drawer, 'show' ), 0 );
 		}
 	}
 
@@ -89,7 +68,7 @@
 		if ( !drawer ) {
 			drawer = referenceDrawerFactory();
 		}
-		showReference( ev, drawer, ev.data.page );
+		showReference( ev, drawer );
 	}
 
 	/**
@@ -98,22 +77,20 @@
 	 * @param {Page} page
 	 */
 	function setup( page ) {
-		var $refs = page.$( 'sup.reference a' );
+		var $refs = page.$( 'sup a' );
 
 		if ( $refs.length ) {
 			$refs
 				.off( 'click' )
-				.on( 'click', {
-					page: page
-				}, onClickReference );
+				.on( 'click', onClickReference );
 			page.$( '.mw-cite-backlink a' )
 				.off( 'click' );
 		}
 	}
 
-	setup( page );
-	// When references are lazy loaded you'll want to take care of nested references
-	skin.on( 'references-loaded', function ( page ) {
+	// Setup
+	$( function () {
 		setup( page );
 	} );
+
 }( mw.mobileFrontend, jQuery ) );

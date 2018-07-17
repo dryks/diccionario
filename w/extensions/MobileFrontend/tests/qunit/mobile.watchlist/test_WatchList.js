@@ -1,7 +1,7 @@
 ( function ( $, M ) {
 
 	var WatchList = M.require( 'mobile.watchlist/WatchList' ),
-		user = M.require( 'mobile.startup/user' ),
+		user = M.require( 'mobile.user/user' ),
 		Icon = M.require( 'mobile.startup/Icon' ),
 		watchIcon = new Icon( {
 			name: 'watched'
@@ -26,7 +26,7 @@
 		}
 	} );
 
-	QUnit.test( 'In watched mode', function ( assert ) {
+	QUnit.test( 'In watched mode', 3, function ( assert ) {
 		var pl = new WatchList( {
 			api: new mw.Api(),
 			pages: [ {

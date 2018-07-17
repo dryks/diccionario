@@ -1,6 +1,6 @@
-@import 'mediawiki.mixins.less';
-@import 'minerva.variables.less';
-@import 'minerva.mixins.less';
+@import "mediawiki.mixins.less";
+@import "minerva.variables.less";
+@import "minerva.mixins.less";
 
 // Thumbnails
 //
@@ -13,41 +13,43 @@
 //
 // Styleguide 1.2.
 .content {
-	figure,
 	.thumb {
-		margin: 0.6em 0;
+		margin: .6em 0;
 
 		// Linker.php
 		.thumbinner {
 			margin: 0 auto;
 			// !important is needed because of Bug T87198 for example
 			max-width: 100% !important;
+
+			> div {
+				float: none !important;
+				width: auto !important;
+				clear: both !important;
+			}
+		}
+
+		/* bug 20030 */
+		.noresize {
+			width: 100%;
+			overflow-x: auto;
+
+			img {
+				max-width: none !important;
+			}
 		}
 	}
 
-	figcaption,
 	.thumbcaption {
-		margin: 0.5em 0 0;
-		font-size: 0.8em;
+		margin: .5em 0 0;
+		font-size: .8em;
 		line-height: 1.5;
 		padding: 0 !important;
 		color: @grayMediumDark;
-	}
-
-	.thumbcaption {
 		width: auto !important;
 	}
 
 	.thumbborder {
 		border: 1px solid @colorGray12;
-	}
-
-	// Hide the image magnification icon normally displayed in image captions
-	.magnify,
-	// Parsoid version of magnification icon (T160960)
-	figure[typeof*='mw:Image/Thumb'] > a:after,
-	figure[typeof*='mw:Video/Thumb'] > a:after,
-	figure[typeof*='mw:Audio/Thumb'] > a:after {
-		display: none;
 	}
 }

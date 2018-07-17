@@ -1,5 +1,5 @@
 ( function ( M ) {
-	var View = M.require( 'mobile.startup/View' ),
+	var View = M.require( 'mobile.view/View' ),
 		Icon = M.require( 'mobile.startup/Icon' );
 
 	/**
@@ -18,8 +18,8 @@
 		},
 		/**
 		 * @cfg {Object} defaults Default options hash.
-		 * @cfg {string} defaults.tocIcon HTML of the Table of Contents icon.
-		 * @cfg {string} defaults.contentsMsg TOC contents message.
+		 * @cfg {String} defaults.tocIcon HTML of the Table of Contents icon.
+		 * @cfg {String} defaults.contentsMsg TOC contents message.
 		 */
 		defaults: {
 			tocIcon: new Icon( {
@@ -33,5 +33,5 @@
 		template: mw.template.get( 'mobile.toc', 'toc.hogan' )
 	} );
 
-	M.define( 'mobile.toc/TableOfContents', TableOfContents ); // resource-modules-disable-line
+	M.define( 'mobile.toc/TableOfContents', TableOfContents );
 }( mw.mobileFrontend ) );

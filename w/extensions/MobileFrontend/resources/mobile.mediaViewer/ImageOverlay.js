@@ -1,6 +1,5 @@
-( function ( M ) {
-	var Overlay = M.require( 'mobile.startup/Overlay' ),
-		util = M.require( 'mobile.startup/util' ),
+( function ( M, $ ) {
+	var Overlay = M.require( 'mobile.overlays/Overlay' ),
 		Icon = M.require( 'mobile.startup/Icon' ),
 		Button = M.require( 'mobile.startup/Button' ),
 		ImageGateway = M.require( 'mobile.mediaViewer/ImageGateway' );
@@ -11,9 +10,6 @@
 	 * @extends Overlay
 	 * @uses Icon
 	 * @uses ImageGateway
-	 *
-	 * @constructor
-	 * @param {Object} options Configuration options
 	 */
 	function ImageOverlay( options ) {
 		this.gateway = new ImageGateway( {
@@ -25,7 +21,6 @@
 	OO.mfExtend( ImageOverlay, Overlay, {
 		// allow pinch zooming
 		hasFixedHeader: false,
-		hideOnExitClick: false,
 		className: 'overlay media-viewer',
 		template: mw.template.get( 'mobile.mediaViewer', 'Overlay.hogan' ),
 
@@ -33,16 +28,16 @@
 		 * @inheritdoc
 		 * @cfg {Object} defaults Default options hash.
 		 * @cfg {mw.Api} defaults.api instance of API to use
-		 * @cfg {string} defaults.cancelButton HTML of the cancel button.
+		 * @cfg {String} defaults.cancelButton HTML of the cancel button.
 		 * @cfg {Object} defaults.detailsButton options for details button
-		 * @cfg {string} defaults.licenseLinkMsg Link to license information in media viewer.
+		 * @cfg {String} defaults.licenseLinkMsg Link to license information in media viewer.
 		 * @cfg {Thumbnail[]} defaults.thumbnails a list of thumbnails to browse
 		 */
-		defaults: util.extend( {}, Overlay.prototype.defaults, {
+		defaults: $.extend( {}, Overlay.prototype.defaults, {
 			cancelButton: new Icon( {
 				tagName: 'button',
 				// Uses a dark theme so swap out the icon
-				name: 'overlay-close-gray',
+				name: 'close-gray',
 				additionalClassNames: 'cancel',
 				label: mw.msg( 'mobile-frontend-overlay-close' )
 			} ).toHtmlString(),
@@ -54,17 +49,15 @@
 			licenseLinkMsg: mw.msg( 'mobile-frontend-media-license-link' ),
 			thumbnails: [],
 			slideLeftButton: new Icon( {
-				rotation: 90,
-				name: 'arrow-invert'
+				name: 'previous-invert'
 			} ).toHtmlString(),
 			slideRightButton: new Icon( {
-				rotation: -90,
-				name: 'arrow-invert'
+				name: 'next-invert'
 			} ).toHtmlString()
 		} ),
 
 		/** @inheritdoc */
-		events: util.extend( {}, Overlay.prototype.events, {
+		events: $.extend( {}, Overlay.prototype.events, {
 			'click .image-wrapper': 'onToggleDetails',
 			// Click tracking for table of contents so we can see if people interact with it
 			'click .slider-button': 'onSlide'
@@ -74,13 +67,21 @@
 		 * @param {jQuery.Event} ev
 		 */
 		onSlide: function ( ev ) {
-			var nextThumbnail = this.$( ev.target ).closest( '.slider-button' ).data( 'thumbnail' );
-			this.emit( ImageOverlay.EVENT_SLIDE, nextThumbnail );
+			this.setNewImage(
+				$( ev.target ).closest( '.slider-button' ).data( 'thumbnail' )
+			);
+		},
+		/**
+		 * Replace the current image with a new one
+		 * @param {Thumbnail} thumbnail
+		 */
+		setNewImage: function ( thumbnail ) {
+			window.location.hash = '#/media/' + encodeURIComponent( thumbnail.getFileName() );
 		},
 		/** @inheritdoc */
 		preRender: function () {
 			var self = this;
-			this.options.thumbnails.forEach( function ( thumbnail, i ) {
+			$.each( this.options.thumbnails, function ( i, thumbnail ) {
 				if ( thumbnail.getFileName() === self.options.title ) {
 					self.options.caption = thumbnail.getDescription();
 					self.galleryOffset = i;
@@ -144,7 +145,7 @@
 				self.thumbWidth = data.thumbwidth;
 				self.thumbHeight = data.thumbheight;
 				self.imgRatio = data.thumbwidth / data.thumbheight;
-				$img = self.parseHTML( '<img>' ).attr( 'src', data.thumburl ).attr( 'alt', self.options.caption );
+				$img = $( '<img>' ).attr( 'src', data.thumburl ).attr( 'alt', self.options.caption );
 				self.$( '.image' ).append( $img );
 
 				if ( $img.prop( 'complete' ) ) {
@@ -174,22 +175,26 @@
 				self.adjustDetails();
 			} );
 
-			M.on( 'resize:throttled', this._positionImage.bind( this ) );
+			$( window ).on( 'resize', $.proxy( this, '_positionImage' ) );
 		},
 
 		/**
 		 * Event handler that toggles the details bar.
 		 */
 		onToggleDetails: function () {
-			this.$( '.cancel, .slider-button' ).toggle();
 			this.$details.toggle();
 			this._positionImage();
 		},
 
-		// fixme: remove this redundant function.
-		onExitClick: function ( ev ) {
-			Overlay.prototype.onExitClick.apply( this, arguments );
-			this.emit( ImageOverlay.EVENT_EXIT, ev );
+		/**
+		 * Close the overlay and prevent going back in browser's history
+		 * See T94188 & T94363.
+		 * @param {Object} ev Event Object
+		 */
+		onExit: function ( ev ) {
+			ev.preventDefault();
+			ev.stopPropagation();
+			window.location.hash = '';
 		},
 
 		/** @inheritdoc */
@@ -206,14 +211,12 @@
 		 * @private
 		 */
 		_positionImage: function () {
-			var detailsHeight, windowWidth, windowHeight, windowRatio, $img,
-				$window = util.getWindow();
-
+			var detailsHeight, windowWidth, windowHeight, windowRatio, $img;
 			this.adjustDetails();
 			// with a hidden details box we have a little bit more space, we just need to use it
 			detailsHeight = !this.$details.is( ':visible' ) ? 0 : this.$details.outerHeight();
-			windowWidth = $window.width();
-			windowHeight = $window.height() - detailsHeight;
+			windowWidth = $( window ).width();
+			windowHeight = $( window ).height() - detailsHeight;
 			windowRatio = windowWidth / windowHeight;
 			$img = this.$( 'img' );
 
@@ -232,7 +235,7 @@
 					} );
 				}
 			}
-			this.$( '.image-wrapper' ).css( 'bottom', detailsHeight );
+			$( '.image-wrapper' ).css( 'bottom', detailsHeight );
 		},
 
 		/**
@@ -240,17 +243,12 @@
 		 * @method
 		 */
 		adjustDetails: function () {
-			var windowHeight = util.getWindow().height();
+			var windowHeight = $( window ).height();
 			if ( this.$( '.details' ).height() > windowHeight * 0.50 ) {
 				this.$( '.details' ).css( 'max-height', windowHeight * 0.50 );
 			}
 		}
 	} );
-	// fixme: remove this redundant constant.
-	/** @ignore @event ImageOverlay#ImageOverlay-exit */
-	ImageOverlay.EVENT_EXIT = 'ImageOverlay-exit';
-	/** @ignore @event ImageOverlay#ImageOverlay-slide */
-	ImageOverlay.EVENT_SLIDE = 'ImageOverlay-slide';
-	M.define( 'mobile.mediaViewer/ImageOverlay', ImageOverlay ); // resource-modules-disable-line
+	M.define( 'mobile.mediaViewer/ImageOverlay', ImageOverlay );
 
-}( mw.mobileFrontend ) );
+}( mw.mobileFrontend, jQuery ) );

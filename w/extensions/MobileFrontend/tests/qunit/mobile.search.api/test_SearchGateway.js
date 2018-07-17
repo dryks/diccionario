@@ -43,7 +43,7 @@
 		}
 	} );
 
-	QUnit.test( '._highlightSearchTerm', function ( assert ) {
+	QUnit.test( '._highlightSearchTerm', 14, function ( assert ) {
 		var data,
 			gateway = this.gateway;
 
@@ -64,13 +64,13 @@
 			[ '<script>alert("FAIL")</script> should be safe',
 				'<script>alert("FAIL"', '<strong>&lt;script&gt;alert("FAIL"</strong>)&lt;/script&gt; should be safe' ]
 		];
-		data.forEach( function ( item, i ) {
+		$.each( data, function ( i, item ) {
 			assert.strictEqual( gateway._highlightSearchTerm( item[ 0 ], item[ 1 ] ), item[ 2 ], 'highlightSearchTerm test ' + i );
 		} );
 	} );
 
-	QUnit.test( 'show redirect targets', function ( assert ) {
-		return this.gateway.search( 'barack' ).then( function ( response ) {
+	QUnit.test( 'show redirect targets', 6, function ( assert ) {
+		this.gateway.search( 'barack' ).done( function ( response ) {
 			assert.strictEqual( response.query, 'barack' );
 			assert.strictEqual( response.results.length, 2 );
 			assert.strictEqual( response.results[ 0 ].displayTitle, 'Claude Monet' );
@@ -90,14 +90,18 @@
 							ns: 0,
 							title: 'Brad Pitt',
 							index: 2,
-							description: 'American actor'
+							terms: {
+								description: [ 'American actor' ]
+							}
 						},
 						4: {
 							pageid: 4,
 							ns: 0,
 							title: 'Bradley Cooper',
 							index: 3,
-							description: 'American actor and film producer'
+							terms: {
+								description: [ 'American actor and film producer' ]
+							}
 						},
 						5: {
 							pageid: 5,
@@ -112,10 +116,11 @@
 		}
 	} );
 
-	QUnit.test( 'Wikidata Description in search results', function ( assert ) {
+	QUnit.asyncTest( 'Wikidata Description in search results', 3, function ( assert ) {
 		var searchApi = new SearchGateway( new mw.Api() );
-		return searchApi.search( 'brad' ).then( function ( resp ) {
+		searchApi.search( 'brad' ).done( function ( resp ) {
 			var results = resp.results;
+			QUnit.start();
 			assert.ok(
 				results[0].wikidataDescription === undefined,
 				'Braddy does not have a Wikidata description.'

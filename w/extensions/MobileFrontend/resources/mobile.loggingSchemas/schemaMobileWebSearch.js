@@ -1,5 +1,5 @@
 ( function ( M ) {
-	var context = M.require( 'mobile.startup/context' ),
+	var context = M.require( 'mobile.context/context' ),
 		/*
 		 * MobileWebSearch schema
 		 * https://meta.wikimedia.org/wiki/Schema:MobileWebSearch
@@ -10,8 +10,8 @@
 			1 / 1000,
 			/**
 			 * @cfg {Object} defaults The options hash.
-			 * @cfg {string} defaults.platform Always "mobileweb"
-			 * @cfg {string} defaults.platformVersion The version of MobileFrontend
+			 * @cfg {String} defaults.platform Always "mobileweb"
+			 * @cfg {String} defaults.platformVersion The version of MobileFrontend
 			 *  that the user is using. One of "stable" or "beta"
 			 */
 			{

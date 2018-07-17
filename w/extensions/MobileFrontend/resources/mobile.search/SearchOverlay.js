@@ -1,13 +1,13 @@
-( function ( M ) {
+( function ( M, $ ) {
 
 	var
-		Overlay = M.require( 'mobile.startup/Overlay' ),
-		util = M.require( 'mobile.startup/util' ),
+		Overlay = M.require( 'mobile.overlays/Overlay' ),
 		Anchor = M.require( 'mobile.startup/Anchor' ),
 		Icon = M.require( 'mobile.startup/Icon' ),
 		WatchstarPageList = M.require( 'mobile.pagelist.scripts/WatchstarPageList' ),
 		SEARCH_DELAY = 300,
-		SEARCH_SPINNER_DELAY = 2000,
+		$html = $( 'html' ),
+		router = M.require( 'mobile.startup/router' ),
 		feedbackLink = mw.config.get( 'wgCirrusSearchFeedbackLink' );
 
 	/**
@@ -16,66 +16,61 @@
 	 * @extends Overlay
 	 * @uses SearchGateway
 	 * @uses Icon
-	 *
-	 * @constructor
-	 * @param {Object} options Configuration options
 	 */
 	function SearchOverlay( options ) {
+		var self = this;
 		Overlay.call( this, options );
 		this.api = options.api;
-		// eslint-disable-next-line new-cap
 		this.gateway = new options.gatewayClass( this.api );
 
-		this.router = options.router;
+		// FIXME: Remove when search registers route with overlay manager
+		// we need this because of the focus/delay hack in search.js
+		router.once( 'route', function () {
+			self._hideOnRoute();
+		} );
 	}
 
 	OO.mfExtend( SearchOverlay, Overlay, {
-		isBorderBox: false,
-		templatePartials: util.extend( {}, Overlay.prototype.templatePartials, {
-			header: mw.template.get( 'mobile.search', 'header.hogan' ),
-			content: mw.template.get( 'mobile.search', 'content.hogan' ),
+		templatePartials: $.extend( {}, Overlay.prototype.templatePartials, {
+			anchor: Anchor.prototype.template,
 			icon: Icon.prototype.template
 		} ),
 		className: 'overlay search-overlay',
+		template: mw.template.get( 'mobile.search', 'SearchOverlay.hogan' ),
 		/**
 		 * @inheritdoc
 		 * @cfg {Object} defaults Default options hash.
 		 * @cfg {SearchGateway} defaults.gatewayClass The class to use to setup an API gateway.
 		 *  FIXME: Should be removed when wikidata descriptions in stable (T101719)
-		 * @cfg {Router} defaults.router instance
 		 * @cfg {Object} defaults.clearIcon options for the button that clears the search text.
 		 * @cfg {Object} defaults.searchContentIcon options for the button that allows you to search within content
-		 * @cfg {string} defaults.searchTerm Search text.
-		 * @cfg {string} defaults.placeholderMsg Search input placeholder text.
-		 * @cfg {string} defaults.clearMsg Tooltip for clear button that appears when you type
+		 * @cfg {String} defaults.searchTerm Search text.
+		 * @cfg {String} defaults.placeholderMsg Search input placeholder text.
+		 * @cfg {String} defaults.clearMsg Tooltip for clear button that appears when you type
 		 * into search box.
-		 * @cfg {string} defaults.searchContentMsg Caption for a button performing full text
+		 * @cfg {String} defaults.searchContentMsg Caption for a button performing full text
 		 * search of a given search query.
-		 * @cfg {string} defaults.noResultsMsg Message informing user that no pages were found
+		 * @cfg {String} defaults.noResultsMsg Message informing user that no pages were found
 		 * for a given query.
-		 * @cfg {string} defaults.searchContentNoResultsMsg Used when no pages with matching
+		 * @cfg {String} defaults.searchContentNoResultsMsg Used when no pages with matching
 		 * titles were found.
-		 * @cfg {string} defaults.action The value of wgScript
+		 * @cfg {String} defaults.action The value of wgScript
 		 * @cfg {Object} defaults.feedback options for the feedback link below the search results
 		 */
-		defaults: util.extend( {}, Overlay.prototype.defaults, {
-			headerChrome: true,
+		defaults: $.extend( {}, Overlay.prototype.defaults, {
 			clearIcon: new Icon( {
 				tagName: 'button',
 				name: 'clear',
-				isSmall: true,
 				label: mw.msg( 'mobile-frontend-clear-search' ),
 				additionalClassNames: 'clear'
 			} ).options,
 			searchContentIcon: new Icon( {
-				tagName: 'a',
-				// When this icon is clicked we want to reset the hash for subsequent views
-				href: '#',
+				tagName: 'button',
 				name: 'search-content',
 				label: mw.msg( 'mobile-frontend-search-content' )
 			} ).options,
 			searchTerm: '',
-			placeholderMsg: '',
+			placeholderMsg: $( '#searchInput' ).attr( 'placeholder' ),
 			noResultsMsg: mw.msg( 'mobile-frontend-search-no-results' ),
 			searchContentNoResultsMsg: mw.msg( 'mobile-frontend-search-content-no-results' ),
 			action: mw.config.get( 'wgScript' ),
@@ -90,7 +85,7 @@
 		/**
 		 * @inheritdoc
 		 */
-		events: util.extend( {}, Overlay.prototype.events, {
+		events: $.extend( {}, Overlay.prototype.events, {
 			'input input': 'onInputInput',
 			'click .clear': 'onClickClear',
 			'click .search-content': 'onClickSearchContent',
@@ -102,38 +97,66 @@
 		} ),
 
 		/**
+		 * Hide self when the route is visited
+		 * @method
+		 * @private
+		 * FIXME: Remove when search registers route with overlay manager
+		 */
+		_hideOnRoute: function () {
+			var self = this;
+			router.once( 'route', function ( ev ) {
+				if ( !self.hide() ) {
+					ev.preventDefault();
+					self._hideOnRoute();
+				}
+			} );
+		},
+
+		/**
+		 * SearchOverlay is not managed by OverlayManager and using window.history.back() causes
+		 * problems described in T102946, i.e. the users should not be taken to the previous page
+		 * when landing on /wiki/Foo#/search directly. The overlay should just close.
+		 * @inheritdoc
+		 * @param {Object} ev Event Object
+		 */
+		onExit: function ( ev ) {
+			ev.preventDefault();
+			ev.stopPropagation();
+			this.hide();
+			window.location.hash = '';
+		},
+
+		/**
 		 * Make sure search header is docked to the top of the screen when the
 		 * user begins typing so that there is adequate space for search results
 		 * above the keyboard. (This is only a potential issue when sitenotices
 		 * are displayed.)
 		 */
 		onInputInput: function () {
+			this.$( '.overlay-header-container' ).css( 'top', 0 );
 			this.performSearch();
 			this.$clear.toggle( this.$input.val() !== '' );
 		},
 
 		/**
 		 * Initialize the button that clears the search field
-		 * @return {boolean} False to cancel the native event
 		 */
 		onClickClear: function () {
 			this.$input.val( '' ).focus();
 			this.performSearch();
 			this.$clear.hide();
-			// In beta the clear button is on top of the search input.
-			// Stop propagation so that the input doesn't receive the click.
-			return false;
 		},
 
 		/**
 		 * Initialize 'search within pages' functionality
 		 */
 		onClickSearchContent: function () {
-			var $el = util.getDocument().find( 'body' ),
-				$form = this.$( 'form' );
+			var $form = this.$( 'form' );
+
+			window.history.back();
 
 			// Add fulltext input to force fulltext search
-			this.parseHTML( '<input>' )
+			$( '<input>' )
 				.attr( {
 					type: 'hidden',
 					name: 'fulltext',
@@ -142,9 +165,9 @@
 				.appendTo( $form );
 			// history.back queues a task so might run after this call. Thus we use setTimeout
 			// http://www.w3.org/TR/2011/WD-html5-20110113/webappapis.html#queue-a-task
-			setTimeout( function () {
+			window.setTimeout( function () {
 				// Firefox doesn't allow submission of a form not in the DOM so temporarily re-add it
-				$form.appendTo( $el );
+				$form.appendTo( document.body );
 				$form.submit();
 			}, 0 );
 		},
@@ -178,7 +201,7 @@
 		 * @param {jQuery.Event} ev
 		 */
 		onClickResult: function ( ev ) {
-			var $link = this.$( ev.currentTarget ),
+			var $link = $( ev.currentTarget ),
 				$result = $link.closest( 'li' );
 
 			/**
@@ -186,11 +209,11 @@
 			 * @type {Object}
 			 * @property {jQuery.Object} result The jQuery-wrapped DOM element that
 			 *  the user clicked
-			 * @property {number} resultIndex The zero-based index of the
+			 * @property {Number} resultIndex The zero-based index of the
 			 *  result in the set of results
 			 * @property {jQuery.Event} originalEvent The original event
 			 */
-			this.emit( 'search-result-click', {
+			M.emit( 'search-result-click', {
 				result: $result,
 				resultIndex: this.$results.index( $result ),
 				originalEvent: ev
@@ -198,18 +221,21 @@
 
 			// FIXME: ugly hack that removes search from browser history when navigating to search results
 			ev.preventDefault();
-			this.router.back().done( function () {
-				// Router.navigate does not support changing href.
-				// FIXME: Needs upstream change T189173
-				// eslint-disable-next-line no-restricted-properties
+			router.back().done( function () {
 				window.location.href = $link.attr( 'href' );
 			} );
 		},
 
 		/** @inheritdoc */
 		postRender: function () {
-			var self = this,
-				timer;
+			var self = this;
+
+			// Make sure search overlay lines up with search header when the overlay is
+			// rendered. This is necessary to prevent bug 67140 while sitenotices are
+			// displayed.
+			this.$( '.overlay-header-container' ).css( 'top', $( '.header' ).offset().top );
+			// No search happening by default
+			this.$( '.spinner' ).hide();
 
 			Overlay.prototype.postRender.call( this );
 
@@ -217,28 +243,6 @@
 			this.$clear = this.$( '.clear' );
 			this.$searchContent = this.$( '.search-content' ).hide();
 			this.$searchFeedback = this.$( '.search-feedback' ).hide();
-			this.$resultContainer = this.$( '.results-list-container' );
-
-			/**
-			 * Hide the spinner and abort timed spinner shows.
-			 * @ignore
-			 */
-			function clearSearch() {
-				self.$spinner.hide();
-				clearTimeout( timer );
-			}
-
-			// Show a spinner on top of search results
-			this.$spinner = this.$( '.spinner-container' );
-			this.on( 'search-start', function ( searchData ) {
-				if ( timer ) {
-					clearSearch();
-				}
-				timer = setTimeout( function () {
-					self.$spinner.show();
-				}, SEARCH_SPINNER_DELAY - searchData.delay );
-			} );
-			this.on( 'search-results', clearSearch );
 
 			// Hide the clear button if the search input is empty
 			if ( self.$input.val() === '' ) {
@@ -246,30 +250,20 @@
 			}
 		},
 
-		/**
-		 * Trigger a focus() event on search input in order to
-		 * bring up the virtual keyboard.
-		 * @method
-		 */
-		showKeyboard: function () {
+		/** @inheritdoc */
+		show: function () {
 			var len = this.$input.val().length;
+			Overlay.prototype.show.apply( this, arguments );
 			this.$input.focus();
 			// Cursor to the end of the input
 			if ( this.$input[0].setSelectionRange ) {
 				this.$input[0].setSelectionRange( len, len );
 			}
-		},
 
-		/** @inheritdoc */
-		show: function () {
-			// Overlay#show defines the actual overlay visibility.
-			Overlay.prototype.show.apply( this, arguments );
-
-			this.showKeyboard();
 			/**
 			 * @event search-show Fired after the search overlay is shown
 			 */
-			this.emit( 'search-show' );
+			M.emit( 'search-show' );
 		},
 
 		/**
@@ -277,8 +271,7 @@
 		 * @inheritdoc
 		 */
 		hide: function () {
-			var self = this,
-				$html = util.getDocument();
+			var self = this;
 
 			if ( $html.hasClass( 'animations' ) ) {
 				self.$el.addClass( 'fade-out' );
@@ -301,8 +294,9 @@
 			var
 				self = this,
 				api = this.api,
+				pageList,
 				query = this.$input.val(),
-				delay = this.gateway.isCached( query ) ? 0 : SEARCH_DELAY;
+				$resultContainer = this.$( '.results' );
 
 			// it seems the input event can be fired when virtual keyboard is closed
 			// (Chrome for Android)
@@ -311,43 +305,43 @@
 					self._pendingQuery.abort();
 				}
 				clearTimeout( this.timer );
+				self.$searchContent.hide();
+				self.$searchFeedback.hide();
+				$resultContainer.empty();
 
 				if ( query.length ) {
-					this.timer = setTimeout( function () {
-						var xhr;
+					this.$( '.spinner' ).show();
 
+					this.timer = setTimeout( function () {
+
+						// FIXME: The query might be useful here, bit it ain't necessary right now.
 						/**
 						 * @event search-start Fired immediately before the search API request is
 						 *  sent
-						 * @property {Object} data related to the current search
 						 */
-						self.emit( 'search-start', {
-							query: query,
-							delay: delay
-						} );
+						M.emit( 'search-start' );
 
-						xhr = self.gateway.search( query );
-						self._pendingQuery = xhr.then( function ( data ) {
+						self._pendingQuery = self.gateway.search( query ).done( function ( data ) {
 							// check if we're getting the rights response in case of out of
 							// order responses (need to get the current value of the input)
-							if ( data && data.query === self.$input.val() ) {
+							if ( data.query === self.$input.val() ) {
 								self.$el.toggleClass( 'no-results', data.results.length === 0 );
+								self.$searchFeedback.show();
 								self.$searchContent
 									.show()
 									.find( 'p' )
 									.hide()
 									.filter( data.results.length ? '.with-results' : '.without-results' )
 									.show();
-
-								// eslint-disable-next-line no-new
-								new WatchstarPageList( {
+								self.$( '.spinner' ).hide();
+								pageList = new WatchstarPageList( {
 									api: api,
 									funnel: 'search',
 									pages: data.results,
-									el: self.$resultContainer
+									el: $resultContainer
 								} );
 
-								self.$results = self.$resultContainer.find( 'li' );
+								self.$results = $resultContainer.find( 'li' );
 
 								/**
 								 * @event search-results Fired when search API returns results
@@ -355,32 +349,21 @@
 								 * @property {Object[]} results The results returned by the search
 								 *  API
 								 */
-								self.emit( 'search-results', {
+								M.emit( 'search-results', {
 									results: data.results
 								} );
 							}
-						} ).promise( { abort: function () { xhr.abort(); } } );
-					}, delay );
+						} );
+					}, this.gateway.isCached( query ) ? 0 : SEARCH_DELAY );
 				} else {
-					self.resetSearch();
+					self.$( '.spinner' ).hide();
 				}
 
 				this.lastQuery = query;
 			}
-		},
-		/**
-		 * Clear results
-		 *
-		 * @private
-		 */
-		resetSearch: function () {
-			this.$spinner.hide();
-			this.$searchContent.hide();
-			this.$searchFeedback.hide();
-			this.$resultContainer.empty();
 		}
 	} );
 
-	M.define( 'mobile.search/SearchOverlay', SearchOverlay ); // resource-modules-disable-line
+	M.define( 'mobile.search/SearchOverlay', SearchOverlay );
 
-}( mw.mobileFrontend ) );
+}( mw.mobileFrontend, jQuery ) );

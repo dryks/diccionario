@@ -1,7 +1,5 @@
-( function ( M ) {
-	var sectionTemplate = mw.template.get( 'mobile.startup', 'Section.hogan' ),
-		util = M.require( 'mobile.startup/util' ),
-		cache = {};
+( function ( M, $ ) {
+	var sectionTemplate = mw.template.get( 'mobile.startup', 'Section.hogan' );
 
 	/**
 	 * Add child to listOfSections if the level of child is the same as the last
@@ -36,20 +34,19 @@
 	 * @private
 	 * @ignore
 	 * @param {Array} sections Array of section objects created from response HTML
-	 * @return {Array} Ordered array of sections
+	 * @returns {Array} Ordered array of sections
 	 */
 	function transformSections( sections ) {
-		var sectionLevels = sections.map( function ( s ) { return s.level; } ),
-			existingSectionLevels = sectionLevels.filter( function ( level ) {
-				return !!level;
-			} ),
-			collapseLevel = Math.min.apply( this, existingSectionLevels ).toString(),
+		var
+			collapseLevel = Math.min.apply( this, $.map( sections, function ( s ) {
+				return s.level;
+			} ) ).toString(),
 			lastSection,
 			result = [];
 
 		// if the first section level is not equal to collapseLevel, this first
 		// section will not have a parent and will be appended to the result.
-		sections.forEach( function ( section ) {
+		$.each( sections, function ( i, section ) {
 			if ( section.line !== undefined ) {
 				section.line = section.line.replace( /<\/?a\b[^>]*>/g, '' );
 			}
@@ -90,6 +87,7 @@
 	 */
 	function PageGateway( api ) {
 		this.api = api;
+		this.cache = {};
 	}
 
 	PageGateway.prototype = {
@@ -97,14 +95,13 @@
 		 * Retrieve a page from the api
 		 *
 		 * @method
-		 * @param {string} title the title of the page to be retrieved
-		 * @param {string} endpoint an alternative api url to retrieve the page from
-		 * @param {boolean} leadOnly When set only the lead section content is returned
+		 * @param {String} title the title of the page to be retrieved
+		 * @param {String} endpoint an alternative api url to retrieve the page from
+		 * @param {Boolean} leadOnly When set only the lead section content is returned
 		 * @return {jQuery.Deferred} with parameter page data that can be passed to a Page view
 		 */
 		getPage: function ( title, endpoint, leadOnly ) {
-			var timestamp,
-				d = util.Deferred(),
+			var page, timestamp,
 				options = endpoint ? {
 					url: endpoint,
 					dataType: 'jsonp'
@@ -113,23 +110,30 @@
 					edit: [ '*' ]
 				};
 
-			if ( !cache[title] ) {
-				cache[title] = this.api.get( {
+			if ( !this.cache[title] ) {
+				page = this.cache[title] = $.Deferred();
+				this.api.get( {
 					action: 'mobileview',
 					page: title,
 					variant: mw.config.get( 'wgPreferredVariant' ),
 					redirect: 'yes',
 					prop: 'id|sections|text|lastmodified|lastmodifiedby|languagecount|hasvariants|protection|displaytitle|revision',
 					noheadings: 'yes',
+					noimages: mw.config.get( 'wgImagesDisabled', false ) ? 1 : undefined,
 					sectionprop: 'level|line|anchor',
 					sections: leadOnly ? 0 : 'all'
-				}, options ).then( function ( resp ) {
+				}, options ).done( function ( resp ) {
 					var sections, lastModified, resolveObj, mv;
 
-					if ( resp.error ) {
-						return d.reject( resp.error );
-					} else if ( !resp.mobileview.sections ) {
-						return d.reject( 'No sections' );
+					if ( resp.error || !resp.mobileview.sections ) {
+						page.reject( resp );
+					// FIXME: [LQT] remove when liquid threads is dead (see Bug 51586)
+					} else if ( resp.mobileview.hasOwnProperty( 'liquidthreads' ) ) {
+						page.reject( {
+							error: {
+								code: 'lqt'
+							}
+						} );
 					} else {
 						mv = resp.mobileview;
 						sections = transformSections( mv.sections );
@@ -144,7 +148,7 @@
 						// no protection level. When an array this means there is no protection level set.
 						// So to keep the data type consistent either use the predefined protection level, or
 						// extend it with what is returned by API.
-						protection = Array.isArray( mv.protection ) ? protection : util.extend( protection, mv.protection );
+						protection = $.isArray( mv.protection ) ? protection : $.extend( protection, mv.protection );
 						resolveObj = {
 							title: title,
 							id: mv.id,
@@ -152,7 +156,7 @@
 							protection: protection,
 							lead: sections[0].text,
 							sections: sections.slice( 1 ),
-							isMainPage: mv.hasOwnProperty( 'mainpage' ),
+							isMainPage: mv.hasOwnProperty( 'mainpage' ) ? true : false,
 							historyUrl: mw.util.getUrl( title, {
 								action: 'history'
 							} ),
@@ -163,30 +167,28 @@
 						};
 						// Add non-anonymous user information
 						if ( lastModified ) {
-							util.extend( resolveObj, {
+							$.extend( resolveObj, {
 								lastModifiedUserName: lastModified.name,
 								lastModifiedUserGender: lastModified.gender
 							} );
 						}
 						// FIXME: Return a Page class here
-						return resolveObj;
+						page.resolve( resolveObj );
 					}
-				}, function ( msg ) {
-					return d.reject( msg );
-				} );
+				} ).fail( $.proxy( page, 'reject' ) );
 			}
 
-			return cache[title];
+			return this.cache[title];
 		},
 
 		/**
 		 * Invalidate the internal cache for a given page
 		 *
 		 * @method
-		 * @param {string} title the title of the page who's cache you want to invalidate
+		 * @param {String} title the title of the page who's cache you want to invalidate
 		 */
 		invalidatePage: function ( title ) {
-			delete cache[title];
+			delete this.cache[title];
 		},
 
 		/**
@@ -194,9 +196,9 @@
 		 *
 		 * @method
 		 * @private
-		 * @param  {string} title Name of the page to obtain variants for
+		 * @param  {String} title Name of the page to obtain variants for
 		 * @param  {Object} data Data from API
-		 * @return {Array|boolean} List of language variant objects or false if no variants exist
+		 * @return {Array|Boolean} List of language variant objects or false if no variants exist
 		 */
 		_getLanguageVariantsFromApiResponse: function ( title, data ) {
 			var generalData = data.query.general,
@@ -208,13 +210,11 @@
 			}
 
 			// Create the data object for each variant and store it
-			Object.keys( generalData.variants ).forEach( function ( index ) {
-				var item = generalData.variants[ index ],
-					variant = {
-						autonym: item.name,
-						lang: item.code
-					};
-
+			$.each( generalData.variants, function ( index, item ) {
+				var variant = {
+					autonym: item.name,
+					lang: item.code
+				};
 				if ( variantPath ) {
 					variant.url = variantPath
 						.replace( '$1', title )
@@ -234,38 +234,31 @@
 		 * Retrieve available languages for a given title
 		 *
 		 * @method
-		 * @param {string} title the title of the page languages should be retrieved for
-		 * @param {string} [language] when provided the names of the languages returned
-		 *  will be translated additionally into this language.
+		 * @param {String} title the title of the page languages should be retrieved for
 		 * @return {jQuery.Deferred} which is called with an object containing langlinks
-		 * and variant links as defined @ https://en.m.wikipedia.org/w/api.php?action=help&modules=query%2Blanglinks
+		 * and variant links
 		 */
-		getPageLanguages: function ( title, language ) {
+		getPageLanguages: function ( title ) {
 			var self = this,
-				args = {
+				result = $.Deferred();
+
+			this.api.get( {
 					action: 'query',
 					meta: 'siteinfo',
 					siprop: 'general',
 					prop: 'langlinks',
+					llprop: 'url|autonym',
 					lllimit: 'max',
 					titles: title,
 					formatversion: 2
-				};
+				} ).done( function ( resp ) {
+					result.resolve( {
+						languages: resp.query.pages[0].langlinks || [],
+						variants: self._getLanguageVariantsFromApiResponse( title, resp )
+					} );
+				} ).fail( $.proxy( result, 'reject' ) );
 
-			if ( language ) {
-				args.llprop = 'url|autonym|langname';
-				args.llinlanguagecode = language;
-			} else {
-				args.llprop = 'url|autonym';
-			}
-			return this.api.get( args ).then( function ( resp ) {
-				return {
-					languages: resp.query.pages[0].langlinks || [],
-					variants: self._getLanguageVariantsFromApiResponse( title, resp )
-				};
-			}, function () {
-				return util.Deferred().reject();
-			} );
+			return result;
 		},
 
 		/**
@@ -273,7 +266,7 @@
 		 * @method
 		 * @private
 		 * @param {jQuery.Object} $el object from which sections are extracted
-		 * @return {Array} Array of section objects created from headings in $el
+		 * @returns {Array} Array of section objects created from headings in $el
 		 * FIXME: Where's a better place for these two functions to live?
 		 */
 		_getAPIResponseFromHTML: function ( $el ) {
@@ -281,8 +274,8 @@
 				sections = [];
 
 			$headings.each( function () {
-				var level = this.tagName.substr( 1 ),
-					$span = $el.find( this ).find( '.mw-headline' );
+				var level = $( this )[0].tagName.substr( 1 ),
+					$span = $( this ).find( '.mw-headline' );
 
 				if ( $span.length ) {
 					sections.push( {
@@ -300,7 +293,7 @@
 		 * Order sections hierarchically
 		 * @method
 		 * @param {jQuery.Object} $el object from which sections are extracted
-		 * @return {Array} Ordered array of sections
+		 * @returns {Array} Ordered array of sections
 		 */
 		getSectionsFromHTML: function ( $el ) {
 			return transformSections( this._getAPIResponseFromHTML( $el ) );
@@ -308,4 +301,4 @@
 	};
 
 	M.define( 'mobile.startup/PageGateway', PageGateway );
-}( mw.mobileFrontend ) );
+}( mw.mobileFrontend, jQuery ) );

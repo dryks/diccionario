@@ -1,5 +1,5 @@
-@import 'mobile.variables';
-@import 'mediawiki.mixins.less';
+@import "minerva.variables";
+@import "minerva.mixins";
 
 // Pages
 //
@@ -36,9 +36,8 @@
 
 .list-header {
 	font-weight: bold;
-	font-size: 0.85em;
-	padding-top: 0.5em;
-	padding-bottom: 0.4em;
+	font-size: .85em;
+	padding: .5em @contentMargin .4em @contentMargin;
 	background-color: @grayLightest;
 	color: @grayMedium;
 }
@@ -49,7 +48,7 @@
 
 	&.list-thumb-none {
 		background-color: @grayLightest;
-		.background-image-svg-quick( 'noimage' );
+		.background-image-svg-quick('noimage');
 	}
 
 	&.list-thumb-x {
@@ -61,3 +60,8 @@
 	}
 }
 
+@media all and (min-width: @deviceWidthTablet) {
+	.list-header {
+		padding: .5em @contentPaddingTablet .4em @contentMargin;
+	}
+}

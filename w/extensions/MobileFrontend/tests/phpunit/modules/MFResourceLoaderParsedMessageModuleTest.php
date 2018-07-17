@@ -1,81 +1,77 @@
 <?php
 
-use MobileFrontend\ResourceLoaderModules\MFResourceLoaderParsedMessageModule;
-
 /**
  * @group MobileFrontend
  */
 class MFResourceLoaderParsedMessageModuleTest extends ResourceLoaderTestCase {
-	private $modules = [
-		[
-			'messages' => [ 'foo', 'bar' ],
-		],
-		[
-			'messages' => [
+	private $modules = array(
+		array(
+			'messages' => array( 'foo', 'bar' ),
+		),
+		array(
+			'messages' => array(
 				'foo',
-				'mobile-frontend-photo-license' => [ 'parse' ],
-			],
-		],
-		[
-			'messages' => [
+				'mobile-frontend-photo-license' => array( 'parse' ),
+			),
+		),
+		array(
+			'messages' => array(
 				'foo',
-				'mobile-frontend-photo-license' => [ 'unknown' ],
-			],
-		],
-	];
+				'mobile-frontend-photo-license' => array( 'unknown' ),
+			),
+		),
+	);
 
 	// providers
 	public function providerGetMessages() {
-		return [
-			[
+		return array(
+			array(
 				$this->modules[0],
-				[ 'foo', 'bar' ],
-			],
-			[
+				array( 'foo', 'bar' ),
+			),
+			array(
 				$this->modules[1],
-				[ 'foo' ],
-			],
-			[
+				array( 'foo' ),
+			),
+			array(
 				$this->modules[2],
-				[ 'foo' ],
-			],
-		];
+				array( 'foo' ),
+			),
+		);
 	}
 
 	public function providerAddParsedMessages() {
 		$html = wfMessage( 'mobile-frontend-photo-license' )->parse();
 		$expected = Xml::encodeJsCall( 'mw.messages.set',
-				[ [ 'mobile-frontend-photo-license' => $html ] ] );
+				array( array( 'mobile-frontend-photo-license' => $html ) ) );
 
-		return [
+		return array(
 			// test case 1
-			[
+			array(
 				$this->modules[0],
 				// expected value
 				''
-			],
+			),
 			// test case 2
-			[
+			array(
 				$this->modules[1],
 				// expected value 2
 				$expected
-			],
+			),
 			// test case 3
-			[
+			array(
 				$this->modules[2],
 				// expected value 2
 				''
-			],
-		];
+			),
+		);
 	}
 
 	// tests
 
 	/**
 	 * @dataProvider providerAddParsedMessages
-	 * @covers MobileFrontend\ResourceLoaderModules\MFResourceLoaderParsedMessageModule::addParsedMessages
-	 * @covers MobileFrontend\ResourceLoaderModules\MFResourceLoaderParsedMessageModule::processMessages
-	 * @covers MobileFrontend\ResourceLoaderModules\MFResourceLoaderParsedMessageModule::__construct
+	 * @covers MFResourceLoaderParsedMessageModule::addParsedMessages
 	 */
 	public function testAddParsedMessages( $module, $expectedJavascript ) {
 		$rl = new MFResourceLoaderParsedMessageModule( $module );
@@ -86,7 +82,7 @@ class MFResourceLoaderParsedMessageModuleTest extends ResourceLoaderTestCase {
 
 	/**
 	 * @dataProvider providerGetMessages
-	 * @covers MobileFrontend\ResourceLoaderModules\MFResourceLoaderParsedMessageModule::getMessages
+	 * @covers MFResourceLoaderParsedMessageModule::getMessages
 	 */
 	public function testGetMessages( $module, $expectedMessages ) {
 		$rl = new MFResourceLoaderParsedMessageModule( $module );

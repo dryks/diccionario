@@ -1,13 +1,10 @@
-( function ( M ) {
-	var IMAGE_WIDTH = mw.config.get( 'wgMFThumbnailSizes' ).small,
-		util = M.require( 'mobile.startup/util' );
+( function ( M, $ ) {
+	var IMAGE_WIDTH = mw.config.get( 'wgMFThumbnailSizes' ).small;
 
 	/**
 	 * API for retrieving gallery photos
 	 * @class PhotoListApi
-	 *
-	 * @constructor
-	 * @param {Object} options Configuration options
+	 * @param {Object} options
 	 * @param {mw.Api} options.api
 	 */
 	function PhotoListGateway( options ) {
@@ -16,7 +13,7 @@
 		this.category = options.category;
 		this.limit = 10;
 		this.continueParams = {
-			'continue': ''
+			continue: ''
 		};
 		this.canContinue = true;
 	}
@@ -29,11 +26,11 @@
 		 * date suffix in format YYYY-MM-DD HH-MM
 		 * @method
 		 * @private
-		 * @param {string} title Title of file
-		 * @return {string} Description for file
+		 * @param {String} title Title of file
+		 * @return {String} Description for file
 		 */
 		_getDescription: function ( title ) {
-			title = title.replace( /\.[^. ]+$/, '' ); // replace filename suffix
+			title = title.replace( /\.[^\. ]+$/, '' ); // replace filename suffix
 			// strip namespace: prefix and date suffix from remainder
 			return title.replace( /^[^:]*:/, '' )
 				.replace( / \d{4}-\d{1,2}-\d{1,2} \d{1,2}-\d{1,2}$/, '' );
@@ -41,7 +38,6 @@
 		/**
 		 * Returns the value in pixels of a medium thumbnail
 		 * @method
-		 * @return {number}
 		 */
 		getWidth: function () {
 			return IMAGE_WIDTH;
@@ -69,7 +65,7 @@
 		 * @return {Object}
 		 */
 		getQuery: function () {
-			var query = util.extend( {
+			var query = $.extend( {
 				action: 'query',
 				prop: 'imageinfo',
 				// FIXME: [API] have to request timestamp since api returns an object
@@ -79,7 +75,7 @@
 			}, this.continueParams );
 
 			if ( this.username ) {
-				util.extend( query, {
+				$.extend( query, {
 					generator: 'allimages',
 					gaiuser: this.username,
 					gaisort: 'timestamp',
@@ -87,7 +83,7 @@
 					gailimit: this.limit
 				} );
 			} else if ( this.category ) {
-				util.extend( query, {
+				$.extend( query, {
 					generator: 'categorymembers',
 					gcmtitle: 'Category:' + this.category,
 					gcmtype: 'file',
@@ -104,34 +100,39 @@
 		 * @return {jQuery.Deferred} where parameter is a list of JavaScript objects describing an image.
 		 */
 		getPhotos: function () {
-			var self = this;
+			var self = this,
+				result = $.Deferred();
 
-			return this.api.ajax( this.getQuery() ).then( function ( resp ) {
-				var photos = [];
-				if ( resp.query && resp.query.pages ) {
-					// FIXME: [API] in an ideal world imageData would be a sorted array
-					// but it is a map of {[id]: page}
-					photos = Object.keys( resp.query.pages ).map( function ( id ) {
-						return self._getImageDataFromPage( resp.query.pages[id] );
-					} ).sort( function ( a, b ) {
-						return a.timestamp < b.timestamp ? 1 : -1;
-					} );
-				}
+			if ( this.canContinue === true ) {
+				this.api.ajax( this.getQuery() ).done( function ( resp ) {
+					var photos;
+					if ( resp.query && resp.query.pages ) {
+						// FIXME: [API] in an ideal world imageData would be a sorted array
+						photos = $.map( resp.query.pages, function ( page ) {
+								return self._getImageDataFromPage.call( self, page );
+							} ).sort( function ( a, b ) {
+								return a.timestamp < b.timestamp ? 1 : -1;
+							} );
 
-				if ( resp.hasOwnProperty( 'continue' ) ) {
-					self.continueParams = resp.continue;
-				} else {
-					self.canContinue = false;
-				}
+						if ( resp.hasOwnProperty( 'continue' ) ) {
+							self.continueParams = resp.continue;
+						} else {
+							self.canContinue = false;
+						}
 
-				return {
-					canContinue: self.canContinue,
-					// FIXME: Should reply with a list of PhotoItem or Photo classes.
-					photos: photos
-				};
-			} );
+						// FIXME: Should reply with a list of PhotoItem or Photo classes.
+						result.resolve( photos );
+					} else {
+						result.resolve( [] );
+					}
+				} ).fail( $.proxy( result, 'reject' ) );
+			} else {
+				result.resolve( [] );
+			}
+
+			return result;
 		}
 	};
 
 	M.define( 'mobile.gallery/PhotoListGateway', PhotoListGateway );
-}( mw.mobileFrontend ) );
+}( mw.mobileFrontend, jQuery ) );

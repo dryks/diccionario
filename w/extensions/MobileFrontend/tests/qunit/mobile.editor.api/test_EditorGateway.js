@@ -24,7 +24,7 @@
 		}
 	} );
 
-	QUnit.test( '#getContent (no section)', function ( assert ) {
+	QUnit.test( '#getContent (no section)', 1, function ( assert ) {
 		var gateway = new EditorGateway( {
 			api: new mw.Api(),
 			title: 'MediaWiki:Test.css'
@@ -38,48 +38,38 @@
 			titles: 'MediaWiki:Test.css',
 			meta: 'userinfo',
 			uiprop: 'blockinfo',
-			list: 'blocks',
-			bkusers: mw.user.getName(),
-			bkprop: 'flags',
 			formatversion: 2
 		} ), 'rvsection not passed to api request' );
 	} );
 
-	QUnit.test( '#getContent', function ( assert ) {
-		var gateway,
-			spy = this.spy;
-
-		gateway = new EditorGateway( {
+	QUnit.test( '#getContent', 2, function ( assert ) {
+		var gateway = new EditorGateway( {
 			api: new mw.Api(),
 			title: 'test',
 			sectionId: 1
 		} );
 
-		return gateway.getContent().done( function ( resp ) {
-			assert.strictEqual( resp.text, 'section', 'return section content' );
-			return gateway.getContent();
-		} ).then( function () {
-			assert.ok( spy.calledOnce, 'cache content' );
+		gateway.getContent().done( function ( resp ) {
+			assert.strictEqual( resp, 'section', 'return section content' );
 		} );
+		gateway.getContent();
+		assert.ok( this.spy.calledOnce, 'cache content' );
 	} );
 
-	QUnit.test( '#getContent, new page', function ( assert ) {
-		var gateway,
-			spy = this.spy;
-
-		gateway = new EditorGateway( {
+	QUnit.test( '#getContent, new page', 2, function ( assert ) {
+		var gateway = new EditorGateway( {
 			api: new mw.Api(),
 			title: 'test',
 			isNewPage: true
 		} );
 
-		return gateway.getContent().done( function ( resp ) {
-			assert.strictEqual( resp.text, '', 'return empty section' );
-			assert.ok( !spy.called, 'don\'t try to retrieve content using API' );
+		gateway.getContent().done( function ( resp ) {
+			assert.strictEqual( resp, '', 'return empty section' );
 		} );
+		assert.ok( !this.spy.called, 'don\'t try to retrieve content using API' );
 	} );
 
-	QUnit.test( '#getContent, missing section', function ( assert ) {
+	QUnit.test( '#getContent, missing section', 2, function ( assert ) {
 		var gateway = new EditorGateway( {
 				api: new mw.Api(),
 				title: 'test',
@@ -100,7 +90,7 @@
 		assert.ok( !doneSpy.called, 'don\'t call done' );
 	} );
 
-	QUnit.test( '#save, success', function ( assert ) {
+	QUnit.test( '#save, success', 3, function ( assert ) {
 		var postStub,
 			gateway = new EditorGateway( {
 				api: new mw.Api(),
@@ -116,15 +106,12 @@
 			}
 		) );
 
-		return gateway.getContent().then( function () {
-			gateway.setContent( 'section 1' );
-			assert.strictEqual( gateway.hasChanged, true, 'hasChanged is true' );
-		} ).then( function () {
-			return gateway.save( {
-				summary: 'summary'
-			} );
-		} ).then( function () {
-			assert.strictEqual( gateway.hasChanged, false, 'reset hasChanged' );
+		gateway.getContent();
+		gateway.setContent( 'section 1' );
+		assert.strictEqual( gateway.hasChanged, true, 'hasChanged is true' );
+		gateway.save( {
+			summary: 'summary'
+		} ).done( function () {
 			assert.ok( postStub.calledWith( {
 				action: 'edit',
 				title: 'test',
@@ -138,9 +125,10 @@
 				starttimestamp: '2013-05-15T00:30:26Z'
 			} ), 'save first section' );
 		} );
+		assert.strictEqual( gateway.hasChanged, false, 'reset hasChanged' );
 	} );
 
-	QUnit.test( '#save, new page', function ( assert ) {
+	QUnit.test( '#save, new page', 2, function ( assert ) {
 		var postStub,
 			gateway = new EditorGateway( {
 				api: new mw.Api(),
@@ -158,10 +146,9 @@
 
 		gateway.getContent();
 		gateway.setContent( 'section 0' );
-		return gateway.save( {
+		gateway.save( {
 			summary: 'summary'
-		} ).then( function () {
-			assert.strictEqual( gateway.hasChanged, false, 'reset hasChanged' );
+		} ).done( function () {
 			assert.ok( postStub.calledWith( {
 				action: 'edit',
 				title: 'Talk:test',
@@ -174,9 +161,10 @@
 				starttimestamp: undefined
 			} ), 'save lead section' );
 		} );
+		assert.strictEqual( gateway.hasChanged, false, 'reset hasChanged' );
 	} );
 
-	QUnit.test( '#save, after #setPrependText', function ( assert ) {
+	QUnit.test( '#save, after #setPrependText', 2, function ( assert ) {
 		var postStub,
 			gateway = new EditorGateway( {
 				api: new mw.Api(),
@@ -192,10 +180,9 @@
 		) );
 
 		gateway.setPrependText( 'abc' );
-		return gateway.save( {
+		gateway.save( {
 			summary: 'summary'
-		} ).then( function () {
-			assert.strictEqual( gateway.hasChanged, false, 'reset hasChanged' );
+		} ).done( function () {
 			assert.ok( postStub.calledWith( {
 				action: 'edit',
 				title: 'test',
@@ -208,9 +195,10 @@
 				starttimestamp: undefined
 			} ), 'prepend text' );
 		} );
+		assert.strictEqual( gateway.hasChanged, false, 'reset hasChanged' );
 	} );
 
-	QUnit.test( '#save, submit CAPTCHA', function ( assert ) {
+	QUnit.test( '#save, submit CAPTCHA', 2, function ( assert ) {
 		var postStub,
 			gateway = new EditorGateway( {
 				api: new mw.Api(),
@@ -226,16 +214,13 @@
 			}
 		) );
 
-		return gateway.getContent().then( function () {
-			gateway.setContent( 'section 1' );
-		} ).then( function () {
-			return gateway.save( {
-				summary: 'summary',
-				captchaId: 123,
-				captchaWord: 'abc'
-			} );
-		} ).then( function () {
-			assert.strictEqual( gateway.hasChanged, false, 'reset hasChanged' );
+		gateway.getContent();
+		gateway.setContent( 'section 1' );
+		gateway.save( {
+			summary: 'summary',
+			captchaId: 123,
+			captchaWord: 'abc'
+		} ).done( function () {
 			assert.ok( postStub.calledWith( {
 				action: 'edit',
 				title: 'test',
@@ -249,43 +234,40 @@
 				starttimestamp: '2013-05-15T00:30:26Z'
 			} ), 'save first section' );
 		} );
+		assert.strictEqual( gateway.hasChanged, false, 'reset hasChanged' );
 	} );
 
-	QUnit.test( '#save, request failure', function ( assert ) {
+	QUnit.test( '#save, request failure', 2, function ( assert ) {
 		var gateway = new EditorGateway( {
 				api: new mw.Api(),
 				title: 'test',
 				sectionId: 1
 			} ),
 			doneSpy = this.sandbox.spy(),
-			failSpy = this.sandbox.spy(),
-			done = $.Deferred();
+			failSpy = this.sandbox.spy();
 
 		this.sandbox.stub( mw.Api.prototype, 'post' ).returns( $.Deferred().reject() );
 
-		gateway.getContent().then( function () {
-			gateway.setContent( 'section 1' );
-			return gateway.save();
-		} ).done( doneSpy ).fail( failSpy ).always( function () {
-			assert.ok( failSpy.calledWith( {
-				type: 'error',
-				details: 'http'
-			} ), 'call fail' );
-			assert.ok( !doneSpy.called, 'don\'t call done' );
-			done.resolve();
-		} );
-		return done;
+		gateway.getContent();
+		gateway.setContent( 'section 1' );
+
+		gateway.save().done( doneSpy ).fail( failSpy );
+
+		assert.ok( failSpy.calledWith( {
+			type: 'error',
+			details: 'http'
+		} ), 'call fail' );
+		assert.ok( !doneSpy.called, 'don\'t call done' );
 	} );
 
-	QUnit.test( '#save, API failure', function ( assert ) {
+	QUnit.test( '#save, API failure', 2, function ( assert ) {
 		var gateway = new EditorGateway( {
 				api: new mw.Api(),
 				title: 'test',
 				sectionId: 1
 			} ),
 			doneSpy = this.sandbox.spy(),
-			failSpy = this.sandbox.spy(),
-			done = $.Deferred();
+			failSpy = this.sandbox.spy();
 
 		this.sandbox.stub( mw.Api.prototype, 'post' ).returns( $.Deferred().resolve(
 			{
@@ -295,22 +277,19 @@
 			}
 		) );
 
-		gateway.getContent().done( function () {
-			gateway.setContent( 'section 1' );
-			gateway.save().done( doneSpy ).fail( failSpy ).always( function () {
-				assert.ok( failSpy.calledWith( {
-					type: 'error',
-					details: 'error code'
-				} ), 'call fail' );
-				assert.ok( !doneSpy.called, 'don\'t call done' );
-				done.resolve();
-			} );
-		} );
+		gateway.getContent();
+		gateway.setContent( 'section 1' );
 
-		return done;
+		gateway.save().done( doneSpy ).fail( failSpy );
+
+		assert.ok( failSpy.calledWith( {
+			type: 'error',
+			details: 'error code'
+		} ), 'call fail' );
+		assert.ok( !doneSpy.called, 'don\'t call done' );
 	} );
 
-	QUnit.test( '#save, CAPTCHA response with image URL', function ( assert ) {
+	QUnit.test( '#save, CAPTCHA response with image URL', 2, function ( assert ) {
 		var gateway = new EditorGateway( {
 				api: new mw.Api(),
 				title: 'test',
@@ -323,8 +302,7 @@
 				url: '/w/index.php?title=Especial:Captcha/image&wpCaptchaId=1852528679'
 			},
 			doneSpy = this.sandbox.spy(),
-			failSpy = this.sandbox.spy(),
-			done = $.Deferred();
+			failSpy = this.sandbox.spy();
 
 		this.sandbox.stub( mw.Api.prototype, 'post' ).returns( $.Deferred().resolve( {
 			edit: {
@@ -335,26 +313,24 @@
 
 		gateway.getContent();
 		gateway.setContent( 'section 1' );
-		gateway.save().done( doneSpy ).fail( failSpy ).always( function () {
-			assert.ok( failSpy.calledWith( {
-				type: 'captcha',
-				details: captcha
-			} ), 'call fail' );
-			assert.ok( !doneSpy.called, 'don\'t call done' );
-			done.resolve();
-		} );
-		return done;
+
+		gateway.save().done( doneSpy ).fail( failSpy );
+
+		assert.ok( failSpy.calledWith( {
+			type: 'captcha',
+			details: captcha
+		} ), 'call fail' );
+		assert.ok( !doneSpy.called, 'don\'t call done' );
 	} );
 
-	QUnit.test( '#save, AbuseFilter warning', function ( assert ) {
+	QUnit.test( '#save, AbuseFilter warning', 2, function ( assert ) {
 		var gateway = new EditorGateway( {
 				api: new mw.Api(),
 				title: 'test',
 				sectionId: 1
 			} ),
 			doneSpy = this.sandbox.spy(),
-			failSpy = this.sandbox.spy(),
-			done = $.Deferred();
+			failSpy = this.sandbox.spy();
 
 		this.sandbox.stub( mw.Api.prototype, 'post' ).returns( $.Deferred().resolve( {
 			edit: {
@@ -367,29 +343,27 @@
 
 		gateway.getContent();
 		gateway.setContent( 'section 1' );
-		gateway.save().done( doneSpy ).fail( failSpy ).always( function () {
-			assert.ok( failSpy.calledWith( {
-				type: 'abusefilter',
-				details: {
-					type: 'warning',
-					message: 'horrible desktop-formatted message'
-				}
-			} ), 'call fail with type and message' );
-			assert.ok( !doneSpy.called, 'don\'t call done' );
-			done.resolve();
-		} );
-		return done;
+
+		gateway.save().done( doneSpy ).fail( failSpy );
+
+		assert.ok( failSpy.calledWith( {
+			type: 'abusefilter',
+			details: {
+				type: 'warning',
+				message: 'horrible desktop-formatted message'
+			}
+		} ), 'call fail with type and message' );
+		assert.ok( !doneSpy.called, 'don\'t call done' );
 	} );
 
-	QUnit.test( '#save, AbuseFilter disallow', function ( assert ) {
+	QUnit.test( '#save, AbuseFilter disallow', 2, function ( assert ) {
 		var gateway = new EditorGateway( {
 				api: new mw.Api(),
 				title: 'test',
 				sectionId: 1
 			} ),
 			doneSpy = this.sandbox.spy(),
-			failSpy = this.sandbox.spy(),
-			done = $.Deferred();
+			failSpy = this.sandbox.spy();
 
 		this.sandbox.stub( mw.Api.prototype, 'post' ).returns( $.Deferred().resolve( {
 			edit: {
@@ -400,34 +374,29 @@
 			}
 		} ) );
 
-		gateway.getContent().then( function () {
-			return gateway.setContent( 'section 1' );
-		} ).then( function () {
-			gateway.save().done( doneSpy ).fail( failSpy ).always( function () {
-				assert.ok( failSpy.calledWith( {
-					type: 'abusefilter',
-					details: {
-						type: 'disallow',
-						message: 'horrible desktop-formatted message'
-					}
-				} ), 'call fail with type and message' );
-				assert.ok( !doneSpy.called, 'don\'t call done' );
-				done.resolve();
-			} );
-		} );
+		gateway.getContent();
+		gateway.setContent( 'section 1' );
 
-		return done;
+		gateway.save().done( doneSpy ).fail( failSpy );
+
+		assert.ok( failSpy.calledWith( {
+			type: 'abusefilter',
+			details: {
+				type: 'disallow',
+				message: 'horrible desktop-formatted message'
+			}
+		} ), 'call fail with type and message' );
+		assert.ok( !doneSpy.called, 'don\'t call done' );
 	} );
 
-	QUnit.test( '#save, AbuseFilter other', function ( assert ) {
+	QUnit.test( '#save, AbuseFilter other', 2, function ( assert ) {
 		var gateway = new EditorGateway( {
 				api: new mw.Api(),
 				title: 'test',
 				sectionId: 1
 			} ),
 			doneSpy = this.sandbox.spy(),
-			failSpy = this.sandbox.spy(),
-			done = $.Deferred();
+			failSpy = this.sandbox.spy();
 
 		this.sandbox.stub( mw.Api.prototype, 'post' ).returns( $.Deferred().resolve( {
 			edit: {
@@ -440,29 +409,27 @@
 
 		gateway.getContent();
 		gateway.setContent( 'section 1' );
-		gateway.save().done( doneSpy ).fail( failSpy ).always( function () {
-			assert.ok( failSpy.calledWith( {
-				type: 'abusefilter',
-				details: {
-					type: 'other',
-					message: 'horrible desktop-formatted message'
-				}
-			} ), 'call fail with type and message' );
-			assert.ok( !doneSpy.called, 'don\'t call done' );
-			done.resolve();
-		} );
-		return done;
+
+		gateway.save().done( doneSpy ).fail( failSpy );
+
+		assert.ok( failSpy.calledWith( {
+			type: 'abusefilter',
+			details: {
+				type: 'other',
+				message: 'horrible desktop-formatted message'
+			}
+		} ), 'call fail with type and message' );
+		assert.ok( !doneSpy.called, 'don\'t call done' );
 	} );
 
-	QUnit.test( '#save, extension errors', function ( assert ) {
+	QUnit.test( '#save, extension errors', 2, function ( assert ) {
 		var gateway = new EditorGateway( {
 				api: new mw.Api(),
 				title: 'test',
 				sectionId: 1
 			} ),
 			doneSpy = this.sandbox.spy(),
-			failSpy = this.sandbox.spy(),
-			done = $.Deferred();
+			failSpy = this.sandbox.spy();
 
 		this.sandbox.stub( mw.Api.prototype, 'post' ).returns( $.Deferred().resolve( {
 			edit: {
@@ -471,30 +438,25 @@
 			}
 		} ) );
 
-		gateway.getContent().then( function () {
-			return gateway.setContent( 'section 1' );
-		} ).then( function () {
-			gateway.save().done( doneSpy ).fail( failSpy ).always( function () {
-				assert.ok( failSpy.calledWith( {
-					type: 'error',
-					details: 'testerror'
-				} ), 'call fail with code' );
-				assert.ok( !doneSpy.called, 'don\'t call done' );
-				done.resolve();
-			} );
-		} );
+		gateway.getContent();
+		gateway.setContent( 'section 1' );
 
-		return done;
+		gateway.save().done( doneSpy ).fail( failSpy );
+
+		assert.ok( failSpy.calledWith( {
+			type: 'error',
+			details: 'testerror'
+		} ), 'call fail with code' );
+		assert.ok( !doneSpy.called, 'don\'t call done' );
 	} );
 
-	QUnit.test( '#save, unknown errors', function ( assert ) {
+	QUnit.test( '#save, unknown errors', 2, function ( assert ) {
 		var gateway = new EditorGateway( {
 				api: new mw.Api(),
 				title: 'test',
 				sectionId: 1
 			} ),
 			doneSpy = this.sandbox.spy(),
-			done = $.Deferred(),
 			failSpy = this.sandbox.spy();
 
 		this.sandbox.stub( mw.Api.prototype, 'post' ).returns( $.Deferred().resolve( {} ) );
@@ -502,18 +464,16 @@
 		gateway.getContent();
 		gateway.setContent( 'section 1' );
 
-		gateway.save().done( doneSpy ).fail( failSpy ).always( function () {
-			assert.ok( failSpy.calledWith( {
-				type: 'error',
-				details: 'unknown'
-			} ), 'call fail with unknown' );
-			assert.ok( !doneSpy.called, 'don\'t call done' );
-			done.resolve();
-		} );
-		return done;
+		gateway.save().done( doneSpy ).fail( failSpy );
+
+		assert.ok( failSpy.calledWith( {
+			type: 'error',
+			details: 'unknown'
+		} ), 'call fail with unknown' );
+		assert.ok( !doneSpy.called, 'don\'t call done' );
 	} );
 
-	QUnit.test( '#save, without changes', function ( assert ) {
+	QUnit.test( '#save, without changes', 2, function ( assert ) {
 		var postStub,
 			gateway = new EditorGateway( {
 				api: new mw.Api(),
@@ -529,14 +489,12 @@
 			}
 		) );
 
-		return gateway.getContent().then( function () {
-			return gateway.setContent( 'section' );
-		} ).then( function () {
-			assert.strictEqual( gateway.hasChanged, false, 'hasChanged is false' );
-			return gateway.save( {
-				summary: 'summary'
-			} );
-		} ).then( function () {
+		gateway.getContent();
+		gateway.setContent( 'section' );
+		assert.strictEqual( gateway.hasChanged, false, 'hasChanged is false' );
+		gateway.save( {
+			summary: 'summary'
+		} ).done( function () {
 			assert.ok( postStub.calledWith( {
 				action: 'edit',
 				title: 'test',
@@ -552,7 +510,7 @@
 		} );
 	} );
 
-	QUnit.test( '#EditorGateway', function ( assert ) {
+	QUnit.test( '#EditorGateway', 2, function ( assert ) {
 		var gateway = new EditorGateway( {
 				api: new mw.Api(),
 				title: 'Test',
@@ -577,13 +535,10 @@
 		assert.ok( postStub.calledWithMatch( {
 			text: 'test content'
 		} ) );
-		assert.ok( doneSpy.calledWith( {
-			line: '',
-			text: '<h1>Heading 1</h1><h2>Heading 2</h2><p>test content</p>'
-		} ) );
+		assert.ok( doneSpy.calledWith( '<h1>Heading 1</h1><h2>Heading 2</h2><p>test content</p>' ) );
 	} );
 
-	QUnit.test( '#EditorGateway, check without sectionLine', function ( assert ) {
+	QUnit.test( '#EditorGateway, check without sectionLine', 1, function ( assert ) {
 		var gateway = new EditorGateway( {
 			api: new mw.Api(),
 			title: 'Test',
@@ -599,14 +554,14 @@
 			}
 		} ) );
 
-		return gateway.getPreview( {
+		gateway.getPreview( {
 			text: 'test content'
-		} ).done( function ( section ) {
-			assert.strictEqual( section.line, '', 'Ok, no section line returned' );
+		} ).done( function ( text, sectionLine ) {
+			assert.strictEqual( sectionLine, '', 'Ok, no section line returned' );
 		} );
 	} );
 
-	QUnit.test( '#EditorGateway, check with sectionLine', function ( assert ) {
+	QUnit.test( '#EditorGateway, check with sectionLine', 1, function ( assert ) {
 		var gateway = new EditorGateway( {
 			api: new mw.Api(),
 			title: 'Test',
@@ -629,19 +584,18 @@
 			}
 		} ) );
 
-		return gateway.getPreview( {
+		gateway.getPreview( {
 			text: 'test content'
-		} ).done( function ( section ) {
-			assert.strictEqual( section.line, 'Testsection', 'Ok, section line returned' );
+		} ).done( function ( text, sectionLine ) {
+			assert.strictEqual( sectionLine, 'Testsection', 'Ok, section line returned' );
 		} );
 	} );
 
-	QUnit.test( '#save, when token has expired', function ( assert ) {
+	QUnit.test( '#save, when token has expired', 2, function ( assert ) {
 		var gateway = new EditorGateway( {
 				api: new mw.Api(),
 				title: 'MediaWiki:Test.css'
-			} ),
-			done = $.Deferred();
+			} );
 
 		this.sandbox.stub( mw.Api.prototype, 'post' )
 			.onFirstCall().returns( $.Deferred().reject( 'badtoken' ) )
@@ -657,12 +611,9 @@
 
 		gateway.getContent();
 		gateway.setContent( 'section 1' );
-		gateway.save().always( function () {
-			assert.ok( mw.Api.prototype.getToken.calledTwice, 'check the spy was called twice' );
-			assert.ok( mw.Api.prototype.post.calledTwice, 'check the spy was called twice' );
-			done.resolve();
-		} );
-		return done;
+		gateway.save();
+		assert.ok( mw.Api.prototype.getToken.calledTwice, 'check the spy was called twice' );
+		assert.ok( mw.Api.prototype.post.calledTwice, 'check the spy was called twice' );
 	} );
 
 }( mw.mobileFrontend, jQuery ) );

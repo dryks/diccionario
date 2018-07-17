@@ -1,4 +1,7 @@
 <?php
+/**
+ * SpecialUploads.php
+ */
 
 /**
  * Provides a special page with a list of uploaded items/images of a User
@@ -36,7 +39,7 @@ class SpecialUploads extends MobileSpecialPage {
 					$output->setPageTitle( $this->msg( 'mobile-frontend-donate-image-title-username', $par ) );
 					$output->setStatusCode( 404 );
 					$html = MobileUI::contentElement(
-						Html::errorBox(
+						MobileUI::errorBox(
 							$this->msg( 'mobile-frontend-photo-upload-invalid-user', $par ) )
 					);
 				} else {
@@ -59,14 +62,15 @@ class SpecialUploads extends MobileSpecialPage {
 	/**
 	 * Generates HTML for the uploads page for the passed user.
 	 *
-	 * @param User $user User to display uploads of
+	 * @param User $user
 	 * @return string
 	 */
 	public function getUserUploadsPageHtml( User $user ) {
 		$uploadCount = $this->getUserUploadCount( $user->getName() );
+		$mobileContext = MobileContext::singleton();
 
 		$html = '';
-		$attrs = [];
+		$attrs = array();
 		if ( $uploadCount !== false ) {
 			$threshold = $this->getUploadCountThreshold();
 			// FIXME: Use Html class?
@@ -80,7 +84,7 @@ class SpecialUploads extends MobileSpecialPage {
 					'mobile-frontend-photo-upload-user-count'
 				)->numParams( $uploadCount )->parse();
 				if ( $uploadCount === 0 ) {
-					$attrs = [ 'style' => 'display:none' ];
+					$attrs = array( 'style' => 'display:none' );
 				}
 			}
 			$html .= Html::openElement( 'h2', $attrs ) . $msg . Html::closeElement( 'h2' );
@@ -105,7 +109,7 @@ class SpecialUploads extends MobileSpecialPage {
 
 		$mfPhotoUploadWiki = $this->getMFConfig()->get( 'MFPhotoUploadWiki' );
 		if ( !$mfPhotoUploadWiki ) {
-			$dbr = wfGetDB( DB_REPLICA );
+			$dbr = wfGetDB( DB_SLAVE );
 		} elseif (
 				$mfPhotoUploadWiki &&
 				!in_array( $mfPhotoUploadWiki, $wgConf->getLocalDatabases() )
@@ -113,20 +117,17 @@ class SpecialUploads extends MobileSpecialPage {
 			// early return if the database is invalid
 			return false;
 		} else {
-			$dbr = wfGetDB( DB_REPLICA, [], $mfPhotoUploadWiki );
+			$dbr = wfGetDB( DB_SLAVE, array(), $mfPhotoUploadWiki );
 		}
 
 		$limit = $this->getUploadCountThreshold() + 1;
 		// not using SQL's count(*) because it's more expensive with big number of rows
-		$imgWhere = ActorMigration::newMigration()
-			->getWhere( $dbr, 'img_user', User::newFromName( $username, false ) );
 		$res = $dbr->select(
-			[ 'image' ] + $imgWhere['tables'],
-			1,
-			$imgWhere['conds'],
+			'image',
+			'img_size',
+			array( 'img_user_text' => $username ),
 			__METHOD__,
-			[ 'LIMIT' => $limit ],
-			$imgWhere['joins']
+			array( 'LIMIT' => $limit )
 		);
 		return ( $res ) ? $res->numRows() : false;
 	}

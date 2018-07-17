@@ -1,37 +1,36 @@
 <?php
-
-namespace MobileFrontend\ResourceLoaderModules;
-
-use ResourceLoaderWikiModule;
-use ResourceLoaderContext;
+/**
+ * MobileSiteModule.php
+ */
 
 /**
- * Alternate of ResourceLoaderSiteModule for mobile web.
- * Mobile.[css|js] is a temporary drop-in replacement for Common.css/js which contains JS that
- * is usually incompatible
+ * Extends ResourceLoaderSiteModule (Module for site customizations).
+ * Mobile.[css|js] is a temporary drop in replacement for Common.css which predates Minerva
+ * and is not compatible.
  */
-class MobileSiteModule extends ResourceLoaderWikiModule {
-	// Should not be enabled on desktop which has ResourceLoaderSiteModule instead
-	protected $targets = [ 'mobile' ];
-
-	/**
-	 * @inheritDoc
+class MobileSiteModule extends ResourceLoaderSiteModule {
+	/** @var array Saves the target for the module.
+	 * Should not be enabled on desktop which has ResourceLoaderSiteModule
 	 */
-	public function getDependencies( ResourceLoaderContext $context = null ) {
-		// They should always be loaded together, regardless of whether mobile.site.styles
-		// had been made render blocking.
-		return [ 'mobile.site.styles' ];
-	}
+	protected $targets = array( 'mobile' );
 
 	/**
-	 * Get a list of pages used by this module.
-	 *
+	 * Gets list of pages used by this module.
 	 * @param ResourceLoaderContext $context
 	 * @return array
 	 */
 	protected function getPages( ResourceLoaderContext $context ) {
-		return [
-			'MediaWiki:Mobile.js' => [ 'type' => 'script' ],
-		];
+		return array(
+			'MediaWiki:Mobile.css' => array( 'type' => 'style' ),
+			'MediaWiki:Mobile.js' => array( 'type' => 'script' ),
+		);
+	}
+
+	/**
+	 * Get the position where on the HTML page this module's JS be loaded to.
+	 * @return string Always bottom which differs from other skins.
+	 */
+	public function getPosition() {
+		return 'bottom';
 	}
 }

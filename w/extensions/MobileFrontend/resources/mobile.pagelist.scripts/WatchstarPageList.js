@@ -1,8 +1,9 @@
-( function ( M ) {
+( function ( M, $ ) {
 
-	var PageList = M.require( 'mobile.startup/PageList' ),
+	var mWatchstar,
+		PageList = M.require( 'mobile.pagelist/PageList' ),
 		Watchstar = M.require( 'mobile.watchstar/Watchstar' ),
-		user = M.require( 'mobile.startup/user' ),
+		user = M.require( 'mobile.user/user' ),
 		Page = M.require( 'mobile.startup/Page' ),
 		WatchstarGateway = M.require( 'mobile.watchstar/WatchstarGateway' );
 
@@ -13,9 +14,6 @@
 	 * @uses WatchstarGateway
 	 * @uses Watchstar
 	 * @extends View
-	 *
-	 * @constructor
-	 * @param {Object} options Configuration options
 	 */
 	function WatchstarPageList( options ) {
 		this.wsGateway = new WatchstarGateway( options.api );
@@ -54,10 +52,7 @@
 
 			// Check what we have in the page list
 			$li.each( function () {
-				var id = self.$( this ).data( 'id' );
-				if ( id ) {
-					pages.push( id );
-				}
+				pages.push( $( this ).data( 'id' ) );
 			} );
 
 			// Create watch stars for each entry in list
@@ -69,8 +64,8 @@
 							page = new Page( {
 								// FIXME: Set sections so we don't hit the api (hacky)
 								sections: [],
-								title: self.$( this ).attr( 'title' ),
-								id: self.$( this ).data( 'id' )
+								title: $( this ).attr( 'title' ),
+								id: $( this ).data( 'id' )
 							} );
 
 						watchstar = new Watchstar( {
@@ -79,31 +74,27 @@
 							isAnon: false,
 							isWatched: gateway.isWatchedPage( page ),
 							page: page,
-							el: self.parseHTML( '<div>' ).appendTo( this )
+							el: $( '<div>' ).appendTo( this )
 						} );
 
-						self.$( this ).addClass( 'with-watchstar' );
+						$( this ).addClass( 'with-watchstar' );
 
 						/**
 						 * @event watch
 						 * Fired when an article in the PageList is watched.
 						 */
-						watchstar.on( 'watch', function () {
-							self.emit( 'watch' );
-						} );
+						watchstar.on( 'watch', $.proxy( self, 'emit', 'watch' ) );
 						/**
 						 * @event unwatch
 						 * Fired when an article in the PageList is watched.
 						 */
-						watchstar.on( 'unwatch', function () {
-							self.emit( 'unwatch' );
-						} );
+						watchstar.on( 'unwatch', $.proxy( self, 'emit', 'unwatch' ) );
 					} );
 				} );
 			}
 		}
 	} );
 
-	M.define( 'mobile.pagelist.scripts/WatchstarPageList', WatchstarPageList );
+	mWatchstar = M.define( 'mobile.pagelist.scripts/WatchstarPageList', WatchstarPageList );
 
-}( mw.mobileFrontend ) );
+}( mw.mobileFrontend, jQuery ) );

@@ -1,19 +1,16 @@
-( function ( M ) {
-	var Overlay = M.require( 'mobile.startup/Overlay' ),
-		util = M.require( 'mobile.startup/util' ),
+( function ( M, $ ) {
+	var Overlay = M.require( 'mobile.overlays/Overlay' ),
 		Icon = M.require( 'mobile.startup/Icon' ),
 		icon = new Icon( {
-			name: 'cleanup-gray'
+			name: 'cleanup-gray',
+			additionalClassNames: 'issue-notice',
+			hasText: true
 		} );
 
 	/**
 	 * Overlay for displaying page issues
 	 * @class CleanupOverlay
 	 * @extends Overlay
-	 *
-	 * @constructor
-	 * @param {Object} options Configuration options
-	 * @param {string} options.headingText
 	 */
 	function CleanupOverlay( options ) {
 		options.heading = '<strong>' + options.headingText + '</strong>';
@@ -21,18 +18,17 @@
 	}
 
 	OO.mfExtend( CleanupOverlay, Overlay, {
-		className: 'overlay overlay-cleanup',
-		templatePartials: util.extend( {}, Overlay.prototype.templatePartials, {
+		templatePartials: $.extend( {}, Overlay.prototype.templatePartials, {
 			content: mw.template.get( 'mobile.issues', 'OverlayContent.hogan' )
 		} ),
-		preRender: function () {
-			this.options.issues = this.options.issues.map( function ( issue ) {
-				// If an icon is not defined, then add the default icon
-				return issue.icon ? issue : util.extend( {}, issue, {
-					icon: icon.toHtmlString()
-				} );
-			} );
-		}
+		/**
+		 * @inheritdoc
+		 * @cfg {Object} defaults Default options hash.
+		 * @cfg {String} defaults.className Class name of the 'cleanup-gray' icon.
+		 */
+		defaults: $.extend( {}, Overlay.prototype.defaults, {
+			className: icon.getClassName()
+		} )
 	} );
-	M.define( 'mobile.issues/CleanupOverlay', CleanupOverlay ); // resource-modules-disable-line
-}( mw.mobileFrontend ) );
+	M.define( 'mobile.issues/CleanupOverlay', CleanupOverlay );
+}( mw.mobileFrontend, jQuery ) );

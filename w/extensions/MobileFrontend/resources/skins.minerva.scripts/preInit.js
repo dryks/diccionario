@@ -5,54 +5,76 @@
  * @class mw.mobileFrontend
  * @singleton
  */
-( function ( M ) {
-	var skin = M.require( 'mobile.init/skin' ),
+( function ( M, $ ) {
+	var currentPage, skin,
+		PageGateway = M.require( 'mobile.startup/PageGateway' ),
+		gateway = new PageGateway( new mw.Api() ),
+		Page = M.require( 'mobile.startup/Page' ),
 		mainMenu = M.require( 'skins.minerva.scripts.top/mainMenu' ),
-		toast = M.require( 'mobile.startup/toast' );
+		Skin = M.require( 'mobile.startup/Skin' );
 
-	// Proxy to MobileFrontend defined skin
-	M.define( 'skins.minerva.scripts/skin', skin );
+	skin = new Skin( {
+		el: 'body',
+		tabletModules: mw.config.get( 'skin' ) === 'minerva' ? [ 'skins.minerva.tablet.scripts' ] : [],
+		page: getCurrentPage(),
+		mainMenu: mainMenu
+	} );
+	M.define( 'skins.minerva.scripts/skin', skin ).deprecate( 'mobile.startup/skin' );
+
+	$( window )
+		.on( 'resize', $.debounce( 100, $.proxy( M, 'emit', 'resize' ) ) )
+		.on( 'scroll', $.debounce( 100, $.proxy( M, 'emit', 'scroll' ) ) );
 
 	/**
-	 * Close navigation if skin is tapped
-	 * @param {jQuery.Event} ev
-	 * @private
+	 * Get current page view object
+	 * FIXME: Move to M.define( 'page' )
+	 * @method
+	 * @return {Page}
 	 */
-	function onSkinClick( ev ) {
-		var $target = this.$( ev.target );
-
-		// Make sure the menu is open and we are not clicking on the menu button
-		if (
-			mainMenu &&
-			mainMenu.isOpen() &&
-			!$target.hasClass( 'main-menu-button' )
-		) {
-			mainMenu.closeNavigationDrawers();
-			ev.preventDefault();
+	function getCurrentPage() {
+		if ( currentPage ) {
+			return currentPage;
+		} else {
+			return loadCurrentPage();
 		}
 	}
-	skin.on( 'click', onSkinClick.bind( skin ) );
 
-	( function ( wgRedirectedFrom ) {
-		// If the user has been redirected, then show them a toast message (see
-		// https://phabricator.wikimedia.org/T146596).
-
-		var redirectedFrom;
-
-		if ( wgRedirectedFrom === null ) {
-			return;
+	/**
+	 * Constructs an incomplete Page object representing the currently loaded page.
+	 *
+	 * @method
+	 * @private
+	 * @ignore
+	 */
+	function loadCurrentPage() {
+		var permissions = mw.config.get( 'wgRestrictionEdit', [] ),
+			$content = $( '#content #bodyContent' );
+		if ( permissions.length === 0 ) {
+			permissions.push( '*' );
 		}
+		currentPage = new Page( {
+			el: $content,
+			title: mw.config.get( 'wgPageName' ).replace( /_/g, ' ' ),
+			protection: {
+				edit: permissions
+			},
+			revId: mw.config.get( 'wgRevisionId' ),
+			isMainPage: mw.config.get( 'wgIsMainPage' ),
+			isWatched: $( '#ca-watch' ).hasClass( 'watched' ),
+			sections: gateway.getSectionsFromHTML( $content ),
+			id: mw.config.get( 'wgArticleId' ),
+			namespaceNumber: mw.config.get( 'wgNamespaceNumber' )
+		} );
+		return currentPage;
+	}
 
-		redirectedFrom = mw.Title.newFromText( wgRedirectedFrom );
+	$.extend( M, {
+		getCurrentPage: getCurrentPage
+	} );
 
-		if ( redirectedFrom ) {
-
-			// mw.Title.getPrefixedText includes the human-readable namespace prefix.
-			toast.show( mw.msg(
-				'mobile-frontend-redirected-from',
-				redirectedFrom.getPrefixedText()
-			) );
-		}
-	}( mw.config.get( 'wgRedirectedFrom' ) ) );
-	/* eslint-enable no-console */
-}( mw.mobileFrontend ) );
+	// Recruit volunteers through the console (note console.log may not be a function so check via apply)
+	if ( window.console && window.console.log && window.console.log.apply &&
+			mw.config.get( 'wgMFEnableJSConsoleRecruitment' ) ) {
+		console.log( mw.msg( 'mobile-frontend-console-recruit' ) );
+	}
+}( mw.mobileFrontend, jQuery ) );

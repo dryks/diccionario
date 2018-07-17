@@ -1,16 +1,19 @@
-( function ( M, track, config, $ ) {
-	var
-		toast = M.require( 'mobile.startup/toast' ),
-		time = M.require( 'mobile.startup/time' ),
-		skin = M.require( 'mobile.init/skin' ),
-		DownloadIcon = M.require( 'skins.minerva.scripts/DownloadIcon' ),
-		browser = M.require( 'mobile.startup/Browser' ).getSingleton(),
-		loader = M.require( 'mobile.startup/rlModuleLoader' ),
-		router = require( 'mediawiki.router' ),
-		OverlayManager = M.require( 'mobile.startup/OverlayManager' ),
-		overlayManager = new OverlayManager( require( 'mediawiki.router' ) ),
+( function ( M, $ ) {
+	var inSample, inStable, experiment,
+		settings = M.require( 'mobile.settings/settings' ),
+		time = M.require( 'mobile.modifiedBar/time' ),
+		token = settings.get( 'mobile-betaoptin-token' ),
+		BetaOptinPanel = M.require( 'mobile.betaoptin/BetaOptinPanel' ),
+		loader = M.require( 'mobile.overlays/moduleLoader' ),
+		router = M.require( 'mobile.startup/router' ),
+		context = M.require( 'mobile.context/context' ),
+		cleanuptemplates = M.require( 'mobile.issues/cleanuptemplates' ),
+		useNewMediaViewer = context.isBetaGroupMember(),
+		overlayManager = M.require( 'mobile.startup/overlayManager' ),
 		page = M.getCurrentPage(),
-		thumbs = page.getThumbnails();
+		thumbs = page.getThumbnails(),
+		experiments = mw.config.get( 'wgMFExperiments' ) || {},
+		betaOptinPanel;
 
 	/**
 	 * Event handler for clicking on an image thumbnail
@@ -19,15 +22,7 @@
 	 */
 	function onClickImage( ev ) {
 		ev.preventDefault();
-		routeThumbnail( $( this ).data( 'thumb' ) );
-	}
-
-	/**
-	 * @param {jQuery.Element} thumbnail
-	 * @ignore
-	 */
-	function routeThumbnail( thumbnail ) {
-		router.navigate( '#/media/' + encodeURIComponent( thumbnail.getFileName() ) );
+		router.navigate( '#/media/' + encodeURIComponent( $( this ).data( 'thumb' ).getFileName() ) );
 	}
 
 	/**
@@ -36,9 +31,11 @@
 	 * @ignore
 	 */
 	function initMediaViewer() {
-		thumbs.forEach( function ( thumb ) {
-			thumb.$el.off().data( 'thumb', thumb ).on( 'click', onClickImage );
-		} );
+		if ( !mw.config.get( 'wgImagesDisabled' ) ) {
+			$.each( thumbs, function ( i, thumb ) {
+				thumb.$el.off().data( 'thumb', thumb ).on( 'click', onClickImage );
+			} );
+		}
 	}
 
 	/**
@@ -47,19 +44,91 @@
 	 * @ignore
 	 */
 	function initButton() {
-		// This catches language selectors in page actions and in secondary actions (e.g. Main Page)
-		var $primaryBtn = $( '.language-selector' );
+		// FIXME: remove .languageSelector when cache clears
+		var $languageSwitcherBtn = $( '#language-switcher, .languageSelector' ),
+			languageButtonVersion = ( !page.isMainPage() && context.isBetaGroupMember() ) ?
+				'top-of-article' : 'bottom-of-article';
 
-		if ( $primaryBtn.length ) {
-			// We only bind the click event to the first language switcher in page
-			$primaryBtn.on( 'click', function ( ev ) {
+		/**
+		 * Log impression when the language button is seen by the user
+		 * @ignore
+		 */
+		function logLanguageButtonImpression() {
+			if ( mw.viewport.isElementInViewport( $languageSwitcherBtn[0] ) ) {
+				M.off( 'scroll', logLanguageButtonImpression );
+
+				mw.track( 'mf.schemaMobileWebLanguageSwitcher', {
+					event: 'languageButtonImpression'
+				} );
+			}
+		}
+
+		/**
+		 * Return the number of times the user has clicked on the language button
+		 *
+		 * @ignore
+		 * @param {Number} tapCount
+		 * @return {String}
+		 */
+		function getLanguageButtonTappedBucket( tapCount ) {
+			var bucket;
+
+			if ( tapCount === 0 ) {
+				bucket = '0';
+			} else if ( tapCount >= 1 && tapCount <= 4 ) {
+				bucket = '1-4';
+			} else if ( tapCount >= 5 && tapCount <= 20 ) {
+				bucket = '5-20';
+			} else if ( tapCount > 20 ) {
+				bucket = '20+';
+			}
+			bucket += ' taps';
+			return bucket;
+		}
+
+		if ( $languageSwitcherBtn.length ) {
+			mw.track( 'mf.schemaMobileWebLanguageSwitcher', {
+				event: 'pageLoaded',
+				beaconCapable: $.isFunction( navigator.sendBeacon )
+			} );
+
+			M.on( 'scroll', logLanguageButtonImpression );
+			// maybe the button is already visible?
+			logLanguageButtonImpression();
+
+			$languageSwitcherBtn.on( 'click', function ( ev ) {
+				var previousTapCount = settings.get( 'mobile-language-button-tap-count' ),
+					$languageLink = context.isBetaGroupMember() ? $languageSwitcherBtn.find( 'a' ) : $languageSwitcherBtn,
+					tapCountBucket;
+
 				ev.preventDefault();
 
-				if ( $primaryBtn.attr( 'href' ) || $primaryBtn.find( 'a' ).length ) {
+				// In beta the icon is still shown even though there are no languages to show.
+				// Only show the overlay if the page has other languages.
+				if ( $languageLink.attr( 'href' ) ) {
 					router.navigate( '/languages' );
-				} else {
-					toast.show( mw.msg( 'mobile-frontend-languages-not-available' ) );
 				}
+
+				// when local storage is not available ...
+				if ( previousTapCount === false ) {
+					previousTapCount = 0;
+					tapCountBucket = 'unknown';
+				// ... or when the key has not been previously saved
+				} else if ( previousTapCount === null ) {
+					previousTapCount = 0;
+					tapCountBucket = getLanguageButtonTappedBucket( previousTapCount );
+				} else {
+					previousTapCount = parseInt( previousTapCount, 10 );
+					tapCountBucket = getLanguageButtonTappedBucket( previousTapCount );
+				}
+
+				settings.save( 'mobile-language-button-tap-count', previousTapCount + 1 );
+				mw.track( 'mf.schemaMobileWebLanguageSwitcher', {
+					event: 'languageButtonTap',
+					languageButtonVersion: languageButtonVersion,
+					languageButtonTappedBucket: tapCountBucket,
+					primaryLanguageOfUser: getDeviceLanguage() || 'unknown'
+				} );
 			} );
 		}
 	}
@@ -68,7 +137,7 @@
 	 * Return the language code of the device in lowercase
 	 *
 	 * @ignore
-	 * @return {string|undefined}
+	 * @returns {String|undefined}
 	 */
 	function getDeviceLanguage() {
 		var lang = navigator && navigator.languages ?
@@ -80,64 +149,43 @@
 	}
 
 	/**
-	 * Loads tablet modules when the skin is in tablet mode and the
-	 * current page is in the main namespace.
-	 * @method
-	 * @ignore
-	 */
-	function loadTabletModules() {
-		if ( browser.isWideScreen() && page.inNamespace( '' ) ) {
-			mw.loader.using( 'skins.minerva.tablet.scripts' );
-		}
-	}
-
-	/**
 	 * Load image overlay
 	 * @method
 	 * @ignore
 	 * @uses ImageOverlay
-	 * @param {string} title Url of image
-	 * @return {jQuery.Deferred}
+	 * @param {String} title Url of image
+	 * @returns {jQuery.Deferred}
 	 */
 	function loadImageOverlay( title ) {
-		if ( mw.loader.getState( 'mmv.bootstrap' ) === 'ready' ) {
-			// This means MultimediaViewer has been installed and is loaded.
-			// Avoid loading it (T169622)
-			return $.Deferred().reject();
-		} else {
-			return loader.loadModule( 'mobile.mediaViewer' ).then( function () {
-				var ImageOverlay = M.require( 'mobile.mediaViewer/ImageOverlay' ),
-					imageOverlay = new ImageOverlay( {
-						api: new mw.Api(),
-						thumbnails: thumbs,
-						title: decodeURIComponent( title )
-					} );
-				imageOverlay.on( ImageOverlay.EVENT_EXIT, function () {
-					// Actually dismiss the overlay whenever the cross is closed.
-					window.location.hash = '';
-					// Clear the hash.
-					router.navigate( '' );
-				} );
-				imageOverlay.on( ImageOverlay.EVENT_SLIDE, function ( nextThumbnail ) {
-					routeThumbnail( nextThumbnail );
-				} );
-				return imageOverlay;
-			} );
-		}
+		var result = $.Deferred(),
+			rlModuleName = useNewMediaViewer ? 'mobile.mediaViewer.beta' : 'mobile.mediaViewer',
+			moduleName = useNewMediaViewer ? 'ImageOverlayBeta' : 'ImageOverlay';
+
+		loader.loadModule( rlModuleName ).done( function () {
+			var ImageOverlay = M.require( rlModuleName + '/' + moduleName );
+
+			result.resolve(
+				new ImageOverlay( {
+					api: new mw.Api(),
+					thumbnails: thumbs,
+					title: decodeURIComponent( title )
+				} )
+			);
+		} );
+		return result;
 	}
 
 	// Routes
 	overlayManager.add( /^\/media\/(.+)$/, loadImageOverlay );
 	overlayManager.add( /^\/languages$/, function () {
-		var result = $.Deferred(),
-			lang = mw.config.get( 'wgUserLanguage' );
+		var result = $.Deferred();
 
 		loader.loadModule( 'mobile.languages.structured', true ).done( function ( loadingOverlay ) {
 			var PageGateway = M.require( 'mobile.startup/PageGateway' ),
 				gateway = new PageGateway( new mw.Api() ),
 				LanguageOverlay = M.require( 'mobile.languages.structured/LanguageOverlay' );
 
-			gateway.getPageLanguages( mw.config.get( 'wgPageName' ), lang ).done( function ( data ) {
+			gateway.getPageLanguages( mw.config.get( 'wgPageName' ) ).done( function ( data ) {
 				loadingOverlay.hide();
 				result.resolve( new LanguageOverlay( {
 					currentLanguage: mw.config.get( 'wgContentLanguage' ),
@@ -150,10 +198,49 @@
 		return result;
 	} );
 
+	// for Special:Uploads
+	M.on( 'photo-loaded', initMediaViewer );
+
 	// Setup
 	$( function () {
 		initButton();
 		initMediaViewer();
+	} );
+
+	// Access the beta optin experiment if available.
+	experiment = experiments.betaoptin || false;
+	// local storage is supported in this case, when ~ means it was dismissed
+	if ( experiment && token !== false && token !== '~' && !page.isMainPage() && !page.inNamespace( 'special' ) ) {
+		if ( !token ) {
+			token = mw.user.generateRandomSessionId();
+			settings.save( 'mobile-betaoptin-token', token );
+		}
+
+		inStable = !context.isBetaGroupMember();
+		inSample = mw.experiments.getBucket( experiment, token ) === 'A';
+		if ( inStable && ( inSample || mw.util.getParamValue( 'debug' ) ) ) {
+			betaOptinPanel = new BetaOptinPanel( {
+				postUrl: mw.util.getUrl( 'Special:MobileOptions', {
+					returnto: page.title
+				} )
+			} )
+				.on( 'hide', function () {
+					settings.save( 'mobile-betaoptin-token', '~' );
+				} )
+				.appendTo( M.getCurrentPage().getLeadSectionElement() );
+		}
+	}
+
+	// Setup the issues banner on the page
+	cleanuptemplates.init();
+	// Show it in edit preview.
+	M.on( 'edit-preview', function ( overlay ) {
+		cleanuptemplates.init( overlay.$el );
+	} );
+
+	// let the interested parties know whether the panel is shown
+	mw.track( 'minerva.betaoptin', {
+		isPanelShown: betaOptinPanel !== undefined
 	} );
 
 	/**
@@ -166,7 +253,7 @@
 	 * @param {JQuery.Object} [$lastModifiedLink]
 	 */
 	function initHistoryLink( $lastModifiedLink ) {
-		var delta, historyUrl, msg, $bar,
+		var delta, historyUrl, msg,
 			ts, username, gender;
 
 		historyUrl = $lastModifiedLink.attr( 'href' );
@@ -177,12 +264,7 @@
 		if ( ts ) {
 			delta = time.getTimeAgoDelta( parseInt( ts, 10 ) );
 			if ( time.isRecent( delta ) ) {
-				$bar = $lastModifiedLink.closest( '.last-modified-bar' );
-				$bar.addClass( 'active' );
-				// in beta update icons to be inverted
-				$bar.find( '.mw-ui-icon' ).each( function () {
-					$( this ).attr( 'class', $( this ).attr( 'class' ).replace( '-gray', '-invert' ) );
-				} );
+				$lastModifiedLink.closest( '.last-modified-bar' ).addClass( 'active' );
 			}
 			msg = time.getLastModifiedMessage( ts, username, gender, historyUrl );
 			$lastModifiedLink.replaceWith( msg );
@@ -203,72 +285,9 @@
 		} );
 	}
 
-	/**
-	 * Initialisation function for user creation module.
-	 *
-	 * Enhances an element representing a time
-	 + to show a human friendly date in seconds, minutes, hours, days
-	 * months or years
-	 * @ignore
-	 * @param {JQuery.Object} [$tagline]
-	 */
-	function initRegistrationDate( $tagline ) {
-		var msg, ts;
-
-		ts = $tagline.data( 'userpage-registration-date' );
-
-		if ( ts ) {
-			msg = time.getRegistrationMessage( ts, $tagline.data( 'userpage-gender' ) );
-			$tagline.text( msg );
-		}
-	}
-
-	/**
-	 * Initialisation function for registration date on user page
-	 *
-	 * Enhances .tagline-userpage element
-	 * to show human friendly date in seconds, minutes, hours, days
-	 * months or years
-	 * @ignore
-	 */
-	function initRegistrationInfo() {
-		$( '#tagline-userpage' ).each( function () {
-			initRegistrationDate( $( this ) );
-		} );
-	}
-
-	/**
-	 * Initialize and inject the download button
-	 *
-	 * There are many restrictions when we can show the download button, this function should handle
-	 * all device/os/operating system related checks and if device supports printing it will inject
-	 * the Download icon
-	 * @ignore
-	 */
-	function appendDownloadButton() {
-		var downloadIcon = new DownloadIcon( skin, config.get( 'wgMinervaDownloadNamespaces' ), window );
-
-		if ( downloadIcon.isAvailable( navigator.userAgent ) ) {
-			// Because the page actions are floated to the right, their order in the
-			// DOM is reversed in the display. The watchstar is last in the DOM and
-			// left-most in the display. Since we want the download button to be to
-			// the left of the watchstar, we put it after it in the DOM.
-			downloadIcon.$el.insertAfter( '#ca-watch' );
-			track( 'minerva.downloadAsPDF', {
-				action: 'buttonVisible'
-			} );
-		}
-	}
-
 	$( function () {
 		// Update anything else that needs enhancing (e.g. watchlist)
 		initModifiedInfo();
-		initRegistrationInfo();
-		initHistoryLink( $( '.last-modifier-tagline a' ) );
-		M.on( 'resize', loadTabletModules );
-		loadTabletModules();
-		appendDownloadButton();
+		initHistoryLink( $( '#mw-mf-last-modified a' ) );
 	} );
-
-	M.define( 'skins.minerva.scripts/overlayManager', overlayManager );
-}( mw.mobileFrontend, mw.track, mw.config, jQuery ) );
+}( mw.mobileFrontend, jQuery ) );

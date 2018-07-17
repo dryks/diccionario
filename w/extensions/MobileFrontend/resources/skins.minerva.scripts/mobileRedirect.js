@@ -4,26 +4,9 @@
 
 ( function ( M, $ ) {
 
-	var popup = M.require( 'mobile.startup/toast' );
-
-	/**
-	 * Checks whether cookies are enabled
-	 * @method
-	 * @ignore
-	 * @return {boolean} Whether cookies are enabled
-	 */
-	function cookiesEnabled() {
-		// If session cookie already set, return true
-		if ( $.cookie( 'mf_testcookie' ) === 'test_value' ) {
-			return true;
-			// Otherwise try to set mf_testcookie and return true if it was set
-		} else {
-			$.cookie( 'mf_testcookie', 'test_value', {
-				path: '/'
-			} );
-			return $.cookie( 'mf_testcookie' ) === 'test_value';
-		}
-	}
+	var settings = M.require( 'mobile.settings/settings' ),
+		cookiesEnabled = settings.cookiesEnabled,
+		popup = M.require( 'mobile.toast/toast' );
 
 	/**
 	 * An event handler for the toggle to desktop link.
@@ -32,7 +15,7 @@
 	 * If cookies are not enabled, show a toast and die.
 	 * @method
 	 * @ignore
-	 * @return {boolean|undefined}
+	 * @returns {Boolean|undefined}
 	 */
 	function desktopViewClick() {
 		if ( !cookiesEnabled() ) {

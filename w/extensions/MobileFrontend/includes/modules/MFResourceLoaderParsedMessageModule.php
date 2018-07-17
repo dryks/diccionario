@@ -1,30 +1,21 @@
 <?php
-
-namespace MobileFrontend\ResourceLoaderModules;
-
-use ResourceLoaderFileModule;
-use ResourceLoaderContext;
-use DerivativeResourceLoaderContext;
-use Xml;
-
 /**
  * ResourceLoaderModule subclass for mobile
  * Allows basic parsing of messages without arguments
  */
 class MFResourceLoaderParsedMessageModule extends ResourceLoaderFileModule {
 	/** @var array Saves a list of messages which have been marked as needing parsing. */
-	protected $parsedMessages = [];
+	protected $parsedMessages = array();
 	/** @var array Saves a list of message keys used by this module. */
-	protected $messages = [];
+	protected $messages = array();
 	/** @var array Saves the target for the module (e.g. desktop and mobile). */
-	protected $targets = [ 'mobile', 'desktop' ];
+	protected $targets = array( 'mobile', 'desktop' );
 	/** @var boolean Whether the module abuses getScript. */
 	protected $hasHackedScriptMode = false;
 
 	/**
 	 * Registers core modules and runs registration hooks.
-	 * @param array $options List of options; if not given or empty,
-	 *  an empty module will be constructed
+	 * @param $options List of options; if not given or empty, an empty module will be constructed
 	 */
 	public function __construct( $options ) {
 		foreach ( $options as $member => $option ) {
@@ -55,7 +46,7 @@ class MFResourceLoaderParsedMessageModule extends ResourceLoaderFileModule {
 		foreach ( $this->parsedMessages as $key ) {
 			$messages[ $key ] = $context->msg( $key )->parse();
 		}
-		return Xml::encodeJsCall( 'mw.messages.set', [ $messages ] );
+		return Xml::encodeJsCall( 'mw.messages.set', array( $messages ) );
 	}
 
 	/**
@@ -97,16 +88,16 @@ class MFResourceLoaderParsedMessageModule extends ResourceLoaderFileModule {
 		if ( $this->hasHackedScriptMode ) {
 			$derivative = new DerivativeResourceLoaderContext( $context );
 			$derivative->setDebug( true );
-			$derivative->setModules( [ $this->getName() ] );
+			$derivative->setModules( array( $this->getName() ) );
 			// @todo FIXME: Make this templates and update
 			// makeModuleResponse so that it only outputs template code.
 			// When this is done you can merge with parent array and
 			// retain file names.
 			$derivative->setOnly( 'scripts' );
 			$rl = $derivative->getResourceLoader();
-			$urls = [
+			$urls = array(
 				$rl->createLoaderURL( $this->getSource(), $derivative ),
-			];
+			);
 		} else {
 			$urls = parent::getScriptURLsForDebug( $context );
 		}

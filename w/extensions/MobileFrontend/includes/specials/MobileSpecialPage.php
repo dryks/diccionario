@@ -1,4 +1,7 @@
 <?php
+/**
+ * MobileSpecialPage.php
+ */
 
 /**
  * Basic mobile implementation of SpecialPage to use in specific mobile special pages
@@ -14,10 +17,6 @@ class MobileSpecialPage extends SpecialPage {
 	protected $unstyledContent = true;
 	/** @var Config MobileFrontend's config object */
 	protected $config = null;
-	/** @var string a message key for the error message heading that should be shown on a 404 */
-	protected $errorNotFoundTitleMsg = 'mobile-frontend-generic-404-title';
-	/** @var string a message key for the error message description that should be shown on a 404 */
-	protected $errorNotFoundDescriptionMsg = 'mobile-frontend-generic-404-desc';
 
 	/**
 	 * Wrapper for MobileContext::getMFConfig
@@ -41,11 +40,8 @@ class MobileSpecialPage extends SpecialPage {
 	public function execute( $subPage ) {
 		$ctx = MobileContext::singleton();
 		$this->config = $ctx->getMFConfig();
-		$out = $this->getOutput();
-		$out->setProperty( 'desktopUrl', $this->getDesktopUrl( $subPage ) );
+		$this->getOutput()->setProperty( 'desktopUrl', $this->getDesktopUrl( $subPage ) );
 		if ( !$ctx->shouldDisplayMobileView() && !$this->hasDesktopVersion ) {
-			# We are not going to return any real content
-			$out->setStatusCode( 404 );
 			$this->renderUnavailableBanner( $this->msg( 'mobile-frontend-requires-mobile' ) );
 		} elseif ( $this->mode !== 'stable' ) {
 			if ( $this->mode === 'beta' && !$ctx->isBetaGroupMember() ) {
@@ -79,7 +75,7 @@ class MobileSpecialPage extends SpecialPage {
 		$out = $this->getOutput();
 		$out->setPageTitle( $this->msg( 'mobile-frontend-requires-title' ) );
 		$out->setProperty( 'unstyledContent', true );
-		$out->addHTML( Html::warningBox( $msg ) );
+		$out->addHTML( MobileUI::warningBox( $msg ) );
 	}
 
 	/**
@@ -89,28 +85,25 @@ class MobileSpecialPage extends SpecialPage {
 		$out = $this->getOutput();
 		$rl = $out->getResourceLoader();
 		$title = $this->getPageTitle();
-		list( $name, ) = SpecialPageFactory::resolveAlias( $title->getDBkey() );
+		list( $name, /* $subpage */ ) = SpecialPageFactory::resolveAlias( $title->getDBkey() );
 		$id = strtolower( $name );
 		// FIXME: These names should be more specific
 		$specialStyleModuleName = 'mobile.special.' . $id . '.styles';
 		$specialScriptModuleName = 'mobile.special.' . $id . '.scripts';
 
 		if ( $rl->isModuleRegistered( $specialStyleModuleName ) ) {
-			$out->addModuleStyles( [
-				'mobile.special.styles',
-				$specialStyleModuleName
-			] );
+			$out->addModuleStyles( $specialStyleModuleName );
 		}
 
 		if ( $rl->isModuleRegistered( $specialScriptModuleName ) ) {
 			$out->addModules( $specialScriptModuleName );
 		}
-		Hooks::run( 'MobileSpecialPageStyles', [ $id, $out ] );
+		Hooks::run( 'MobileSpecialPageStyles', array( $id, $out ) );
 	}
 
 	/**
 	 * Returns if this page is listed on Special:SpecialPages
-	 * @return bool
+	 * @return boolean
 	 */
 	public function isListed() {
 		return $this->listed;
@@ -120,15 +113,8 @@ class MobileSpecialPage extends SpecialPage {
 	 * Render mobile specific error page, when special page can not be found
 	 */
 	protected function showPageNotFound() {
-		$this->getOutput()->setStatusCode( 404 );
-		$this->getOutput()->addHTML(
-			MobileUI::contentElement(
-				Html::errorBox(
-					$this->msg( $this->errorNotFoundDescriptionMsg )->text(),
-					$this->msg( $this->errorNotFoundTitleMsg )->text()
-				)
-			)
-		);
+		wfHttpError( 404, $this->msg( 'mobile-frontend-generic-404-title' )->text(),
+			$this->msg( 'mobile-frontend-generic-404-desc' )->text() );
 	}
 
 	/**

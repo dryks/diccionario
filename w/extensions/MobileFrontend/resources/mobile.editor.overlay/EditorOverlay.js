@@ -1,11 +1,12 @@
-( function ( M ) {
+( function ( M, $ ) {
 	var EditorOverlayBase = M.require( 'mobile.editor.common/EditorOverlayBase' ),
-		util = M.require( 'mobile.startup/util' ),
 		Section = M.require( 'mobile.startup/Section' ),
 		EditorGateway = M.require( 'mobile.editor.api/EditorGateway' ),
-		AbuseFilterPanel = M.require( 'mobile.editor.common/AbuseFilterPanel' ),
+		AbuseFilterPanel = M.require( 'mobile.abusefilter/AbuseFilterPanel' ),
+		settings = M.require( 'mobile.settings/settings' ),
 		Button = M.require( 'mobile.startup/Button' ),
-		toast = M.require( 'mobile.startup/toast' ),
+		overlayManager = M.require( 'mobile.startup/overlayManager' ),
+		toast = M.require( 'mobile.toast/toast' ),
 		MessageBox = M.require( 'mobile.messageBox/MessageBox' );
 
 	/**
@@ -16,9 +17,6 @@
 	 * @uses EditorGateway
 	 * @uses VisualEditorOverlay
 	 * @extends EditorOverlayBase
-	 *
-	 * @constructor
-	 * @param {Object} options Configuration options
 	 */
 	function EditorOverlay( options ) {
 		this.gateway = new EditorGateway( {
@@ -28,7 +26,7 @@
 			oldId: options.oldId,
 			isNewPage: options.isNewPage
 		} );
-		this.readOnly = !!options.oldId; // If old revision, readOnly mode
+		this.readOnly = options.oldId ? true : false; // If old revision, readOnly mode
 		if ( this.isVisualEditorEnabled() ) {
 			options.editSwitcher = true;
 		}
@@ -52,7 +50,7 @@
 		/** @inheritdoc **/
 		isBorderBox: false,
 		/** @inheritdoc **/
-		templatePartials: util.extend( {}, EditorOverlayBase.prototype.templatePartials, {
+		templatePartials: $.extend( {}, EditorOverlayBase.prototype.templatePartials, {
 			content: mw.template.get( 'mobile.editor.overlay', 'content.hogan' ),
 			messageBox: MessageBox.prototype.template,
 			anonWarning: mw.template.get( 'mobile.editor.common', 'EditorOverlayAnonWarning.hogan' )
@@ -66,8 +64,7 @@
 		 * @cfg {Object} defaults.warningOptions options for a MessageBox to display anonymous message warning
 		 * @cfg {mw.Api} defaults.api an api module to retrieve pages
 		 */
-		defaults: util.extend( {}, EditorOverlayBase.prototype.defaults, {
-			ctaMessage: mw.msg( 'mobile-frontend-editor-anon-cta-message' ),
+		defaults: $.extend( {}, EditorOverlayBase.prototype.defaults, {
 			loginButton: new Button( {
 				block: true,
 				label: mw.msg( 'mobile-frontend-watchlist-cta-button-login' )
@@ -93,20 +90,15 @@
 		/**
 		 * Check whether VisualEditor is enabled or not.
 		 * @method
-		 * @return {boolean}
+		 * @return {Boolean}
 		 */
 		isVisualEditorEnabled: function () {
-			var ns = mw.config.get( 'wgVisualEditorConfig' ) &&
-				mw.config.get( 'wgVisualEditorConfig' ).namespaces;
-
-			return ns &&
-				ns.indexOf(
-					mw.config.get( 'wgNamespaceNumber' )
-				) > -1 &&
+			return mw.config.get( 'wgVisualEditorConfig' ) &&
+				$.inArray( mw.config.get( 'wgNamespaceNumber' ), mw.config.get( 'wgVisualEditorConfig' ).namespaces ) > -1 &&
 				mw.config.get( 'wgTranslatePageTranslation' ) !== 'translation' &&
 				mw.config.get( 'wgPageContentModel' ) === 'wikitext';
 		},
-		events: util.extend( {}, EditorOverlayBase.prototype.events, {
+		events: $.extend( {}, EditorOverlayBase.prototype.events, {
 			'input .wikitext-editor': 'onInputWikitextEditor'
 		} ),
 		/**
@@ -121,7 +113,7 @@
 		 */
 		onClickContinue: function ( ev ) {
 			// handle the click on "Edit without logging in"
-			if ( this.options.isAnon && this.$( ev.target ).hasClass( 'anonymous' ) ) {
+			if ( this.options.isAnon && $( ev.target ).hasClass( 'anonymous' ) ) {
 				this._showEditorAfterWarning();
 				return false;
 			}
@@ -139,52 +131,29 @@
 			var self = this;
 
 			if ( this.isVisualEditorEnabled() ) {
-				mw.loader.using( 'ext.visualEditor.switching' ).then( function () {
-					var switchToolbar,
-						toolFactory = new OO.ui.ToolFactory(),
-						toolGroupFactory = new OO.ui.ToolGroupFactory();
-
-					toolFactory.register( mw.libs.ve.MWEditModeVisualTool );
-					toolFactory.register( mw.libs.ve.MWEditModeSourceTool );
-					switchToolbar = new OO.ui.Toolbar( toolFactory, toolGroupFactory, {
-						classes: [ 'editor-switcher' ]
-					} );
-
-					switchToolbar.on( 'switchEditor', function ( mode ) {
-						if ( mode === 'visual' ) {
-							// If the user tries to switch to the VisualEditor, check if any changes have
-							// been made, and if so, tell the user they have to save first.
-							if ( !self.gateway.hasChanged ) {
-								self._switchToVisualEditor( self.options );
-							} else {
-								// TODO: Replace with an OOUI dialog
-								// eslint-disable-next-line no-alert
-								if ( window.confirm( mw.msg( 'mobile-frontend-editor-switch-confirm' ) ) ) {
-									self.onStageChanges();
-								}
-							}
+				this.initializeSwitcher();
+				/**
+				 * 'Edit' button handler
+				 */
+				this.switcherToolbar.tools.editVe.onSelect = function () {
+					// If the user tries to switch to the VisualEditor, check if any changes have
+					// been made, and if so, tell the user they have to save first.
+					if ( !self.gateway.hasChanged ) {
+						self._switchToVisualEditor( self.options );
+					} else {
+						if ( window.confirm( mw.msg( 'mobile-frontend-editor-switch-confirm' ) ) ) {
+							self.onStageChanges();
+						} else {
+							self.switcherToolbar.tools.editVe.setActive( false );
 						}
-					} );
-
-					switchToolbar.setup( [
-						{
-							type: 'list',
-							icon: 'edit',
-							title: mw.msg( 'visualeditor-mweditmode-tooltip' ), // resource-modules-disable-line
-							include: [ 'editModeVisual', 'editModeSource' ]
-						}
-					] );
-
-					self.$el.find( '.switcher-container' ).html( switchToolbar.$element );
-					switchToolbar.emit( 'updateState' );
-				} );
+					}
+				};
 			}
 
 			EditorOverlayBase.prototype.postRender.apply( this );
 
 			this.$preview = this.$( '.preview' );
 			this.$content = this.$( '.wikitext-editor' );
-			this.$content.addClass( 'mw-editfont-' + mw.user.options.get( 'editfont' ) );
 			if ( self.options.isAnon ) {
 				this.$anonWarning = this.$( '.anonwarning' );
 				this.$content.hide();
@@ -195,16 +164,12 @@
 			// make license links open in separate tabs
 			this.$( '.license a' ).attr( 'target', '_blank' );
 
-			this.abuseFilterPanel = new AbuseFilterPanel( {
-				overlayManager: this.overlayManager
-			} ).appendTo( this.$( '.panels' ) );
+			this.abuseFilterPanel = new AbuseFilterPanel().appendTo( this.$( '.panels' ) );
 
 			// If in readOnly mode, make textarea readonly
 			if ( this.readOnly ) {
 				this.$content.prop( 'readonly', true );
 			}
-
-			this.$content.on( 'input', this._resizeEditor.bind( this ) );
 
 			if ( !self.options.isAnon ) {
 				this._loadContent();
@@ -219,22 +184,22 @@
 		 * @return {Object} Object with all options
 		 */
 		_prepareAnonWarning: function ( options ) {
-			var params = util.extend( {
+			var params = $.extend( {
 				// use wgPageName as this includes the namespace if outside Main
-					returnto: options.returnTo || mw.config.get( 'wgPageName' ),
-					returntoquery: 'action=edit&section=' + options.sectionId,
-					warning: 'mobile-frontend-edit-login-action'
-				}, options.queryParams ),
-				signupParams = util.extend( {
-					type: 'signup',
-					warning: 'mobile-frontend-edit-signup-action'
-				}, options.signupQueryParams );
+				returnto: options.returnTo || mw.config.get( 'wgPageName' ),
+				returntoquery: 'action=edit&section=' + options.sectionId,
+				warning: 'mobile-frontend-edit-login-action'
+			}, options.queryParams ),
+			signupParams = $.extend( {
+				type: 'signup',
+				warning: 'mobile-frontend-edit-signup-action'
+			}, options.signupQueryParams );
 
-			options.loginButton = util.extend( {
+			options.loginButton = $.extend( {
 				href: mw.util.getUrl( 'Special:UserLogin', params )
 			}, this.defaults.loginButton );
-			options.signupButton = util.extend( {
-				href: mw.util.getUrl( 'Special:UserLogin', util.extend( params, signupParams ) )
+			options.signupButton = $.extend( {
+				href: mw.util.getUrl( 'Special:UserLogin', $.extend( params, signupParams ) )
 			}, this.defaults.signupButton );
 
 			return options;
@@ -264,23 +229,22 @@
 					text: this.getContent()
 				};
 
-			this.scrollTop = util.getDocument().find( 'body' ).scrollTop();
+			this.scrollTop = $( 'body' ).scrollTop();
 			this.$content.hide();
 			this.showSpinner();
 
 			if ( mw.config.get( 'wgIsMainPage' ) ) {
 				params.mainpage = 1; // Setting it to 0 will have the same effect
 			}
-			this.gateway.getPreview( params ).done( function ( result ) {
-				var parsedText = result.text,
-					parsedSectionLine = result.line;
-
+			this.gateway.getPreview( params ).done( function ( parsedText, parsedSectionLine ) {
 				// On desktop edit summaries strip tags. Mimic this behavior on mobile devices
-				self.sectionLine = self.parseHTML( '<div>' ).html( parsedSectionLine ).text();
+				self.sectionLine = $( '<div/>' ).html( parsedSectionLine ).text();
 				new Section( {
 					el: self.$preview,
 					text: parsedText
 				} ).$( 'a' ).on( 'click', false );
+				// Emit event so we can perform enhancements to page
+				M.emit( 'edit-preview', self );
 			} ).fail( function () {
 				self.$preview.addClass( 'error' ).text( mw.msg( 'mobile-frontend-editor-error-preview' ) );
 			} ).always( function () {
@@ -307,46 +271,19 @@
 		},
 
 		/**
-		 * Resize the editor textarea, maintaining scroll position in iOS
-		 */
-		_resizeEditor: function () {
-			var scrollTop, container, $scrollContainer;
-
-			if ( !this.$scrollContainer ) {
-				container = OO.ui.Element.static.getClosestScrollableContainer( this.$content[ 0 ] );
-				// The scroll container will be either within the view or the document element itself.
-				$scrollContainer = this.$( container ).length ? this.$( container ) : util.getDocument();
-				this.$scrollContainer = $scrollContainer;
-				this.$content.css( 'padding-bottom', this.$scrollContainer.height() * 0.6 );
-			} else {
-				$scrollContainer = this.$scrollContainer;
-			}
-
-			// Only do this if scroll container exists
-			if ( this.$content.prop( 'scrollHeight' ) && $scrollContainer.length ) {
-				scrollTop = $scrollContainer.scrollTop();
-				this.$content
-					.css( 'height', 'auto' )
-					// can't reuse prop( 'scrollHeight' ) because we need the current value
-					.css( 'height', ( this.$content.prop( 'scrollHeight' ) + 2 ) + 'px' );
-				$scrollContainer.scrollTop( scrollTop );
-			}
-		},
-
-		/**
 		 * Set content to the user input field.
-		 * @param {string} content The content to set.
+		 * @param {String} content The content to set.
 		 */
 		setContent: function ( content ) {
 			this.$content
 				.show()
-				.val( content );
-			this._resizeEditor();
+				.val( content )
+				.microAutosize();
 		},
 
 		/**
 		 * Returns the content of the user input field.
-		 * @return {string}
+		 * @return {String}
 		 */
 		getContent: function () {
 			return this.$content.val();
@@ -364,19 +301,13 @@
 			this.showSpinner();
 
 			this.gateway.getContent()
-				.done( function ( result ) {
-					var parser, ast, parsedBlockReason,
-						content = result.text,
-						userinfo = result.user,
-						block = result.block,
-						userTalkPage = mw.config.get( 'wgNamespaceNumber' ) === 3;
+				.done( function ( content, userinfo ) {
+					var parser, ast, parsedBlockReason;
 
 					self.setContent( content );
 					// check if user is blocked
-					if ( userinfo && userinfo.hasOwnProperty( 'blockid' ) &&
-						!( userTalkPage && block.allowusertalk ) ) {
+					if ( userinfo && userinfo.hasOwnProperty( 'blockid' ) ) {
 						// Workaround to parse a message parameter for mw.message, see T96885
-						// eslint-disable-next-line new-cap
 						parser = new mw.jqueryMsg.parser();
 						ast = parser.wikiTextToAst( userinfo.blockreason );
 						parsedBlockReason = parser.emitter.emit( ast );
@@ -411,7 +342,7 @@
 				mechanism: 'navigate'
 			} );
 			// Save a user setting indicating that this user prefers using the VisualEditor
-			mw.storage.set( 'preferredEditor', 'VisualEditor' );
+			settings.save( 'preferredEditor', 'VisualEditor', true );
 			// Load the VisualEditor and replace the SourceEditor overlay with it
 			this.showSpinner();
 			this.$content.hide();
@@ -421,11 +352,12 @@
 					var VisualEditorOverlay = M.require( 'mobile.editor.ve/VisualEditorOverlay' );
 
 					self.clearSpinner();
-					self.overlayManager.replaceCurrent( new VisualEditorOverlay( options ) );
+					overlayManager.replaceCurrent( new VisualEditorOverlay( options ) );
 				},
 				function () {
 					self.clearSpinner();
 					self.$content.show();
+					self.switcherToolbar.tools.editVe.setActive( false );
 					// FIXME: We should show an error notification, but right now toast
 					// notifications are not dismissible when shown within the editor.
 				}
@@ -436,8 +368,8 @@
 		 * Reveals an abuse filter panel inside the view.
 		 * @method
 		 * @private
-		 * @param {string} type The type of alert, e.g. 'warning' or 'disallow'
-		 * @param {string} message Message to show in the AbuseFilter overlay
+		 * @param {String} type The type of alert, e.g. 'warning' or 'disallow'
+		 * @param {String} message Message to show in the AbuseFilter overlay
 		 */
 		_showAbuseFilter: function ( type, message ) {
 			this.abuseFilterPanel.show( type, message );
@@ -476,8 +408,6 @@
 					var title = self.options.title;
 					// Special case behaviour of main page
 					if ( mw.config.get( 'wgIsMainPage' ) ) {
-						// FIXME: Blocked on T189173
-						// eslint-disable-next-line no-restricted-properties
 						window.location = mw.util.getUrl( title );
 						return;
 					}
@@ -513,7 +443,7 @@
 					} else {
 						if ( key === 'editconflict' ) {
 							msg = mw.msg( 'mobile-frontend-editor-error-conflict' );
-						} else if ( whitelistedErrorInfo.indexOf( key ) > -1 ) {
+						} else if ( $.inArray( key, whitelistedErrorInfo ) > -1 ) {
 							msg = response.error.info;
 						} else {
 							msg = mw.msg( 'mobile-frontend-editor-error' );
@@ -534,7 +464,7 @@
 		/**
 		 * Checks whether the existing content has changed.
 		 * @method
-		 * @return {boolean}
+		 * @return {Boolean}
 		 */
 		hasChanged: function () {
 			return this.gateway.hasChanged;
@@ -542,4 +472,4 @@
 	} );
 
 	M.define( 'mobile.editor.overlay/EditorOverlay', EditorOverlay );
-}( mw.mobileFrontend ) );
+}( mw.mobileFrontend, jQuery ) );

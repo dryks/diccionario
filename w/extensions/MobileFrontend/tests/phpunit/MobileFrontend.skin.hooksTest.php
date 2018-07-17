@@ -3,7 +3,7 @@
 /**
  * @group MobileFrontend
  */
-class MobileFrontendSkinHooksTest extends MediaWikiTestCase {
+class SkinMinervaTest extends MediaWikiTestCase {
 	/**
 	 * @dataProvider getGetPluralLicenseInfo
 	 * @covers MobileFrontendSkinHooks::getPluralLicenseInfo
@@ -32,12 +32,12 @@ class MobileFrontendSkinHooksTest extends MediaWikiTestCase {
 	}
 
 	public function getGetPluralLicenseInfo() {
-		return [
+		return array(
 			// message disabled, license message, result
-			[ false, 'test and test', 2 ],
-			[ true, 'test and test', 1 ],
-			[ false, 'test', 1 ],
-			[ true, 'test', 1 ],
-		];
+			array( false, 'test and test', 2 ),
+			array( true, 'test and test', 1 ),
+			array( false, 'test', 1 ),
+			array( true, 'test', 1 ),
+		);
 	}
 }

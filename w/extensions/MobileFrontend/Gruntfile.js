@@ -1,32 +1,40 @@
-/* eslint-env node */
+// jscs:disable jsDoc
+/*jshint node:true, strict:false */
 module.exports = function ( grunt ) {
-	var conf = grunt.file.readJSON( 'extension.json' );
-
-	grunt.loadNpmTasks( 'grunt-banana-checker' );
-	grunt.loadNpmTasks( 'grunt-contrib-watch' );
-	grunt.loadNpmTasks( 'grunt-eslint' );
+	grunt.loadNpmTasks( 'grunt-contrib-jshint' );
 	grunt.loadNpmTasks( 'grunt-jsonlint' );
+	grunt.loadNpmTasks( 'grunt-jscs' );
+	grunt.loadNpmTasks( 'grunt-contrib-watch' );
 	grunt.loadNpmTasks( 'grunt-notify' );
-	grunt.loadNpmTasks( 'grunt-stylelint' );
+	grunt.loadNpmTasks( 'grunt-banana-checker' );
 
 	grunt.initConfig( {
-		eslint: {
-			all: [
-				'**/*.js',
-				'!libs/**',
-				'!vendor/**',
-				'!docs/**',
-				'!node_modules/**'
-			]
-		},
-		stylelint: {
+		jshint: {
 			options: {
-				syntax: 'less'
+				jshintrc: true
 			},
 			all: [
-				'mobile.less/**/*.less',
-				'resources/**/*.less'
-			]
+				'.'
+			],
+			test: {
+				files: {
+					src: 'tests/qunit/**/*.js'
+				}
+			}
+		},
+		jscs: {
+			main: [
+				'**/*.js',
+				'!tests/qunit/**'
+			],
+			test: {
+				options: {
+					config: 'tests/.jscsrc.js'
+				},
+				files: {
+					src: 'tests/qunit/**/*.js'
+				}
+			}
 		},
 		watch: {
 			lint: {
@@ -44,18 +52,19 @@ module.exports = function ( grunt ) {
 				}
 			}
 		},
-		banana: conf.MessagesDirs,
+		banana: {
+			all: 'i18n/'
+		},
 		jsonlint: {
 			all: [
 				'*.json',
 				'**/*.json',
-				'!node_modules/**',
-				'!vendor/**'
+				'!node_modules/**'
 			]
 		}
 	} );
 
-	grunt.registerTask( 'lint', [ 'eslint', 'jsonlint', 'stylelint', 'banana' ] );
+	grunt.registerTask( 'lint', [ 'jshint', 'jscs', 'jsonlint', 'banana' ] );
 	grunt.registerTask( 'test', [ 'lint' ] );
 
 	grunt.registerTask( 'default', [ 'test' ] );

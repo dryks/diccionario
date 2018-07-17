@@ -1,7 +1,8 @@
-@import 'mobile.variables';
+@import "minerva.variables";
+@import "minerva.mixins";
 
 .image-list {
-	margin-top: 20px;
+	margin: 20px @contentMargin 0;
 
 	li {
 		list-style: none outside none;
@@ -15,7 +16,7 @@
 	}
 }
 
-@media all and ( min-width: @deviceWidthTablet ) {
+@media all and (min-width: @deviceWidthTablet) {
 	.image-list {
 		margin: auto;
 	}

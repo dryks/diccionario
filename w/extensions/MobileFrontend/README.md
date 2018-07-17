@@ -6,55 +6,42 @@ The MobileFrontend extension adds a mobile view to your mediawiki instance.
 Installation
 ------------
 
-See <https://www.mediawiki.org/wiki/Extension:MobileFrontend#Installation>
+See [https://www.mediawiki.org/wiki/Extension:MobileFrontend\#Installation](https://www.mediawiki.org/wiki/Extension:MobileFrontend#Installation "https://www.mediawiki.org/wiki/Extension:MobileFrontend#Installation")
+
+Configuration
+-------------
+
+See [https://www.mediawiki.org/wiki/Extension:MobileFrontend\#Configuration\_settings](https://www.mediawiki.org/wiki/Extension:MobileFrontend#Configuration_settings "https://www.mediawiki.org/wiki/Extension:MobileFrontend#Configuration_settings")
 
 Development
 -----------
 
 ### Coding conventions
 
-Please follow the coding conventions of MobileFrontend:
-<https://www.mediawiki.org/wiki/MobileFrontend/Coding_conventions>
+Please follow the coding conventions of MobileFrontend: [https://www.mediawiki.org/wiki/MobileFrontend/Coding\_conventions](https://www.mediawiki.org/wiki/MobileFrontend/Coding_conventions "https://www.mediawiki.org/wiki/MobileFrontend/Coding_conventions")
 
 #### Git hooks
 
-Git hooks are provided in the dev-scripts directory to assist with adhering to
-JavaScript code standards, optimizing PNG files, etc. Running these hooks
-requires node.js, NPM, and grunt.
+Git hooks are provided in the dev-scripts directory to assist with adhering to JavaScript code standards, optimizing PNG files, etc. Running these hooks requires node.js, NPM, and grunt.
 
 Install like so:
 
     make installhooks
 
-If you are not running Vagrant, be sure to set your `MEDIAWIKI_URL` env
-variable to your local index path, e.g.
-`MEDIAWIKI_URL=http://localhost/index.php/`
+If you are not running Vagrant, be sure to set your MEDIAWIKI\_URL env variable to your local index path, e.g. 'MEDIAWIKI\_URL=[http://localhost/index.php/](http://localhost/index.php/ "http://localhost/index.php/")'
 
 ### Committing
 
-Commits are important as they give the reviewer more information to
-successfully review your code and find errors or potential problems you might
-not have thought of.
+Commits are important as they give the reviewer more information to successfully review your code and find errors or potential problems you might not have thought of.
 
-Commits are also useful when troubleshooting issues and refactoring. If it's
-not clear why a line of code is in the repository important bug fixes could be
-lost.
+Commits are also useful when troubleshooting issues and refactoring. If it's not clear why a line of code is in the repository important bug fixes could be lost.
 
-Commits should be as minor as possible. Please avoid removing unrelated
-console.log statements, fixing unrelated whitespace etc. do that in a separate
-commit which mentions the word cleanup.
+Commits should be as minor as possible. Please avoid removing unrelated console.log statements, fixing unrelated whitespace etc. do that in a separate commit which mentions the word cleanup.
 
-First line commit should summarise the commit with bug it fixes if applicable.
-e.g. *Fix problem with toggling see bug x*.
+First line commit should summarise the commit with bug it fixes if applicable. e.g. Fix problem with toggling see bug x. Second line should be blank. Third line should go into detail where necessary providing links to blog posts/other bugs to provide more background. Mention the platforms/browsers the change is for where necessary, e.g.:
 
-Second line should be blank. Third line should go into detail where necessary
-providing links to blog posts/other bugs to provide more background. Mention
-the platforms/browsers the change is for where necessary, e.g.:
-
-* *This is a problem on Android but not OSX, see `http://<url></url>` which
-  explains problem in detail*
-* *This is a workaround for a known bug in opera mobile see
-  `http://<url></url>`*
+-   'this is a problem on Android but not OSX see http://<url></url> which explains problem in detail'
+-   'this is a workaround for a known bug in opera mobile see see http://<url></url>'
 
 ### Testing
 
@@ -74,598 +61,479 @@ To run only JS tests:
 
 #### Selenium tests
 
-For information on how to run Selenium tests please see README file in
-tests/browser directory.
+For information on how to run Selenium tests please see README file in tests/browser directory.
 
 ### Releasing
 
-A new version of MobileFrontend is released every two weeks following the
-Wikimedia release train if there are new changes.
+A new version of MobileFrontend is released every two weeks. A developer needs to generate release notes and create a file with the title "RELEASE-NOTES-X.X.X.mediawiki" where "X.X.X" is the software version. Once a new release is due, the contents of the above file is moved to HISTORY.mediawiki and the file itself is deleted. Ideally, we need to create a bot similar to [https://wikitech.wikimedia.org/wiki/Jouncebot](https://wikitech.wikimedia.org/wiki/Jouncebot "https://wikitech.wikimedia.org/wiki/Jouncebot") that reads a calendar and pings a developer on \#wikimedia-mobile to remind them about a release.
 
-MobileFrontend follows the version naming from MediaWiki.
+#### Generating release notes
 
-Configuration options
----------------------
+You can generate release notes by running (replace {branch name / commit SHA}):
 
-### MobileFrontend
-The following configuration options will apply to all skins operating in useformat=mobile mode.
+    make releasenotes from={branch name / commit SHA} to={branch name / commit SHA}
 
-#### $wgMFEnableXAnalyticsLogging
+Which will output a list of commits between two branches or commit SHAs.
 
-Whether or not to enable the use of the X-Analytics HTTP response header.  This
-header is used for analytics purposes.
+#### Versioning
+
+Adhere to [http://semver.org/](http://semver.org/ "http://semver.org/") when changing versions.
+
+> Given a version number MAJOR.MINOR.PATCH, increment the:
+>
+> MAJOR version when you make incompatible API changes, MINOR version when you add functionality in a backwards-compatible manner, and PATCH version when you make backwards-compatible bug fixes.
+
+#### Configuration options
+
+##### $wgMFEnableXAnalyticsLogging
+Whether or not to enable the use of the X-Analytics HTTP response header
+This header is used for analytics purposes.
 
 See: https://www.mediawiki.org/wiki/Analytics/Kraken/Data_Formats/X-Analytics
 
-* Type: `Boolean`
-* Default: `false`
+Type: Boolean
+Default: false
 
-#### $wgMFAppPackageId
+##### $wgMFAppPackageId
+ID of the App to deep link to replacing the browser. Set 'false' to have no such link.
 
-ID of the App to deep link to replacing the browser. Set `false` to have no
-such link.
+See: https://developers.google.com/app-indexing/webmasters/details
 
-See: <https://developers.google.com/app-indexing/webmasters/details>
+Type: Boolean|String
+Default: false;
 
-* Type: `Boolean|String`
-* Default: `false`
+##### $wgMFAppScheme
+Scheme to use for the deep link. Per default, 'http' is used.
 
-#### $wgMFAppScheme
-
-Scheme to use for the deep link.
-
-* Type: `String`
-* Default: `'http'`
+Type: String
+Default: 'http';
 
 #### $wgMFEditorOptions
+Options to control several functions of the mobile editor.
+Possible values:
+- 'anonymousEditing':
+  Whether or not anonymous (not logged in) users should be able to edit.
+  Note this is highly experimental and comes without any warranty and may introduce bugs
+  until anonymous editing experience is addressed in this extension. Anonymous editing
+  on mobile is still a big unknown. See bug 53069.
+  Thoughts welcomed on https://www.mediawiki.org/wiki/Mobile_wikitext_editing#Anonymous_editing
+- 'skipPreview': Should the mobile edit workflow contain an edit preview (before save) to give
+  the user the possibility to review the new text resulting of his changes or not.
 
-Options to control several functions of the mobile editor.  Possible values:
+Type: Array
+Default: array(
+	'anonymousEditing' => true,
+	'skipPreview' => false,
+);
 
-* `anonymousEditing`:
-  Whether or not anonymous (not logged in) users should be able to edit.  Note
-  this is highly experimental and comes without any warranty and may introduce
-  bugs until anonymous editing experience is addressed in this extension.
-  Anonymous editing on mobile is still a big unknown. See bug 53069.  Thoughts
-  welcomed on
-  <https://www.mediawiki.org/wiki/Mobile_wikitext_editing#Anonymous_editing>
-* `skipPreview`: Should the mobile edit workflow contain an edit preview
-  (before save) to give the user the possibility to review the new text
-  resulting of his changes or not.
+##### $wgMFIgnoreEventLoggingBucketing
+Disable EventLogging bucketing for purposes of development.
+When enabled all events are logged regardless of any existing sampling rate specified in
+the schema.
 
+Type: Boolean
+Default: false;
 
-* Type: `Array`
-* Default:
-```php
-  [
-    'anonymousEditing' => true,
-    'skipPreview' => false,
-  ]
-```
-
-#### $wgMFExperiments
-
+##### $wgMFExperiments
 A list of experiments active on the skin.
 
-* Type: `Array`
-* Default:
-```php
-  [
-    // Experiment to prompts users to opt into the beta experience of the skin.
-    'betaoptin' => [
-      'name' => 'betaoptin',
-      'enabled' => false,
-      'buckets' => [
-        'control' => 0.97,
-        'A' => 0.03,
-      ],
-    ],
-  ]
-```
+Type: Array
+Default: array(
+	// Experiment to prompts users to opt into the beta experience of the skin.
+	'betaoptin' => array(
+		'name' => 'betaoptin',
+		'enabled' => false,
+		'buckets' => array(
+			'control' => 0.97,
+			'A' => 0.03,
+		),
+	),
+);
 
-#### $wgMFEnableJSConsoleRecruitment
+##### $wgMFEnableMinervaBetaFeature
+Controls whether the "Minerva as a desktop skin" beta feature is enabled
 
-Controls whether a message should be logged to the console to attempt to
-recruit volunteers.
+Type: Boolean
+Default: false;
 
-* Type: `Boolean`
-* Default: `false`
+##### $wgMFEnableJSConsoleRecruitment
+Controls whether a message should be logged to the console to attempt to recruit volunteers.
 
-#### $wgMFIsBannerEnabled
+Type: Boolean
+Default: false;
 
+##### $wgMFIsBannerEnabled
 Whether or not the banner experiment is enabled.
 
-See: <https://www.mediawiki.org/wiki/Reading/Features/Article_lead_image>
+See: https://www.mediawiki.org/wiki/Reading/Features/Article_lead_image
 
-* Type: `Boolean`
-* Default: `true`
+Type: Boolean
+Default: true;
 
-#### $wgMFContentProviderClass
+##### $wgMFMobileFormatterHeadings
+This is a list of html tags, that could be recognized as the first heading of a page.
+This is an interim solution to fix Bug T110436 and shouldn't be used, if you don't know,
+what you do. Moreover, this configuration variable will be removed in the near future
+(hopefully).
 
-Name of PHP class that is responsible for formatting HTML for mobile.
-Must implement IContentProvider.
+Type: Array
+Default: array( 'h1', 'h2', 'h3', 'h4', 'h5', 'h6' );
 
-* Type: `string`
-* Default: `DefaultContentProvider`
+##### $wgMFSpecialCaseMainPage
+If set to true, main page HTML will receive special massaging that removes everything
+but a few select pieces.
 
+Type: Boolean
+Default: true;
 
-#### $wgMFMobileMainPageCss
+##### $wgMinervaEnableSiteNotice
+Controls whether site notices should be shown.
 
-Allow editors to edit MediaWiki:MobileMainPage.css to serve render blocking css to the main
-page.
+Type: Boolean
+Default: false;
 
-* Type: `boolean`
-* Default: false
+##### $wgMFTidyMobileViewSections
+Controls whether API action=mobileview should have every HTML section tidied for invalid markup
 
-#### $wgMFMwApiContentProviderBaseUri
+Type: Boolean
+Default: true;
 
-URL to be used by the MwApiMobileFormatter class. Points to a MediaWiki
-API that can be queried to obtain content.
+##### $wgMFMobileHeader
+Requests containing header with this name will be considered as coming from mobile devices.
+The default value is for backwards compatibility.
+Set to false to explicitly disable this way of detection.
 
-* Type: `string`
-* Default: `https://en.wikipedia.org/w/api.php`
+Type: String
+Default: 'X-WAP';
 
-#### $wgMFAlwaysUseContentProvider
+##### $wgMFRemovableClasses
+Make the classes, tags and ids stripped from page content configurable.
+Each item will be stripped from the page.
 
-When enabled the ContentProvider will run on desktop views as well as mobile views.
+Type: Array
+Default: array(
+	// These rules will be used for all transformations in the beta channel of the site
+	'beta' => array(),
+	// These rules will be used for all transformations
+	'base' => array(),
+);
 
-* Type: `boolean`
-* Default: `false`
-
-#### $wgMFMobileFormatterHeadings
-
-This is a list of html tags, that could be recognized as the first heading of
-a page.  This is an interim solution to fix Bug T110436 and shouldn't be used,
-if you don't know, what you do. Moreover, this configuration variable will be
-removed in the near future (hopefully).
-
-* Type: `Array`
-* Default: `['h1', 'h2', 'h3', 'h4', 'h5', 'h6']`
-
-#### $wgMFSiteStylesRenderBlocking
-
-If set to true, styles inside MediaWiki:Mobile.css will become render blocking.
-
-This is intended for situations where the [TemplateStyles extension](https://m.mediawiki.org/wiki/Mobile_Gateway/TemplateStyles)
-cannot be used. When enabled, this may increase the time it takes for the mobile
-site to render, depending on how large MediaWiki:Mobile.css is for your wiki.
-
-* Type: `Boolean`
-* Default: `false`
-
-#### $wgMFSpecialCaseMainPage
-
-If set to true, main page HTML will receive special massaging.
-
-See <https://m.mediawiki.org/wiki/Mobile_Gateway/Mobile_homepage_formatting>
-
-Use is discouraged as it leads to unnecessary technical debt and on the long
-term the goal is to deprecate usage of this config variable. Use at your own
-risk!
-
-* Type: `Boolean`
-* Default: `false`
-
-#### $wgMFMobileHeader
-
-Requests containing header with this name will be considered as coming from
-mobile devices.
-
-* Type: `String`
-* Default: `'X-Subdomain'`
-
-#### $wgMFRemovableClasses
-
-Make the classes, tags and ids stripped from page content configurable. Each
-item will be stripped from the page.
-
-* Type: `Array`
-* Default:
-```php
-  [
-    // These rules will be used for all transformations in the beta channel of the site
-    'beta' => [],
-    // These rules will be used for all transformations
-    'base' => [],
-  ]
-```
-
-#### $wgMFLazyLoadImages
-
+##### $wgMFLazyLoadImages
 Do load images in pages lazily. Currently it doesn't affect HTML-only clients
 (only JS capable ones) and it lazy loads images when they come close to the
 viewport.
 
-* Type: `Array`
-* Default:
-```php
-  [
-    // These will enable lazy loading images in beta mode
-    'beta' => false,
-    // These will enable lazy loading images in all modes
-    'base' => false,
-  ]
-```
+Type: Array
+Default: array(
+	// These will enable lazy loading images in beta mode
+	'beta' => false,
+	// These will enable lazy loading images in all modes
+	'base' => false,
+);
 
-#### $wgMFMobileFormatterNamespaceBlacklist
+##### $wgMFNoMobileCategory
+DB key of the category which members will never display mobile view
 
-Array of namespaces that blacklists certain namespaces from applying mobile
-transformations to page content. This will disable lazy loading images and
-references; special casing and section formatting on the given page.
-MFRemovableClasses will not apply for any blacklisted pages.
+Type: Boolean
+Default: false;
 
-* Type: `Array`
-* Default:
-```php
-  [
-    NS_TEMPLATE,
-    NS_SPECIAL
-  ]
-```
+##### $wgMFNoMobilePages
+Prefixed names of pages that will never display mobile view
 
-#### $wgMFNoMobileCategory
+Type: Array
+Default: array();
 
-DB key of the category which members will never display mobile view.
-
-* Type: `Boolean`
-* Default: `false`
-
-#### $wgMFNoMobilePages
-
-Prefixed names of pages that will never display mobile view.
-
-* Type: `Array`
-* Default: `[]`
-
-#### $wgMFNearbyRange
-
+##### $wgMFNearbyRange
 The range in meters that should be searched to find nearby pages on
-*Special:Nearby* (defaults to 10km).
+Special:Nearby (defaults to 10km).
 
-* Type: `Integer`
-* Default: `10000`
+Type: Integer
+Default: 10000;
 
-#### $wgMFNearby
+##### $wgMFNearby
+Whether geodata related functionality should be enabled
 
-Whether geodata related functionality should be enabled.
+Type: Boolean
+Default: false;
 
-* Type: `Boolean`
-* Default: `false`
+##### $wgMFNearbyEndpoint
+An optional alternative api to query for nearby pages
+e.g. https://en.m.wikipedia.org/w/api.php
 
-#### $wgMFNearbyEndpoint
+If set forces nearby to operate in JSONP mode
 
-An optional alternative api to query for nearby pages, e.g.
-<https://en.m.wikipedia.org/w/api.php>
+Type: String
+Default: '';
 
-If set forces nearby to operate in JSONP mode.
-
-* Type: `String`
-* Default: `''`
-
-#### $wgMFSearchAPIParams
-
+##### $wgMFSearchAPIParams
 Define a set of params that should be passed in every gateway query.
 
-* Type: `Array`
-* Default:
-```php
-  [
-    // See https://phabricator.wikimedia.org/T115646
-    'ppprop' => 'displaytitle',
-  ]
-```
+Type: Array
+Default: array(
+	// https://phabricator.wikimedia.org/T115646
+	'ppprop' => 'displaytitle',
+);
 
-#### $wgMFQueryPropModules
+##### $wgMFQueryPropModules
+Define a set of page props that should be associated with requests for pages via the API.
 
-Define a set of page props that should be associated with requests for pages
-via the API.
+Type: Array
+Default: array(
+	'pageprops',
+);
 
-* Type: `Array`
-* Default: `['pageprops']`
-
-#### $wgMFRSSFeedLink
-
-Sets RSS feed `<link>` being outputted or not while on mobile version.
-
-* Type: `Boolean`
-* Default: `false`
-
-#### $wgMFSearchGenerator
-
+##### $wgMFSearchGenerator
 Define the generator that should be used for mobile search.
 
-* Type: `Array`
-* Default:
-```php
-  [
-    'name' => 'prefixsearch',
-    'prefix' => 'ps',
-  ]
-```
+Type: Array
+Default: array(
+	'name' => 'prefixsearch',
+	'prefix' => 'ps',
+);
 
-#### $wgMFMinCachedPageSize
+##### $wgMFMinCachedPageSize
+Pages with smaller parsed HTML size are not cached
+Set to 0 to cache everything or to some large value to disable caching completely
 
-Pages with smaller parsed HTML size are not cached.  Set to 0 to cache
-everything or to some large value to disable caching completely.
+Type: Integer
+Default: 64 * 1024;
 
-* Type: `Integer`
-* Default: `64 * 1024`
+##### $wgMFAutodetectMobileView
+Set this to true to automatically show mobile view depending on people's user-agent.
+WARNING: Make sure that your caching infrastructure is configured appropriately, to avoid
+people receiving cached versions of pages intended for someone else's devices.
 
-#### $wgMFAutodetectMobileView
+Type: Boolean
+Default: false;
 
-Set this to true to automatically show mobile view depending on people's
-user-agent.
+##### $wgMFVaryOnUA
+Set this to true, if you want to send User-Agent in the Vary header. This could improve
+your SEO ranking.
+WARNING: You should set this to true only, if you know what you're doing!
+CAUTION: Setting this to true in combination with a (frontend)caching layer (such as Varnish)
+can have a huge impact on how your caching works, as it now caches every single page multiple
+times for any possible/different User Agent string!
 
-*WARNING: Make sure that your caching infrastructure is configured
-appropriately, to avoid people receiving cached versions of pages intended for
-someone else's devices.*
+Type: Boolean
+Default: false;
 
-* Type: `Boolean`
-* Default: `false`
-
-#### $wgMFVaryOnUA
-
-Set this to `true`, if you want to send `User-Agent` in the `Vary` header. This
-could improve your SEO ranking.
-
-*WARNING: You should set this to true only, if you know what you're doing!*
-
-*CAUTION: Setting this to true in combination with a (frontend)caching layer
-(such as Varnish) can have a huge impact on how your caching works, as it now
-caches every single page multiple times for any possible/different User Agent
-string!*
-
-* Type: `Boolean`
-* Default: `false`
-
-#### $wgMFShowMobileViewToTablets
-
+##### $wgMFShowMobileViewToTablets
 Controls whether tablets should be shown the mobile site. Works only if
-`$wgMFAutodetectMobileView` is `true`.
+$wgMFAutodetectMobileView is true.
 
-* Type: `Boolean`
-* Default: `true`
+Type: Boolean
+Default: true;
 
-#### $wgMobileUrlTemplate
+##### $wgMFDeviceWidthMobileSmall
+Devices with available screen of this value and less will have some styles
+adapted for improved reading on small screens.
 
+Type: Integer
+Default: 280;
+
+###### $wgMFDeviceWidthTablet
+Minimum available screen width at which a device can be considered a tablet/desktop
+
+Type: Integer
+Default: 768;
+
+##### $wgMobileUrlTemplate
 Template for mobile URLs.
 
-This will be used to transcode regular URLs into mobile URLs for the mobile
-view.
+This will be used to transcode regular URLs into mobile URLs for the
+mobile view.
 
-It's possible to specify the *mobileness* of the URL in the host portion of the
-URL.
+It's possible to specify the 'mobileness' of the URL in the host portion of
+the URL.
 
-You can either statically or dynamically create the host-portion of your mobile
-URL. To statically create it, just set `$wgMobileUrlTemplate` to the static
-hostname. For example:
+You can either statically or dynamically create the host-portion of your
+mobile URL. To statically create it, just set $wgMobileUrlTemplate to
+the static hostname. For example:
+  $wgMobileUrlTemplate = "mobile.mydomain.com";
 
-```php
-$wgMobileUrlTemplate = "mobile.mydomain.com";
-```
+Alternatively, the host definition can include placeholders for different
+parts of the 'host' section of a URL. The placeholders are denoted by '%h'
+and followed with a digit that maps to the position of a host-part of the
+original, non-mobile URL. Take the host 'en.wikipedia.org' for example.
+'%h0' maps to 'en', '%h1' maps to 'wikipedia', and '%h2' maps to 'org'.
+So, if you wanted a mobile URL scheme that turned "en.wikipedia.org" into
+"en.m.wikipedia.org", your URL template would look like:
+  %h0.m.%h1.%h2
 
-Alternatively, the host definition can include placeholders for different parts
-of the *host* section of a URL. The placeholders are denoted by `%h` and
-followed with a digit that maps to the position of a host-part of the original,
-non-mobile URL. Take the host `en.wikipedia.org` for example.  `%h0` maps to
-`en`, `%h1` maps to `wikipedia`, and `%h2` maps to `org`.  So, if you wanted
-a mobile URL scheme that turned `en.wikipedia.org` into `en.m.wikipedia.org`,
-your URL template would look like:
+Type: String
+Default: '';
 
-    %h0.m.%h1.%h2
+##### $wgMobileFrontendFormatCookieExpiry
+The number of seconds the 'useformat' cookie should be valid
 
-* Type: `String`
-* Default: `''`
+The useformat cookie gets set when a user manually elects to view
+either the mobile or desktop view of the site.
 
-#### $wgMobileFrontendFormatCookieExpiry
+If this value is not set, it will default to $wgCookieExpiration
 
-The number of seconds the `useformat` cookie should be valid.
+Type: Ineteger|null
+Default: null;
 
-The useformat cookie gets set when a user manually elects to view either the
-mobile or desktop view of the site.
+##### $wgMFNoindexPages
+Set to false to allow search engines to index your mobile pages. So far, Google seems
+to mix mobile and non-mobile pages in its search results, creating confusion.
 
-If this value is not set, it will default to `$wgCookieExpiration`
+Type: Boolean
+Default: true;
 
-* Type: `Integer|null`
-* Default: `null`
-
-#### $wgMFNoindexPages
-
-Set to false to allow search engines to index your mobile pages. So far, Google
-seems to mix mobile and non-mobile pages in its search results, creating
-confusion.
-
-* Type: `Boolean`
-* Default: `true`
-
-#### $wgMFStopRedirectCookieHost
-
-Set the domain of the `stopMobileRedirect` cookie.
+##### $wgMFStopRedirectCookieHost
+Set the domain of the stopMobileRedirect cookie
 
 If this value is not set, it will default to the top domain of the host name
-(e.g. `en.wikipedia.org = .wikipedia.org`)
+(eg en.wikipedia.org = .wikipedia.org)
+If you want to set this to a top domain (to cover all subdomains), be sure
+to include the preceding '.' (eg .wikipedia.org NOT wikipedia.org)
 
-If you want to set this to a top domain (to cover all subdomains), be sure to
-include the preceding `.` (e.g. yes: `.wikipedia.org`, **no**: `wikipedia.org`)
+Type: String|null
+Deafult: null;
 
-* Type: `String|null`
-* Default: `null`
+##### $wgMFCustomLogos
+Make the logos configurable.
 
-#### $wgMobileFrontendLogo
+Currently, 'copyright', 'copyright-width', and 'copyright-height' elements are supported.
+'copyright' is the URL of the logo displayed in the footer
+'copyright-width' (optional) is the width in pixels of the copyright image you want to display
+'copyright-height' (optional) is the height in pixels of the copyright image you want to display
+If the actual 'copyright' dimensions are 200x30, then you may want to set the width and height
+to 100 and 15 respectively (in order to support retina screens).
 
-Path to the logo used in the login/signup form.  The standard height is `72px`
+Example: array(
+  'copyright' => '/images/mysite_copyright_logo.png',
+  'copyright-width' => 100,
+  'copyright-height' => 15,
+);
 
-* Type: `Boolean`
-* Default: `false`
+Type: Array
+Default: array();
 
+##### $wgMobileFrontendLogo
+Path to the logo used in the login/signup form
+The standard height is 72px
+FIXME: Merge with $wgMFCustomLogos
 
-#### $wgMFEnableBeta
+Type: Boolean
+Deafult: false;
 
-Whether beta mode is enabled.
+##### $wgMFTrademarkSitename
+Whether to append a trademark notice to the sitename in the page footer.
 
-* Type: `Boolean`
-* Default: `false`
+If set to true or 'unregistered', adds a ™ to the sitename.
+If set to 'registered' adds a ® to the sitename.
+If set to false, adds nothing (the default).
 
-#### MFBetaFeedbackLink
+You can also edit the 'mobile-frontend-footer-sitename' message directly.
 
-Link to feedback page for beta features. If false no feedback link will be shown.
+Type: Boolean
+Default: false;
 
-* Type: `String|false`
-* Default: `false`
+##### $wgDeviceDetectionClass
+Name of the class used for mobile device detection, must be inherited from
+IDeviceDetector.
 
-#### $wgMFDefaultSkinClass
+Type: String
+Default: 'DeviceDetection';
 
-The default skin for MobileFrontend.
+##### $wgMFEnableBeta
+Whether beta mode is enabled
 
-* Type: `String`
-* Default: `'SkinMinerva'`
+Type: Boolean
+Default: false;
 
-#### $wgMFNamespacesWithoutCollapsibleSections
+##### $wgMFDonationUrl
+Optional string to mobile friendly url for donation page.
 
-In which namespaces sections shoudn't be collapsed.
+Type: Boolean
+Default: false;
 
-* Type: `Array`
-* Default:
-```php
-  [
-    // Authorship and licensing information should be visible initially
-    NS_FILE,
-    // Otherwise category contents will be hidden
-    NS_CATEGORY,
-    // Don't collapse various forms
-    NS_SPECIAL,
-    // Just don't
-    NS_MEDIA,
-  ]
-```
+##### $wgMFContentNamespace
+The content namespace(s) that Special:Nearby and Special:Random should use.
+Should be one or more of NS_* constants, pipe-separated.
 
-#### $wgMFCollapseSectionsByDefault
+Type: Integer|string
+Default: NS_MAIN;
 
+##### $wgMFDefaultSkinClass
+The default skin for MobileFrontend
+Defaults to SkinMinerva
+
+Type: String
+Default: 'SkinMinerva';
+
+##### $wgMinervaPageActions
+Controls, which page action show and which not. Allowed:
+edit, talk, upload, watch
+
+Type: Array
+Default: array( 'edit', 'talk', 'upload', 'watch' );
+
+##### $wgMFNamespacesWithoutCollapsibleSections
+In which namespaces sections shoudn't be collapsed
+
+Type: Array
+Default: array(
+	// Authorship and licensing information should be visible initially
+	NS_FILE,
+	// Otherwise category contents will be hidden
+	NS_CATEGORY,
+	// Don't collapse various forms
+	NS_SPECIAL,
+	// Just don't
+	NS_MEDIA,
+);
+
+##### $wgMFCollapseSectionsByDefault
 Controls whether to collapse sections by default.
 
-Leave at default `true` for "encyclopedia style", where the section 0 lead text
-will always be visible and subsequent sections may be collapsed by default.
+Leave at default true for "encyclopedia style", where the section 0 lead text will
+always be visible and subsequent sections may be collapsed by default.
 
-In tablet sections will always be expanded by default regardless of this
-setting.
+Set to false for "dictionary style", sections are not collapsed.
 
-Set to `false` for "dictionary style", sections are not collapsed.
+Type: Boolean
+Default: true;
 
-* Type: `Boolean`
-* Default: `true`
-
-#### $wgMFExpandAllSectionsUserOption
-
-When enabled an option on Special:MobileOptions to expand all sections by default will
-be visible. This allows a user to specify a preference for toggling which will override
-the value of wgMFCollapseSectionsByDefault.
-
-* Type: `Array`
-* Default:
-```php
-  [
-    'beta' => true,
-    'base' => false,
-  ]
-```
-
-#### $wgMFPhotoUploadWiki
-
+##### $wgMFPhotoUploadWiki
 The wiki id/dbname for where photos are uploaded, if photos are uploaded to
 a wiki other than the local wiki (eg commonswiki).
 
-* Type: `String|null`
-* Default: `null`
+Type: String|null
+Default: null;
 
-#### $wgMFPhotoUploadEndpoint
+##### $wgMFPhotoUploadEndpoint
+An api to which any photos should be uploaded
+e.g. $wgMFPhotoUploadEndpoint = 'https://commons.wikimedia.org/w/api.php';
+Defaults to the current wiki
 
-An api to which any photos should be uploaded.
-e.g. `$wgMFPhotoUploadEndpoint = 'https://commons.wikimedia.org/w/api.php';`
+Type: String
+Default: '';
 
-* Type: `String`
-* Default: Defaults to the current wiki
+##### $wgMFUploadMinEdits
+Set the minimum edits the user needs before they can upload images in mobile mode
 
-#### $wgMFUseWikibase
+Type: Integer
+Default: 0;
 
-If set to true, the use Wikibase is enabled and associated features is enabled.
-See `$wgMFDisplayWikibaseDescriptions`
+##### $wgMFUseWikibaseDescription
+If set to true and running beta, will add Wikidata description to page JS as
+wgMFDescription variable
 
-* Type: `Boolean`
-* Default: `false`
+Type: Boolean
+Default: false;
 
-#### $wgMFEnableWikidataDescriptions
+##### $wgMFDisplayWikibaseDescription
+If set to true wikidata descriptions will be displayed in UI elements such as search,
+nearby and watchlist.
 
-If set to true, wikidata descriptions as defined in $wgMFDisplayWikibaseDescriptions will show up
-in the UI in the environment they have been told to target.
+Type: Boolean
+Default: false;
 
-* Type: `Array`
-* Default:
-```php
-  [
-    'beta' => true,
-    'base' => false,
-  ]
-```
+##### $wgMFWikibaseImageCategory
+Define the property that holds a string representing a category on $wgMFPhotoUploadEndpoint
 
-#### $wgMFDisplayWikibaseDescriptions
-
-Set which features will use Wikibase descriptions, e.g.
-
-```php
-$wgMFDisplayWikibaseDescriptions = [
-  'search' => true,
-  'nearby' => true,
-  'watchlist' => false,
-  'tagline' => true,
-];
-```
-
-* Type: `Array`
-* Default:
-```php
-  [
-    'search' => false,
-    'nearby' => false,
-    'watchlist' => false,
-    'tagline' => false,
-  ]
-```
-#### $wgMFSpecialPageTaglines
-Set taglines for special pages
-
-```php
-$wgMFSpecialPageTaglines = [
-  "SpecialPageName" => "valid-message-key",
-];
-```
-
-* Type: `Array`
-* Default:
-```php
-  [
-    "MobileOptions" => "mobile-frontend-settings-tagline"
-  ]
-```
-
-
-#### $wgMFStripResponsiveImages
-
-Whether to strip `srcset` attributes from all images on mobile renderings. This
-is a sort of brute-force bandwidth optimization at the cost of making images
-fuzzier on most devices.
-
-* Type: `Boolean`
-* Default: `true`
-
-#### $wgMFResponsiveImageWhitelist
-
-Whitelist of source file mime types to retain srcset attributes on when using
-$wgMFStripResponsiveImages. Defaults to allow rasterized SVGs since they
-usually are diagrams that compress well and benefit from the higher resolution.
-
-* Type: `Array`
-* Default:
-```php
-  [
-    "image/svg+xml",
-  ]
-```
+Type: String
+Default: '';

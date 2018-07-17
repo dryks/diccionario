@@ -1,10 +1,5 @@
-@import 'mobile.variables';
-@hugeIconSize: 9.625em;
-
-.nearby-accept-pending .heading-holder {
-	// hide the page header when on landing page
-	display: none;
-}
+@import "minerva.variables";
+@import "minerva.mixins";
 
 .page-list {
 	// Give page-list a top border since page doesn't have a content-header
@@ -12,7 +7,7 @@
 
 	li {
 		.proximity {
-			font-size: 0.8em;
+			font-size: .8em;
 			text-transform: none;
 		}
 	}
@@ -22,32 +17,5 @@
 	// note this also means non-ResourceLoader enabled browsers hence not using tag
 	.noscript {
 		display: none;
-	}
-}
-
-#mf-nearby-info-holder {
-	padding: 50px 20px 0;
-	text-align: center;
-
-	.icon {
-		margin: 0 auto 20px;
-		min-width: @hugeIconSize;
-		min-height: @hugeIconSize;
-
-		&:before {
-			min-height: @hugeIconSize;
-		}
-	}
-
-	// be specific in order to override default padding
-	h3 {
-		font-size: 1em;
-		font-family: @fontFamily;
-		padding: 0 0 10px;
-	}
-
-	.desc {
-		color: @colorGray7;
-		margin-bottom: 20px;
 	}
 }

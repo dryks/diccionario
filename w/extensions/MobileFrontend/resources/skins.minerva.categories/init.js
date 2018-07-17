@@ -1,8 +1,8 @@
 ( function ( M, $ ) {
 
-	var loader = M.require( 'mobile.startup/rlModuleLoader' ),
-		overlayManager = M.require( 'skins.minerva.scripts/overlayManager' ),
-		user = M.require( 'mobile.startup/user' );
+	var loader = M.require( 'mobile.overlays/moduleLoader' ),
+		overlayManager = M.require( 'mobile.startup/overlayManager' ),
+		user = M.require( 'mobile.user/user' );
 
 	// categories overlay
 	overlayManager.add( /^\/categories$/, function () {
@@ -10,9 +10,6 @@
 
 		loader.loadModule( 'mobile.categories.overlays', true ).done( function ( loadingOverlay ) {
 			var CategoryOverlay = M.require( 'mobile.categories.overlays/CategoryOverlay' );
-			M.on( 'category-added', function () {
-				window.location.hash = '#/categories';
-			} );
 
 			loadingOverlay.hide();
 			result.resolve( new CategoryOverlay( {

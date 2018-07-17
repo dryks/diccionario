@@ -3,12 +3,12 @@
 
 	QUnit.module( 'MobileFrontend InfiniteScroll', {
 		teardown: function () {
-			// Leave window at the top
-			window.scrollTo( 0, 0 );
+			// Remove all scroll events after each test
+			$( window ).off( 'scroll' );
 		}
 	} );
 
-	QUnit.test( '#constructor', function ( assert ) {
+	QUnit.test( '#constructor', 4, function ( assert ) {
 		var scrolledSpy = this.sandbox.spy( InfiniteScroll.prototype, '_onScroll' ),
 			is = new InfiniteScroll( 500 ),
 			is2 = new InfiniteScroll();
@@ -18,15 +18,14 @@
 		assert.strictEqual( is2.threshold, 100,
 			'Without a threshold we get a default' );
 
-		// Scrolling has been bound to the global mobileFrontend handler
-		M.emit( 'scroll:throttled' );
-
+		// Scrolling has been bound to the window
+		$( window ).trigger( 'scroll' );
 		assert.ok( scrolledSpy.calledTwice,
 			'Scrolling has been bound and is handler is called on scroll' );
 	} );
 
-	QUnit.test( 'emits load event', function ( assert ) {
-		var asyncDone = $.Deferred(),
+	QUnit.test( 'emits load event', 1, function ( assert ) {
+		var asyncDone = assert.async(),
 			is = new InfiniteScroll();
 
 		// Make sure we always have somewhere to scroll
@@ -40,16 +39,14 @@
 			$( 'body' ).css( 'height', '' );
 
 			// Finish
-			asyncDone.resolve();
+			asyncDone();
 		} );
 
 		// Scroll to the bottom of the body
 		window.scrollTo( 0, $( 'body' ).offset().top + $( 'body' ).outerHeight() );
-		M.emit( 'scroll:throttled' );
-		return asyncDone;
 	} );
 
-	QUnit.test( 'doesn\'t emit when disabled', function ( assert ) {
+	QUnit.test( 'doesn\'t emit when disabled', 1, function ( assert ) {
 		var emitSpy = this.sandbox.spy( InfiniteScroll.prototype, 'emit' ),
 			is = new InfiniteScroll();
 		is.setElement( $( 'body' ) );
@@ -57,7 +54,6 @@
 		// Scroll to top and bottom of the body
 		window.scrollTo( 0, 0 );
 		window.scrollTo( 0, $( 'body' ).offset().top + $( 'body' ).outerHeight() );
-		M.emit( 'scroll:throttled' );
 		assert.strictEqual( emitSpy.called, false, 'emit should not be called' );
 	} );
 

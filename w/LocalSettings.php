@@ -160,8 +160,8 @@ include_once('extensions/FlaggedRevs/FlaggedRevs.php');
 wfLoadExtension( 'MobileFrontend' );
 $wgMFAutodetectMobileView = true;
 wfLoadSkin( 'MinervaNeue' );
-$wgDefaultSkin = 'minerva';
-wfLoadSkin( 'MinervaNeue' );
-$wgDefaultSkin = 'minerva';
+//$wgDefaultSkin = 'minerva';
+
+
 
 

@@ -1,3 +1,4 @@
+/* jshint -W100 */
 ( function ( M, $ ) {
 	var pageGateway,
 		PageGateway = M.require( 'mobile.startup/PageGateway' );
@@ -9,7 +10,7 @@
 		}
 	} );
 
-	QUnit.test( '#getPage (h1s)', function ( assert ) {
+	QUnit.test( '#getPage (h1s)', 1, function ( assert ) {
 		var response = {
 			mobileview: {
 				id: -1,
@@ -61,8 +62,7 @@
 		this.sandbox.stub( this.api, 'get' )
 			.returns( $.Deferred().resolve( response ) );
 
-		pageGateway.invalidatePage( 'Test' );
-		return pageGateway.getPage( 'Test' ).done( function ( resp ) {
+		pageGateway.getPage( 'Test' ).done( function ( resp ) {
 			assert.deepEqual( resp, {
 				historyUrl: mw.util.getUrl( 'Test', {
 					action: 'history'
@@ -121,7 +121,7 @@
 		} );
 	} );
 
-	QUnit.test( '#getPage', function ( assert ) {
+	QUnit.test( '#getPage', 2, function ( assert ) {
 		this.sandbox.stub( this.api, 'get' ).returns( $.Deferred().resolve( {
 			mobileview: {
 				id: -1,
@@ -174,7 +174,6 @@
 			}
 		} ) );
 
-		pageGateway.invalidatePage( 'Test' );
 		pageGateway.getPage( 'Test' ).done( function ( resp ) {
 			assert.deepEqual( resp, {
 				historyUrl: mw.util.getUrl( 'Test', {
@@ -236,7 +235,7 @@
 		assert.ok( this.api.get.calledOnce, 'cache page' );
 	} );
 
-	QUnit.test( '#getPageLanguages', function ( assert ) {
+	QUnit.test( '#getPageLanguages', 2, function ( assert ) {
 		this.sandbox.stub( this.api, 'get' ).returns( $.Deferred().resolve( {
 			query: {
 				pages: [
@@ -311,7 +310,7 @@
 			}
 		} ) );
 
-		return pageGateway.getPageLanguages( 'Test' ).done( function ( resp ) {
+		pageGateway.getPageLanguages( 'Test' ).done( function ( resp ) {
 			assert.deepEqual( resp.languages, [
 				{
 					lang: 'es',
@@ -353,27 +352,7 @@
 		} );
 	} );
 
-	QUnit.test( '#getPageLanguages', function ( assert ) {
-		var spy = this.sandbox.spy( this.api, 'get' );
-		// prevent rogue ajax request
-		this.sandbox.stub( jQuery, 'ajax' ).returns( $.Deferred().resolve() );
-		pageGateway.getPageLanguages( 'Title', 'fr' );
-		assert.ok(
-			spy.calledWith( {
-				action: 'query',
-				meta: 'siteinfo',
-				siprop: 'general',
-				prop: 'langlinks',
-				llprop: 'url|autonym|langname',
-				llinlanguagecode: 'fr',
-				lllimit: 'max',
-				titles: 'Title',
-				formatversion: 2
-			} )
-		);
-	} );
-
-	QUnit.test( '#_getAPIResponseFromHTML', function ( assert ) {
+	QUnit.test( '#_getAPIResponseFromHTML', 1, function ( assert ) {
 		var resp = pageGateway._getAPIResponseFromHTML(
 			mw.template.get( 'tests.mobilefrontend', 'page.html' ).render()
 		);
@@ -411,7 +390,7 @@
 		] );
 	} );
 
-	QUnit.test( '#getSectionsFromHTML malformed (h2 before h1)', function ( assert ) {
+	QUnit.test( '#getSectionsFromHTML malformed (h2 before h1)', 1, function ( assert ) {
 		var resp = pageGateway.getSectionsFromHTML(
 			mw.template.get( 'tests.mobilefrontend', 'page2.html' ).render()
 		);
@@ -452,17 +431,7 @@
 		] );
 	} );
 
-	QUnit.test( '#getPage (forwards api errors)', function ( assert ) {
-		var d = $.Deferred();
-		this.sandbox.stub( this.api, 'get' ).returns( $.Deferred().reject( 'missingtitle' ) );
-		pageGateway.getPage( 'Err' ).fail( function ( msg ) {
-			assert.ok( msg === 'missingtitle' );
-			d.resolve();
-		} );
-		return d;
-	} );
-
-	QUnit.test( '#getPage (move protected page)', function ( assert ) {
+	QUnit.test( '#getPage (move protected page)', 1, function ( assert ) {
 		var expected = {
 			edit: [ '*' ],
 			move: [ 'sysop' ]
@@ -490,8 +459,7 @@
 			}
 		} ) );
 
-		pageGateway.invalidatePage( 'Test' );
-		return pageGateway.getPage( 'Test' ).done( function ( resp ) {
+		pageGateway.getPage( 'Test' ).done( function ( resp ) {
 			assert.deepEqual( resp.protection, expected );
 		} );
 	} );

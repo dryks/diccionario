@@ -1,6 +1,7 @@
-@import 'mobile.variables';
+@import "minerva.variables";
+@import "minerva.mixins";
 
-@drawerPadding: 20px;
+@betaDrawerPadding: 20px;
 
 // prevent body from scrolling
 // won't work on firefox for android because of this bug: https://bugzilla.mozilla.org/show_bug.cgi?id=886969
@@ -13,35 +14,38 @@
 	color: @colorGray12;
 	max-height: 400px;  // or half of window height, whichever is smaller (see ReferencesDrawerBeta.js)
 	overflow-y: auto;
-	padding: @drawerPadding;
-
+	padding: @betaDrawerPadding;
 	&.text {
 		font-size: 1em;
 	}
 
 	a {
-		// Removing external images here
 		background-image: none;
-		color: @colorProgressive;
-		padding-right: 0;
+		color: #5880C0;
+	}
+
+	.error {
+		.background-image('images/error.png');
+		padding-left: 20px;
+		background-repeat: no-repeat;
 	}
 
 	.cite {
 		padding-bottom: 20px;
 
 		&:after {
-			content: '';
+			content: "";
 			display: table;
 			clear: both;
 		}
 
 		.text {
-			color: @colorGray7;
+			color: @colorGray8;
 			cursor: default;
-			letter-spacing: 0.2em;
+			letter-spacing: .2em;
 			float: left;
 			font-size: 0.75em;
-			padding-top: 0.25em;
+			padding-top: .25em;
 			text-transform: uppercase;
 		}
 		.cancel {
@@ -51,13 +55,13 @@
 			// Compensate for the padding.
 			// Top and bottom margins are for the padding we're adding below.
 			// The right margin is for the 1em margin of icon:before
-			margin: -@extraPadding -@extraPadding -@extraPadding 0; /* stylelint-disable-line value-keyword-case */
+			margin: -@extraPadding -@extraPadding -@extraPadding 0;
 			// Make the tappable area bigger. No need to add left and right paddings because
 			// the icon:before already has 1em margin on both sides
 			padding: @extraPadding 0;
 			position: absolute;
-			right: @drawerPadding;
-			top: @drawerPadding;
+			right: @betaDrawerPadding;
+			top: @betaDrawerPadding;
 		}
 	}
 

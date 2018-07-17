@@ -3,17 +3,16 @@
 /**
  * @group MobileFrontend
  */
-class SpecialMobileDiffTest extends MediaWikiLangTestCase {
+class SpecialMobileDiffTest extends MediaWikiTestCase {
 	/** Keeps track of request variables that should be unset on teardown **/
-	private $unsetReqVals = [];
+	private $unsetReqVals = array();
 
 	public function tearDown() {
-		parent::tearDown();
-
 		foreach ( $this->unsetReqVals as $v ) {
 			MobileContext::singleton()->getRequest()->unsetVal( $v );
 		}
-		MobileContext::resetInstanceForTesting();
+		MobileContext::setInstance( null ); // refresh MobileContext instance
+		parent::tearDown();
 	}
 	/**
 	 * @dataProvider providerTestNames
@@ -26,26 +25,26 @@ class SpecialMobileDiffTest extends MediaWikiLangTestCase {
 	}
 
 	public function providerTestNames() {
-		return [
-			[ '123', true ],
-			[ '123...124', true ],
-			[ '4...123', true ],
+		return array(
+			array( '123', true ),
+			array( '123...124', true ),
+			array( '4...123', true ),
 			// same
-			[ '123...123', false ],
+			array( '123...123', false ),
 			// cases where a revision doesn't exist (revisions over 200 don't exist in our mock)
-			[ '123...500', false ],
-			[ '500...550', false ],
-			[ '500...100', false ],
-			[ '500', false ],
+			array( '123...500', false ),
+			array( '500...550', false ),
+			array( '500...100', false ),
+			array( '500', false ),
 			// bad parameters
-			[ '123...', false ],
-			[ '...123...', false ],
-			[ '452...123...', false ],
-			[ '...123', false ],
-			[ 'prev...123', false ],
-			[ '123...next', false ],
-			[ 'prev...next', false ],
-		];
+			array( '123...', false ),
+			array( '...123...', false ),
+			array( '452...123...', false ),
+			array( '...123', false ),
+			array( 'prev...123', false ),
+			array( '123...next', false ),
+			array( 'prev...next', false ),
+		);
 	}
 
 	/**
@@ -65,24 +64,24 @@ class SpecialMobileDiffTest extends MediaWikiLangTestCase {
 	}
 
 	public function redirectFromDesktopDiffProvider() {
-		return [
-			[ [], false ],
+		return array(
+			array( array(), false ),
 			// this makes no sense but this is the url for newly created pages (oldid but no diff)
-			[ [ 'oldid' => 5 ], 'Special:MobileDiff/5' ],
-			[ [ 'diff' => 123 ], 'Special:MobileDiff/123' ],
+			array( array( 'oldid' => 5 ), 'Special:MobileDiff/5' ),
+			array( array( 'diff' => 123 ), 'Special:MobileDiff/123' ),
 			// some more complicated cases...
-			[ [ 'oldid' => 90, 'diff' => 100 ], 'Special:MobileDiff/90...100' ],
-			[ [ 'oldid' => 123, 'diff' => 'next' ], 'Special:MobileDiff/123...124' ],
-			[ [ 'oldid' => 123, 'diff' => 'prev' ], 'Special:MobileDiff/122...123' ],
+			array( array( 'oldid' => 90, 'diff' => 100 ), 'Special:MobileDiff/90...100' ),
+			array( array( 'oldid' => 123, 'diff' => 'next' ), 'Special:MobileDiff/123...124' ),
+			array( array( 'oldid' => 123, 'diff' => 'prev' ), 'Special:MobileDiff/122...123' ),
 			// bad id given (revisions older than 200 do not exist in our MockRevision)
-			[ [ 'diff' => 208, 'oldid' => 50 ], '' ],
-			[ [ 'diff' => 50, 'oldid' => 208 ], '' ],
-			[ [ 'diff' => 'prev', 'oldid' => 201 ], '' ],
+			array( array( 'diff' => 208, 'oldid' => 50 ), '' ),
+			array( array( 'diff' => 50, 'oldid' => 208 ), '' ),
+			array( array( 'diff' => 'prev', 'oldid' => 201 ), '' ),
 			// weird edge case comparing identical things
-			[ [ 'oldid' => 101, 'diff' => 101 ], 'Special:MobileDiff/101...101' ],
+			array( array( 'oldid' => 101, 'diff' => 101 ), 'Special:MobileDiff/101...101' ),
 			// https://bugzilla.wikimedia.org/63999
-			[ [ 'oldid' => 'prev', 'diff' => 5 ], 'Special:MobileDiff/5' ],
-		];
+			array( array( 'oldid' => 'prev', 'diff' => 5 ), 'Special:MobileDiff/5' ),
+		);
 	}
 }
 
@@ -94,44 +93,38 @@ class MockSpecialMobileDiff extends SpecialMobileDiff {
 	public function executeBadQuery() {
 		return false;
 	}
-	public function displayDiffPage() {
+	public function showDiff() {
 		// showDiff can be stubed, but the differenceengine has to be created
 		$this->mDiffEngine = new $this->diffClass();
 	}
 }
 
 class MFMockRevision extends Revision {
+	private $id;
 
-	/**
-	 * @param int $revisionId
-	 */
+	public function getId() {
+		return $this->id;
+	}
+
 	public function __construct( $revisionId ) {
-		$title = Title::newFromText( "Page_$revisionId" );
-
-		parent::__construct( [
-			'id' => $revisionId,
-			'title' => $title,
-		] );
+		if ( $revisionId > 200 ) {
+			throw new Exception( 'Unknown revision ID' );
+		}
+		$this->id = $revisionId;
 	}
 
 	public static function newFromId( $revisionId, $flags = 0 ) {
 		if ( $revisionId <= 200 ) {
 			return new MFMockRevision( $revisionId );
-		} else {
-			return null;
 		}
 	}
 
+	public function getTitle() {
+		return Title::newFromText( "Page_$this->id" );
+	}
+
 	public function getPrevious() {
-		return new MFMockRevision( $this->getId() - 1 );
-	}
-
-	public function getSize() {
-		return 100;
-	}
-
-	public function getSha1() {
-		return 'mock-hash-' . $this->getId();
+		return new MFMockRevision( $this->id - 1 );
 	}
 
 	/**
@@ -140,7 +133,7 @@ class MFMockRevision extends Revision {
 	 * @return Revision or null
 	 */
 	public function getNext() {
-		return new MFMockRevision( $this->getId() + 1 );
+		return new MFMockRevision( $this->id + 1 );
 	}
 }
 
@@ -149,3 +142,4 @@ class MockInlineDifferenceEngine extends InlineDifferenceEngine {
 		return '';
 	}
 }
+

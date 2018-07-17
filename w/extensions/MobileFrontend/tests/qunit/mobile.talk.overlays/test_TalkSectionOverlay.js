@@ -1,36 +1,32 @@
 ( function ( M, $ ) {
 
 	var TalkSectionOverlay = M.require( 'mobile.talk.overlays/TalkSectionOverlay' ),
-		user = M.require( 'mobile.startup/user' ),
+		user = M.require( 'mobile.user/user' ),
 		renderFromApiSpy;
 
 	QUnit.module( 'MobileFrontend TalkSectionOverlay - logged in', {
 		setup: function () {
-			// don't create toasts in test environment
-			this.toastStub = this.sandbox.stub( mw, 'notify' );
 			this.api = new mw.Api();
 			renderFromApiSpy = this.sandbox.stub( TalkSectionOverlay.prototype, 'renderFromApi' );
 			this.sandbox.stub( user, 'isAnon' ).returns( false );
 		}
 	} );
 
-	QUnit.test( 'Load section from api only, if needed', function ( assert ) {
-		// eslint-disable-next-line no-new
-		new TalkSectionOverlay( {
+	QUnit.test( 'Load section from api only, if needed', 2, function ( assert ) {
+		var overlay = new TalkSectionOverlay( {
 			api: this.api,
 			section: 'Testtext'
 		} );
 
 		assert.strictEqual( renderFromApiSpy.callCount, 0, 'Section requested from api, if no section given.' );
 
-		// eslint-disable-next-line no-new
-		new TalkSectionOverlay( {
+		overlay = new TalkSectionOverlay( {
 			api: this.api
 		} );
 		assert.ok( renderFromApiSpy.calledOnce, 'No Api request, if section given' );
 	} );
 
-	QUnit.test( 'Check comment box for logged in users', function ( assert ) {
+	QUnit.test( 'Check comment box for logged in users', 1, function ( assert ) {
 		var overlay = new TalkSectionOverlay( {
 			api: this.api,
 			section: 'Test'
@@ -39,7 +35,7 @@
 		assert.ok( overlay.$( '.comment' ).length > 0, 'There is a visible comment box' );
 	} );
 
-	QUnit.test( 'Check error class on textarea', function ( assert ) {
+	QUnit.test( 'Check error class on textarea', 2, function ( assert ) {
 		var overlay;
 
 		overlay = new TalkSectionOverlay( {
@@ -54,7 +50,7 @@
 		assert.strictEqual( overlay.$textarea.hasClass( 'error' ), false, 'Error class removed after comment box get focus.' );
 	} );
 
-	QUnit.test( 'Check api request on save', function ( assert ) {
+	QUnit.test( 'Check api request on save', 1, function ( assert ) {
 		var spy = this.sandbox.stub( mw.Api.prototype, 'postWithToken' ).returns( $.Deferred().resolve() ),
 			overlay = new TalkSectionOverlay( {
 				api: this.api,
@@ -69,8 +65,7 @@
 			action: 'edit',
 			title: 'Talk:Test',
 			section: 1,
-			appendtext: '\n\nTestcomment ~~~~',
-			redirect: true
+			appendtext: '\n\nTestcomment ~~~~'
 		} ), 'Save request passes!' );
 	} );
 
@@ -81,7 +76,7 @@
 		}
 	} );
 
-	QUnit.test( 'Check comment box for logged out users', function ( assert ) {
+	QUnit.test( 'Check comment box for logged out users', 1, function ( assert ) {
 		var overlay = new TalkSectionOverlay( {
 			api: new mw.Api(),
 			section: 'Test'

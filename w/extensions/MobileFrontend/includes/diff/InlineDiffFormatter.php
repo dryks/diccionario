@@ -1,6 +1,7 @@
 <?php
-
-use MediaWiki\Diff\WordAccumulator;
+/**
+ * InlineDiffFormatter.php
+ */
 
 /**
  * Extends standard Table-formatted DiffFormatter of core to enable Inline-Diff
@@ -10,24 +11,22 @@ class InlineDiffFormatter extends TableDiffFormatter {
 	/**
 	 * Get the header of diff block. Remember: Given line numbers will not be visible,
 	 * it's a one column diff style.
-	 * @inheritDoc
-	 * @param int $xbeg line number of left side to compare with
-	 * @param int $xlen Number of trailing lines after the changed line on left side
-	 * @param int $ybeg right side line number to compare with
-	 * @param int $ylen Number of trailing lines after the changed line on right side
+	 * @param integer $xbeg line number of left side to compare with
+	 * @param integer $xlen Number of trailing lines after the changed line on left side
+	 * @param integer $ybeg right side line number to compare with
+	 * @param integer $ylen Number of trailing lines after the changed line on right side
 	 * @return string
 	 */
-	protected function blockHeader( $xbeg, $xlen, $ybeg, $ylen ) {
+	function blockHeader( $xbeg, $xlen, $ybeg, $ylen ) {
 		return "<div class=\"mw-diff-inline-header\"><!-- LINES $xbeg,$ybeg --></div>\n";
 	}
 
 	/**
 	 * Get a div element with a complete new added line as content.
 	 * Complete line will be appear with green background.
-	 * @inheritDoc
 	 * @param array $lines With changed lines
 	 */
-	protected function added( $lines ) {
+	function added( $lines ) {
 		foreach ( $lines as $line ) {
 			$this->writeOutput( '<div class="mw-diff-inline-added"><ins>'
 				. $this->lineOrNbsp( htmlspecialchars( $line ) )
@@ -38,10 +37,9 @@ class InlineDiffFormatter extends TableDiffFormatter {
 	/**
 	 * Get a div with a line which is deleted completly.
 	 * This line will be appear with complete red background.
-	 * @inheritDoc
 	 * @param array $lines With deleted lines
 	 */
-	protected function deleted( $lines ) {
+	function deleted( $lines ) {
 		foreach ( $lines as $line ) {
 			$this->writeOutput( '<div class="mw-diff-inline-deleted"><del>'
 				. $this->lineOrNbsp( htmlspecialchars( $line ) )
@@ -53,10 +51,9 @@ class InlineDiffFormatter extends TableDiffFormatter {
 	 * Get a div with some changed content.
 	 * Line will appear with white and the changed context in
 	 * red (for deleted chars) and green (for added chars) background.
-	 * @inheritDoc
 	 * @param array $lines With edited lines
 	 */
-	protected function context( $lines ) {
+	function context( $lines ) {
 		foreach ( $lines as $line ) {
 			$this->writeOutput( "<div class=\"mw-diff-inline-context\">" .
 				"{$this->contextLine( htmlspecialchars( $line ) )}</div>\n" );
@@ -80,7 +77,7 @@ class InlineDiffFormatter extends TableDiffFormatter {
 
 	/**
 	 * Adds a forced blank to line, if the line is empty.
-	 * @param string $line Line to edit
+	 * @param string $line
 	 *
 	 * @return string
 	 */
@@ -94,16 +91,15 @@ class InlineDiffFormatter extends TableDiffFormatter {
 
 	/**
 	 * Get a div with changed content (not complete added or deleted line)
-	 * @inheritDoc
 	 * @param string[] $orig Old content to compare with
 	 * @param string[] $closing New content to compare with
 	 */
-	protected function changed( $orig, $closing ) {
+	function changed( $orig, $closing ) {
 		$this->writeOutput( '<div class="mw-diff-inline-changed">' );
 		$diff = new WordLevelDiff( $orig, $closing );
 		$edits = $this->inlineWordDiff( $diff );
 
-		// WordLevelDiff returns already HTML-escaped output.
+		# WordLevelDiff returns already HTML-escaped output.
 		$this->writeOutput( implode( '', $edits ) );
 
 		$this->writeOutput( "</div>\n" );
@@ -115,7 +111,7 @@ class InlineDiffFormatter extends TableDiffFormatter {
 	 * @return array Array of changed lines
 	 */
 	private function inlineWordDiff( $diff ) {
-		$inline = new WordAccumulator;
+		$inline = new HWLDFWordAccumulator;
 		$inline->insClass = $inline->delClass = '';
 
 		foreach ( $diff->edits as $edit ) {

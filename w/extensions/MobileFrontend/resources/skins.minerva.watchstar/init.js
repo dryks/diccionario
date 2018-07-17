@@ -1,7 +1,7 @@
 ( function ( M, $ ) {
 
 	var Watchstar = M.require( 'mobile.watchstar/Watchstar' ),
-		user = M.require( 'mobile.startup/user' );
+		user = M.require( 'mobile.user/user' );
 
 	/**
 	 * Toggle the watch status of a known page
@@ -12,7 +12,6 @@
 	function init( page ) {
 		var $container = $( '#ca-watch' );
 		if ( !page.inNamespace( 'special' ) ) {
-			// eslint-disable-next-line no-new
 			new Watchstar( {
 				api: new mw.Api(),
 				el: $container,

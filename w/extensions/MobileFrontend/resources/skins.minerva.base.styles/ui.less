@@ -1,52 +1,48 @@
-@import 'minerva.variables';
-@import 'minerva.mixins';
-@import 'mediawiki.mixins';
+@import "minerva.variables";
+@import "minerva.mixins";
+@import "mediawiki.mixins";
 
-/* stylelint-disable no-descending-specificity */
+@topBarBackgroundColor: #F3F3F3;
+
 html,
 body {
 	// Ensure overlays take up full screen
 	height: 100%;
 }
 
-body {
-	background-color: @chromeColor;
-}
-
-// FIXME: should we use .mw-body here instead?
 #content {
-	// avoid margin collapsing (see T147956)
-	border-top: 1px solid transparent;
-	padding-bottom: 32px;
-}
-
-.overlay-enabled,
-#content {
-	background-color: @skinContentBgColor;
-}
-
-.header-container {
-	border-bottom: 1px solid @colorGray12;
-
-	&.header-chrome {
-		background-color: @chromeColor;
-		border: 0;
-		box-shadow: inset 0 -1px 3px rgba( 0, 0, 0, 0.08 );
-	}
-}
-
-// if footer has last modified line hide it (T173545)
-#footer-info-lastmod {
-	display: none;
+	border-top: 1px solid @grayLight;
 }
 
 .last-modified-bar {
+	background-color: transparent;
+	display: block;
+	color: @colorGray6;
+	transition: background-color 0.2s ease, color 0.2s ease;
+
 	a,
 	a:visited {
-		color: @colorGray5;
+		color: @colorGray6;
 		// If browser supports
-		&:nth-child( 2 ) {
+		&:nth-child(2) {
 			font-weight: bold;
+		}
+	}
+
+	#mw-mf-last-modified {
+		padding: 5px @contentMargin;
+		background-color: @colorGray14;
+	}
+
+	&.active {
+
+		#mw-mf-last-modified {
+			background-color: @lastModifiedBarActiveBackgroundColor;
+		}
+
+		color: #fff;
+		a {
+			color: #fff;
 		}
 	}
 }
@@ -54,17 +50,22 @@ body {
 .header {
 	display: table;
 	width: 100%;
-	border-spacing: 0;
-	border-collapse: collapse;
 	height: @headerHeight;
 	white-space: nowrap;
 	// When banners are present we want to easily distinguish between them and the header so add border
-	border-top: 1px solid @colorGray12;
-	margin-top: @headerMarginTop;
+	border-top: 1px solid @colorGrayLight;
+	margin-top: -1px;
 
+	// button
 	> div {
 		width: @headerHeight;
 		position: relative;
+	}
+
+	// Search field
+	> form,
+	// Spinner
+	> div {
 		vertical-align: middle;
 		display: table-cell;
 	}
@@ -74,104 +75,72 @@ body {
 		display: block;
 	}
 
-	.branding-box {
+	// Search
+	> form {
+		padding: .15em @headerTitlePaddingH 0;
 		width: auto;
-
-		h1 {
-			margin-left: 5px;
-			font-size: 1em;
-
-			span {
-				line-height: 1;
-				font-size: inherit;
-			}
-
-			img {
-				vertical-align: middle;
-			}
-
-			> * {
-				float: left;
-			}
-
-			sup {
-				color: @colorGray5;
-				display: none;
-
-				.beta & {
-					display: initial;
-				}
-			}
-		}
+		vertical-align: middle;
 	}
 
 	> .header-title {
 		vertical-align: middle;
 	}
 
-	.header-action > * {
-		min-height: @headerHeight;
-	}
 }
 
-.header > form,
-.overlay-header .overlay-title {
-	padding: 0.15em 0;
-
-	&:last-child {
-		// Reserve space to the right in case the search form in the header or
-		// overlay title in the overlay header is the last element. Use @iconGutterWidth
-		// because there is a hamburger or close/back icon next to this element and
-		// the space between them is exactly that.
-		padding-right: @iconGutterWidth;
-	}
-}
-
-#searchInput {
-	cursor: text;
-}
-
-.search-box,
-// Selector is needed to override table-cell rules
-.header .search-box {
-	display: none;
-	width: auto;
-}
-
-.search-box {
-
-	.search {
-		@searchIconSize: 20px;
-		@searchIconGutter: 6px;
-		// FIXME: input's cannot have child elements so not possible to use mw-ui-icon-before here
-		// How can we avoid multiple use of magnifying glass icon?
-		.background-image-svg( 'magnifying-glass.svg', 'magnifying-glass.png' );
-		outline: 0;
-		width: 100%;
-		// FIXME: unable to check but the important may not be needed for Nokia S60;
-		background-color: #fff !important; /* remove fennec default background also see bug 36490 */
-		// get rid of rounded corners in Safari
-		-webkit-appearance: none;
-
-		padding: 0.5em 0 0.5em @searchIconSize + (2 * @searchIconGutter);
-		background-position: left @searchIconGutter center;
-		background-repeat: no-repeat;
-		.background-size( @searchIconSize, @searchIconSize );
-		border-radius: @borderRadius;
-		box-shadow: 0 1px 1px rgba( 0, 0, 0, 0.05 );
-		margin-top: 0;
+// Make search input more visible for users on small screens.
+// Opera Mini doesn't support placeholders.
+@media all and (max-width: @wgMFDeviceWidthMobileSmall) {
+	.header {
+		.search {
+			border: 1px solid @grayLight;
+			padding: .3em .1em;
+		}
 	}
 }
 
 /* Search */
-input.search {
-	// [T139928] Hide all pseudo-elements added to search inputs in WebKit.
-	&::-webkit-search-decoration,
-	&::-webkit-search-cancel-button,
-	&::-webkit-search-results-button,
-	&::-webkit-search-results-decoration {
-		display: none;
+
+.client-use-basic-search,
+.client-nojs {
+	.header {
+		.search,
+		.fulltext-search {
+			float: left;
+		}
+
+		.search {
+			// Assume the smallest possible screen size.
+			// We want people to be able to search we don't care if it looks pretty.
+			width: 80px;
+			margin-right: 8px;
+			border: 1px solid @grayLight;
+			padding: .5em .1em;
+		}
 	}
+
+	.content h2 {
+		border-bottom: solid 1px @sectionBorderColor;
+	}
+
+}
+
+input.search {
+	outline: 0;
+	width: 100%;
+	// FIXME: unable to check but the important may not be needed for Nokia S60;
+	background-color: #fff !important; /* remove fennec default background also see bug 36490 */
+	// get rid of rounded corners in Safari
+	-webkit-appearance: none;
+	// get rid of X in Chrome
+	&::-webkit-search-cancel-button {
+		-webkit-appearance: none;
+	}
+}
+
+// FIXME: remove when micro.tap in stable and rule from common-js.less too
+.search-box {
+	-webkit-tap-highlight-color: rgba(255, 255, 255, 0);
 }
 
 .content {
@@ -199,36 +168,26 @@ input.search {
 
 	.edit-page {
 		display: inline-block;
-	}
-
-	.collapsible-heading .edit-page {
 		visibility: hidden;
 	}
 
-	.collapsible-heading.open-block {
+	.open-block {
 		// Restrict to child so that child section edit links do not get revealed.
 		.edit-page {
 			visibility: visible;
 		}
 	}
 
-	.mw-parser-output > h2,
 	.section-heading {
 		width: 100%;
-		border-bottom: 1px solid @colorGray14;
+		border-bottom: solid 1px @sectionBorderColor;
 		margin-bottom: @headingMargin;
 
 		.indicator {
 			font-size: @indicatorFontSize;
-			margin-left: -@iconGutterWidth;
 		}
 	}
 
-	.mw-parser-output > h1,
-	.mw-parser-output > h2,
-	.mw-parser-output > h3,
-	.mw-parser-output > h4,
-	.mw-parser-output > h5,
 	.section-heading,
 	.in-block {
 		// Safari needs this. @see T106347
@@ -250,6 +209,15 @@ input.search {
 	}
 }
 
+.stable {
+	// Remove when/if page-secondary-actions are promoted to stable
+	#language-switcher,
+	// FIXME: remove .languageSelector when cache clears
+	.languageSelector {
+		margin-top: 1em;
+	}
+}
+
 #page-secondary-actions {
 	// Clears floating on table of contents on stub pages.
 	clear: both;
@@ -258,12 +226,91 @@ input.search {
 		margin: 10px 2px 2px 0;
 	}
 }
-
 .truncated-text {
 	white-space: nowrap;
 	overflow: hidden;
 	-webkit-text-overflow: ellipsis;
 	text-overflow: ellipsis;
+
+	// FIXME: this works only in WebKit
+	&.multi-line {
+		white-space: normal;
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+	}
+
+	&.two-line {
+		-webkit-line-clamp: 2;
+		// fallback for non-WebKit
+		max-height: 2.6em;
+	}
+}
+
+// FIXME: Create generic class to represent both of these headers
+.overlay,
+.header {
+
+	// need to specify id or else other rules are more important
+	// FIXME: simplify when .icon class from Overlay used instead
+	#secondary-button.user-button,
+	.user-button {
+		// Make sure count is positioned correctly in relation to bell icon
+		position: relative;
+
+		// can't use display:none class as icons must have a label to retain height
+		.label {
+			visibility: hidden;
+		}
+
+		&.loading span {
+			display: none;
+		}
+	}
+}
+
+.notification-count {
+	text-indent: 0;
+	display: inline-block;
+	font-weight: bold;
+	color: #fff;
+	background: #c91f2c;
+	border-radius: 2px;
+	height: 1.2em;
+	line-height: 1.2em;
+	min-width: 1em;
+	margin: .6em .6em 0 0;
+	padding: 0 0.1em;
+	text-align: center;
+	position: absolute;
+	right: 0;
+	top: -.1em;
+
+	&.zero {
+		display: none;
+	}
+
+	// FIXME: There must be a better way of doing this
+	&.max {
+		right: .2em;
+		width: 2em;
+		height: 2em;
+		line-height: 2em;
+		font-size: 0.7em;
+	}
+}
+
+// FIXME [mediawiki ui] These rules should not be needed in the mobile context
+.mw-ui-button-group {
+	text-align: center;
+
+	* {
+		float: none !important;
+	}
+
+	// For talk and CTA drawer
+	.mw-ui-block {
+		width: auto;
+	}
 }
 
 // This is here rather than in mainmenu.less because we want to load these rules for non-js users too
@@ -276,50 +323,7 @@ input.search {
 	visibility: hidden;
 }
 
-// It may be better to express these in a single class
-// or think about using extend or a mixin to stay with semantic selectors
-// https://css-tricks.com/the-extend-concept/
-#bodyContent .panel .content,
-.overlay .content-header,
-.overlay .panel,
-.page-list.side-list .list-thumb,
-.editor-overlay .wikitext-editor,
-.page-list li,
-.topic-title-list li,
-.site-link-list li,
-.previewnote p,
-.pointer-overlay,
-.drawer,
-.successbox,
-.errorbox,
-.list-header,
-.warningbox,
-.mw-revision {
-	padding-left: @contentPadding;
-	padding-right: @contentPadding;
-}
-
-.talk-overlay .comment .comment-content,
-.backtotop,
-.image-list,
-.pre-content,
-// Form only pages e.g Special:MobileOptions
-#mw-content-text > form > .oo-ui-fieldLayout > .oo-ui-fieldLayout-body,
-// Save button on Special:MobileOptions
-#mw-content-text > form > .oo-ui-widget,
-.content,
-.post-content {
-	margin: 0 @contentMargin;
-}
-
-@media all and ( min-width: @width-breakpoint-tablet ) {
-	// FIXME: this should be one generic class name
-	.page-summary-list,
-	.topic-title-list,
-	.site-link-list,
-	.overlay .panel,
-	.list-header {
-		padding-left: @contentPaddingTablet;
-		padding-right: @contentPaddingTablet;
-	}
+.content .nojs-edit {
+	display: inline-block;
+	float: right;
 }

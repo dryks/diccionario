@@ -1,17 +1,6 @@
-@import 'mediawiki.mixins.less';
-@import 'minerva.variables.less';
-@import 'minerva.mixins.less';
-
-/**
- * Note that certain links may not have an href selector.
- * It is particularly important on wikis for example inside navbox's that these
- * links can be differentiated from other links. Thus we only apply the linkColor to links with href
- * attributes.
-*/
-/* stylelint-disable no-descending-specificity */
-a:not( [href] ) {
-	color: @colorGray2;
-}
+@import "mediawiki.mixins.less";
+@import "minerva.variables.less";
+@import "minerva.mixins.less";
 
 a {
 	text-decoration: none;
@@ -32,11 +21,7 @@ a {
 	&.new,
 	&.new:visited,
 	&.new:hover {
-		color: @redLinkColor;
-		// Take care of headings in page lists.
-		> * {
-			color: @redLinkColor;
-		}
+		color: @redBase;
 	}
 
 	&.external {
@@ -49,9 +34,10 @@ a {
 }
 
 // Generic class name needed
-.return-link {
+.return-link,
+#mw-mf-last-modified {
 	display: block;
-	font-size: 0.9em;
+	font-size: .9em;
 	margin-top: 1.5em;
 }
 
@@ -60,16 +46,4 @@ a {
 .plainlinks a {
 	background: none !important;
 	padding: 0 !important;
-}
-
-// Numbered external links, copied from content.parsoid.less
-// TODO: Separate theme-agnostic rules from that module
-// so we can load it here.
-.mw-parser-output {
-	counter-reset: mw-numbered-ext-link;
-
-	a[rel~='mw:ExtLink']:empty:after {
-		content: '[' counter( mw-numbered-ext-link ) ']';
-		counter-increment: mw-numbered-ext-link;
-	}
 }

@@ -1,4 +1,7 @@
 <?php
+/**
+ * ApiParseExtender.php
+ */
 
 /**
  * Extends API action=parse with mobile goodies
@@ -8,8 +11,8 @@ class ApiParseExtender {
 	/**
 	 * APIGetAllowedParams hook handler
 	 * @see https://www.mediawiki.org/wiki/Manual:Hooks/APIGetAllowedParams
-	 * @param ApiBase &$module
-	 * @param array|bool &$params Array of parameters
+	 * @param ApiBase $module
+	 * @param array|bool $params
 	 * @return bool
 	 */
 	public static function onAPIGetAllowedParams( ApiBase &$module, &$params ) {
@@ -24,8 +27,8 @@ class ApiParseExtender {
 	/**
 	 * APIGetParamDescription hook handler
 	 * @see: https://www.mediawiki.org/wiki/Manual:Hooks/APIGetParamDescription
-	 * @param ApiBase &$module
-	 * @param array|bool &$params Array of parameter descriptions
+	 * @param ApiBase $module
+	 * @param Array|bool $params
 	 * @return bool
 	 */
 	public static function onAPIGetParamDescription( ApiBase &$module, &$params ) {
@@ -40,8 +43,8 @@ class ApiParseExtender {
 	/**
 	 * APIGetDescription hook handler
 	 * @see: https://www.mediawiki.org/wiki/Manual:Hooks/APIGetDescription
-	 * @param ApiBase &$module
-	 * @param array|string &$desc Array of descriptions
+	 * @param ApiBase $module
+	 * @param Array|string $desc
 	 * @return bool
 	 */
 	public static function onAPIGetDescription( ApiBase &$module, &$desc ) {
@@ -54,8 +57,8 @@ class ApiParseExtender {
 
 	/**
 	 * APIAfterExecute hook handler
-	 * @see: https://www.mediawiki.org/wiki/Manual:Hooks/APIAfterExecute
-	 * @param ApiBase &$module
+	 * @see: https://www.mediawiki.org/wiki/Manual:Hooks/
+	 * @param ApiBase $module
 	 * @return bool
 	 */
 	public static function onAPIAfterExecute( ApiBase &$module ) {
@@ -63,7 +66,11 @@ class ApiParseExtender {
 			->getMFConfig()->get( 'MFSpecialCaseMainPage' );
 
 		if ( $module->getModuleName() == 'parse' ) {
-			$data = $module->getResult()->getResultData();
+			if ( defined( 'ApiResult::META_CONTENT' ) ) {
+				$data = $module->getResult()->getResultData();
+			} else {
+				$data = $module->getResultData();
+			}
 			$params = $module->extractRequestParams();
 			if ( isset( $data['parse']['text'] ) && $params['mobileformat'] ) {
 				$result = $module->getResult();
@@ -72,7 +79,9 @@ class ApiParseExtender {
 				$title = Title::newFromText( $data['parse']['title'] );
 				$text = $data['parse']['text'];
 				if ( is_array( $text ) ) {
-					if ( isset( $text[ApiResult::META_CONTENT] ) ) {
+					if ( defined( 'ApiResult::META_CONTENT' ) &&
+						isset( $text[ApiResult::META_CONTENT] )
+					) {
 						$contentKey = $text[ApiResult::META_CONTENT];
 					} else {
 						$contentKey = '*';
@@ -85,10 +94,9 @@ class ApiParseExtender {
 				$mf->setRemoveMedia( $params['noimages'] );
 				$mf->setIsMainPage( $params['mainpage'] && $mfSpecialCaseMainPage );
 				$mf->enableExpandableSections( !$params['mainpage'] );
-				$mf->disableScripts();
 				// HACK: need a nice way to request a TOC- and edit link-free HTML in the first place
 				// FIXME: Should this be .mw-editsection?
-				$mf->remove( [ '.toc', 'mw-editsection', '.mw-headline-anchor' ] );
+				$mf->remove( array( '.toc', 'mw-editsection', '.mw-headline-anchor' ) );
 				$mf->filterContent();
 
 				if ( is_array( $text ) ) {

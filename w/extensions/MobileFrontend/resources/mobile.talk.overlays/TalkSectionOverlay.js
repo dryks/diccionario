@@ -1,8 +1,7 @@
-( function ( M ) {
+( function ( M, $ ) {
 	var TalkOverlayBase = M.require( 'mobile.talk.overlays/TalkOverlayBase' ),
-		util = M.require( 'mobile.startup/util' ),
-		popup = M.require( 'mobile.startup/toast' ),
-		user = M.require( 'mobile.startup/user' ),
+		popup = M.require( 'mobile.toast/toast' ),
+		user = M.require( 'mobile.user/user' ),
 		Page = M.require( 'mobile.startup/Page' ),
 		Button = M.require( 'mobile.startup/Button' );
 
@@ -19,24 +18,24 @@
 	}
 
 	OO.mfExtend( TalkSectionOverlay, TalkOverlayBase, {
-		templatePartials: util.extend( {}, TalkOverlayBase.prototype.templatePartials, {
+		templatePartials: $.extend( {}, TalkOverlayBase.prototype.templatePartials, {
 			header: mw.template.get( 'mobile.talk.overlays', 'Section/header.hogan' ),
 			content: mw.template.get( 'mobile.talk.overlays', 'Section/content.hogan' )
 		} ),
 		/**
 		 * @inheritdoc
 		 * @cfg {Object} defaults Default options hash.
-		 * @cfg {string} defaults.title Title.
+		 * @cfg {String} defaults.title Title.
 		 * @cfg {Section} defaults.section that is currently being viewed in overlay.
-		 * @cfg {string} defaults.reply Reply heading.
-		 * @cfg {string} defaults.info Message that informs the user their talk reply will be
+		 * @cfg {String} defaults.reply Reply heading.
+		 * @cfg {String} defaults.info Message that informs the user their talk reply will be
 		 * automatically signed.
 		 */
-		defaults: util.extend( {}, TalkOverlayBase.prototype.defaults, {
+		defaults: $.extend( {}, TalkOverlayBase.prototype.defaults, {
 			saveButton: new Button( {
 				block: true,
 				additionalClassNames: 'save-button',
-				progressive: true,
+				constructive: true,
 				label: mw.msg( 'mobile-frontend-editor-save' )
 			} ).options,
 			title: undefined,
@@ -44,7 +43,7 @@
 			reply: mw.msg( 'mobile-frontend-talk-reply' ),
 			info: mw.msg( 'mobile-frontend-talk-reply-info' )
 		} ),
-		events: util.extend( {}, TalkOverlayBase.prototype.events, {
+		events: $.extend( {}, TalkOverlayBase.prototype.events, {
 			'focus textarea': 'onFocusTextarea',
 			'click .save-button': 'onSaveClick'
 		} ),
@@ -55,7 +54,7 @@
 		 */
 		postRender: function () {
 			TalkOverlayBase.prototype.postRender.apply( this );
-			this.$saveButton = this.$( '.save-button' );
+			this.$saveButton = $( '.save-button' );
 			if ( !this.options.section ) {
 				this.renderFromApi( this.options );
 			} else {
@@ -114,8 +113,7 @@
 					action: 'edit',
 					title: this.options.title,
 					section: this.options.id,
-					appendtext: val,
-					redirect: true
+					appendtext: val
 				} ).done( function () {
 					popup.show( mw.msg( 'mobile-frontend-talk-reply-success' ) );
 					// invalidate the cache
@@ -136,7 +134,7 @@
 
 					if (
 						response.error &&
-						whitelistedErrorInfo.indexOf( response.error.code ) > -1
+						$.inArray( response.error.code, whitelistedErrorInfo ) > -1
 					) {
 						msg = response.error.info;
 					} else {
@@ -154,5 +152,5 @@
 		}
 	} );
 
-	M.define( 'mobile.talk.overlays/TalkSectionOverlay', TalkSectionOverlay ); // resource-modules-disable-line
-}( mw.mobileFrontend ) );
+	M.define( 'mobile.talk.overlays/TalkSectionOverlay', TalkSectionOverlay );
+}( mw.mobileFrontend, jQuery ) );

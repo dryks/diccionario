@@ -1,12 +1,11 @@
-( function ( M ) {
+( function ( M, $ ) {
 	var TalkOverlayBase = M.require( 'mobile.talk.overlays/TalkOverlayBase' ),
-		util = M.require( 'mobile.startup/util' ),
 		Page = M.require( 'mobile.startup/Page' ),
 		Anchor = M.require( 'mobile.startup/Anchor' ),
-		user = M.require( 'mobile.startup/user' );
+		user = M.require( 'mobile.user/user' );
 	/**
 	 * Overlay for talk page
-	 * @extends TalkOverlayBase
+	 * @extends Overlay
 	 * @class TalkOverlay
 	 * @uses Page
 	 * @uses TalkSectionOverlay
@@ -17,7 +16,7 @@
 	}
 
 	OO.mfExtend( TalkOverlay, TalkOverlayBase, {
-		templatePartials: util.extend( {}, TalkOverlayBase.prototype.templatePartials, {
+		templatePartials: $.extend( {}, TalkOverlayBase.prototype.templatePartials, {
 			content: mw.template.get( 'mobile.talk.overlays', 'content.hogan' )
 		} ),
 		/**
@@ -25,20 +24,20 @@
 		 * @cfg {Object} defaults Default options hash.
 		 * @cfg {Array} defaults.headings A list of {Section} objects to render heading links
 		 * for. If not set ajax request will be performed.
-		 * @cfg {string} defaults.heading Heading for talk overlay.
-		 * @cfg {string} defaults.leadHeading Heading for a discussion which has no heading
+		 * @cfg {String} defaults.heading Heading for talk overlay.
+		 * @cfg {String} defaults.leadHeading Heading for a discussion which has no heading
 		 * (lead section of talk page).
-		 * @cfg {string} defaults.headerButtonsListClassName Class name of the header buttons
+		 * @cfg {String} defaults.headerButtonsListClassName Class name of the header buttons
 		 * list
 		 * @cfg {Array} defaults.headerButtons Objects that will be used as defaults for
 		 * generating header buttons. Default list includes an 'add' button, which opens
 		 * a new talk overlay.
 		 */
-		defaults: util.extend( {}, TalkOverlayBase.prototype.defaults, {
+		defaults: $.extend( {}, TalkOverlayBase.prototype.defaults, {
 			headings: undefined,
 			heading: '<strong>' + mw.msg( 'mobile-frontend-talk-overlay-header' ) + '</strong>',
 			leadHeading: mw.msg( 'mobile-frontend-talk-overlay-lead-header' ),
-			headerButtonsListClassName: 'header-action',
+			headerButtonsListClassName: 'overlay-action',
 			headerButtons: [ {
 				href: '#/talk/new',
 				className: 'add continue hidden',
@@ -90,7 +89,6 @@
 		 */
 		_loadContent: function ( options ) {
 			var self = this;
-			options = options || this.options;
 
 			// show a spinner
 			this.showSpinner();
@@ -108,15 +106,9 @@
 						sections: []
 					}, options );
 				} else {
-					if ( self.options.onFail ) {
-						// Run failure callback with current title
-						self.options.onFail( options.title );
-					} else {
-						// If the API request fails for any other reason, load the talk
-						// page manually rather than leaving the spinner spinning.
-						// eslint-disable-next-line no-restricted-properties
-						window.location = mw.util.getUrl( options.title );
-					}
+					// If the API request fails for any other reason, load the talk
+					// page manually rather than leaving the spinner spinning.
+					window.location = mw.util.getUrl( options.title );
 				}
 			} ).done( function ( pageData ) {
 				self._addContent( pageData, options );
@@ -151,8 +143,8 @@
 		 * @private
 		 */
 		_setupAddDiscussionButton: function () {
-			var $add = this.$( '.header-action .add' );
-			M.on( 'talk-discussion-added', this._loadContent.bind( this ) );
+			var $add = this.$( '.overlay-action .add' );
+			M.on( 'talk-discussion-added', $.proxy( this, '_loadContent', this.options ) );
 			if ( !user.isAnon() ) {
 				$add.removeClass( 'hidden' );
 			} else {
@@ -161,6 +153,6 @@
 		}
 	} );
 
-	M.define( 'mobile.talk.overlays/TalkOverlay', TalkOverlay ); // resource-modules-disable-line
+	M.define( 'mobile.talk.overlays/TalkOverlay', TalkOverlay );
 
-}( mw.mobileFrontend ) );
+}( mw.mobileFrontend, jQuery ) );

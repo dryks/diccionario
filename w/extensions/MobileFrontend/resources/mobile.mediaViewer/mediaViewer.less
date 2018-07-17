@@ -1,5 +1,5 @@
-@import 'mobile.variables';
-@import 'mediawiki.mixins.less';
+	@import "minerva.variables";
+@import "minerva.mixins";
 
 .overlay.media-viewer {
 	background: #000;
@@ -43,7 +43,7 @@
 	// FIXME: change styling after overlay overhaul
 	.cancel {
 		position: absolute;
-		right: 0;
+		right: 10px;
 		top: 10px;
 	}
 
@@ -56,7 +56,7 @@
 		width: 100%;
 		padding: 8px 10px;
 		margin: 0;
-		background: #fff;
+		background: white;
 		overflow-y: auto;
 
 		.button {
@@ -67,7 +67,7 @@
 
 .animations .media-viewer {
 	.details {
-		.transition( opacity 0.5s );
+		.transition( opacity .5s );
 	}
 }
 

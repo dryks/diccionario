@@ -1,3 +1,4 @@
+// jscs:disable requireCamelCaseOrUpperCaseIdentifiers
 /* This code currently handles two different editing tutorials/CTAs:
 
 EditTutorial - When an editor registers via the edit page action, upon returning to the
@@ -10,9 +11,7 @@ editing. You can replicate this by appending campaign=leftNavSignup to the URL o
 editable page whilst logged in, although you must be in test group A to see the CTA.
 */
 ( function ( M, $ ) {
-	var PointerOverlay = M.require( 'skins.minerva.newusers/PointerOverlay' ),
-		skin = M.require( 'skins.minerva.scripts/skin' ),
-		mainMenu = M.require( 'skins.minerva.scripts.top/mainMenu' ),
+	var PageActionOverlay = M.require( 'mobile.contentOverlays/PointerOverlay' ),
 		util = M.require( 'mobile.startup/util' ),
 		escapeHash = util.escapeHash,
 		inEditor = window.location.hash.indexOf( '#editor/' ) > -1,
@@ -22,7 +21,7 @@ editable page whilst logged in, although you must be in test group A to see the 
 	/**
 	 * Whether or not the user should see the leftNav guider
 	 * @ignore
-	 * @return {boolean}
+	 * @returns {Boolean}
 	 */
 	function shouldShowLeftNavEditTutorial() {
 		return mw.util.getParamValue( 'campaign' ) === 'leftNavSignup' &&
@@ -32,7 +31,7 @@ editable page whilst logged in, although you must be in test group A to see the 
 	/**
 	 * If the user came from an edit button signup, show guider.
 	 * @ignore
-	 * @return {boolean}
+	 * @returns {Boolean}
 	 */
 	function shouldShowTutorial() {
 		var shouldShowEditTutorial = mw.util.getParamValue( 'article_action' ) === 'signup-edit' && !inEditor;
@@ -55,18 +54,14 @@ editable page whilst logged in, although you must be in test group A to see the 
 			$target.attr( 'href', href + '/leftNavSignup' );
 		}
 
-		editOverlay = new PointerOverlay( {
+		editOverlay = new PageActionOverlay( {
 			target: target,
-			skin: skin,
-			isTutorial: true,
+			skin: M.require( 'skins.minerva.scripts/skin' ),
 			className: 'slide active editing',
 			appendToElement: '#mw-mf-page-center',
 			summary: mw.msg( 'mobile-frontend-editor-tutorial-summary', mw.config.get( 'wgTitle' ) ),
 			confirmMsg: mw.msg( 'mobile-frontend-editor-tutorial-confirm' ),
 			cancelMsg: mw.msg( 'mobile-frontend-editor-tutorial-cancel' )
-		} );
-		mainMenu.on( 'open', function () {
-			editOverlay.hide();
 		} );
 		editOverlay.show();
 		$( '#ca-edit' ).on( 'mousedown', $.proxy( editOverlay, 'hide' ) );

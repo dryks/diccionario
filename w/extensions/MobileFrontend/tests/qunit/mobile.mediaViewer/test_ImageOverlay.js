@@ -24,18 +24,13 @@
 		}
 	} );
 
-	QUnit.test( 'ImageOverlay', function ( assert ) {
-		var imageOverlay,
-			api = new mw.Api();
-
-		imageOverlay = new ImageOverlay( {
-			api: api,
+	QUnit.test( 'ImageOverlay', 1, function ( assert ) {
+		var imageOverlay = new ImageOverlay( {
+			api: new mw.Api(),
 			title: decodeURIComponent( image.url ),
 			caption: 'The Montgomery in 2012.'
 		} );
-		return api.get().then( function () {
-			assert.equal( imageOverlay.$el.find( 'img' ).length, 1, 'Image is present.' );
-		} );
+		assert.equal( imageOverlay.$el.find( 'img' ).length, 1, 'Image is present.' );
 	} );
 
 }( mw.mobileFrontend, jQuery ) );
