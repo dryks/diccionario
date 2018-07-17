@@ -43,7 +43,8 @@ use Monolog\Logger;
  * default Logstash syslog input handler.
  *
  * @since 1.25
- * @copyright © 2015 Wikimedia Foundation and contributors
+ * @author Bryan Davis <bd808@wikimedia.org>
+ * @copyright © 2015 Bryan Davis and Wikimedia Foundation.
  */
 class SyslogHandler extends SyslogUdpHandler {
 

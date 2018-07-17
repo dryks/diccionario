@@ -1,8 +1,7 @@
 {
 	"@metadata": {
 		"authors": [
-			"Jeblad",
-			"Jon Harald Søby"
+			"Jeblad"
 		]
 	},
 	"syntaxhighlight-desc": "Gir syntaksframheving <code>&lt;syntaxhighlight&gt;</code> ved hjelp av [http://pygments.org/ Pygments]",
@@ -12,7 +11,6 @@
 	"syntaxhighlight-visualeditor-mwsyntaxhighlightinspector-language": "Språk",
 	"syntaxhighlight-visualeditor-mwsyntaxhighlightinspector-none": "(ingen)",
 	"syntaxhighlight-visualeditor-mwsyntaxhighlightinspector-showlines": "Vis linjenummer",
-	"syntaxhighlight-visualeditor-mwsyntaxhighlightinspector-startingline": "Første linjenummer",
 	"syntaxhighlight-visualeditor-mwsyntaxhighlightinspector-title": "Kodeblokk",
 	"syntaxhighlight-error-pygments-invocation-failure": "Kunne ikke kalle Pygments",
 	"syntaxhighlight-error-unknown-language": "Ukjent språk «$1»",

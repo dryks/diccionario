@@ -23,8 +23,6 @@
  * @author <evan@wikitravel.org>
  */
 
-use MediaWiki\MediaWikiServices;
-
 /**
  * @ingroup Actions
  */
@@ -44,6 +42,7 @@ class CreditsAction extends FormlessAction {
 	 * @return string HTML
 	 */
 	public function onView() {
+
 		if ( $this->page->getID() == 0 ) {
 			$s = $this->msg( 'nocredits' )->parse();
 		} else {
@@ -131,7 +130,7 @@ class CreditsAction extends FormlessAction {
 		$anon_ips = [];
 
 		# Sift for real versus user names
-		/** @var User $user */
+		/** @var $user User */
 		foreach ( $contributors as $user ) {
 			$cnt--;
 			if ( $user->isLoggedIn() ) {
@@ -198,19 +197,15 @@ class CreditsAction extends FormlessAction {
 	protected function link( User $user ) {
 		if ( $this->canShowRealUserName() && !$user->isAnon() ) {
 			$real = $user->getRealName();
-			if ( $real === '' ) {
-				$real = $user->getName();
-			}
 		} else {
-			$real = $user->getName();
+			$real = false;
 		}
 
 		$page = $user->isAnon()
 			? SpecialPage::getTitleFor( 'Contributions', $user->getName() )
 			: $user->getUserPage();
 
-		return MediaWikiServices::getInstance()
-			->getLinkRenderer()->makeLink( $page, $real );
+		return Linker::link( $page, htmlspecialchars( $real ? $real : $user->getName() ) );
 	}
 
 	/**
@@ -236,9 +231,9 @@ class CreditsAction extends FormlessAction {
 	 * @return string HTML link
 	 */
 	protected function othersLink() {
-		return MediaWikiServices::getInstance()->getLinkRenderer()->makeKnownLink(
+		return Linker::linkKnown(
 			$this->getTitle(),
-			$this->msg( 'others' )->text(),
+			$this->msg( 'others' )->escaped(),
 			[],
 			[ 'action' => 'credits' ]
 		);

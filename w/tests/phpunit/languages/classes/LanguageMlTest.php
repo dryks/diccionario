@@ -5,14 +5,12 @@
  * @file
  */
 
-/**
- * @covers LanguageMl
- */
+/** Tests for MediaWiki languages/LanguageMl.php */
 class LanguageMlTest extends LanguageClassesTestCase {
 
 	/**
 	 * @dataProvider providerFormatNum
-	 * T31495
+	 * @see bug 29495
 	 * @covers Language::formatNum
 	 */
 	public function testFormatNum( $result, $value ) {

@@ -18,6 +18,7 @@
  * @author Happy-melon
  * @file
  */
+use Liuggio\StatsdClient\Factory\StatsdDataFactory;
 use MediaWiki\MediaWikiServices;
 
 /**
@@ -39,7 +40,7 @@ abstract class ContextSource implements IContextSource {
 	 */
 	public function getContext() {
 		if ( $this->context === null ) {
-			$class = static::class;
+			$class = get_class( $this );
 			wfDebug( __METHOD__ . " ($class): called and \$context is null. " .
 				"Using RequestContext::getMain() for sanity\n" );
 			$this->context = RequestContext::getMain();
@@ -49,6 +50,8 @@ abstract class ContextSource implements IContextSource {
 	}
 
 	/**
+	 * Set the IContextSource object
+	 *
 	 * @since 1.18
 	 * @param IContextSource $context
 	 */
@@ -57,6 +60,8 @@ abstract class ContextSource implements IContextSource {
 	}
 
 	/**
+	 * Get the Config object
+	 *
 	 * @since 1.23
 	 * @return Config
 	 */
@@ -65,6 +70,8 @@ abstract class ContextSource implements IContextSource {
 	}
 
 	/**
+	 * Get the WebRequest object
+	 *
 	 * @since 1.18
 	 * @return WebRequest
 	 */
@@ -73,6 +80,8 @@ abstract class ContextSource implements IContextSource {
 	}
 
 	/**
+	 * Get the Title object
+	 *
 	 * @since 1.18
 	 * @return Title|null
 	 */
@@ -106,6 +115,8 @@ abstract class ContextSource implements IContextSource {
 	}
 
 	/**
+	 * Get the OutputPage object
+	 *
 	 * @since 1.18
 	 * @return OutputPage
 	 */
@@ -114,6 +125,8 @@ abstract class ContextSource implements IContextSource {
 	}
 
 	/**
+	 * Get the User object
+	 *
 	 * @since 1.18
 	 * @return User
 	 */
@@ -122,6 +135,8 @@ abstract class ContextSource implements IContextSource {
 	}
 
 	/**
+	 * Get the Language object
+	 *
 	 * @since 1.19
 	 * @return Language
 	 */
@@ -130,6 +145,8 @@ abstract class ContextSource implements IContextSource {
 	}
 
 	/**
+	 * Get the Skin object
+	 *
 	 * @since 1.18
 	 * @return Skin
 	 */
@@ -138,6 +155,8 @@ abstract class ContextSource implements IContextSource {
 	}
 
 	/**
+	 * Get the Timing object
+	 *
 	 * @since 1.27
 	 * @return Timing
 	 */
@@ -146,13 +165,15 @@ abstract class ContextSource implements IContextSource {
 	}
 
 	/**
+	 * Get the Stats object
+	 *
 	 * @deprecated since 1.27 use a StatsdDataFactory from MediaWikiServices (preferably injected)
 	 *
 	 * @since 1.25
-	 * @return IBufferingStatsdDataFactory
+	 * @return StatsdDataFactory
 	 */
 	public function getStats() {
-		return MediaWikiServices::getInstance()->getStatsdDataFactory();
+		return $this->getContext()->getStats();
 	}
 
 	/**
@@ -160,12 +181,10 @@ abstract class ContextSource implements IContextSource {
 	 * Parameters are the same as wfMessage()
 	 *
 	 * @since 1.18
-	 * @param string|string[]|MessageSpecifier $key Message key, or array of keys,
-	 *   or a MessageSpecifier.
-	 * @param mixed $args,...
+	 * @param mixed ...
 	 * @return Message
 	 */
-	public function msg( $key /* $args */ ) {
+	public function msg( /* $args */ ) {
 		$args = func_get_args();
 
 		return call_user_func_array( [ $this->getContext(), 'msg' ], $args );

@@ -6,10 +6,5 @@
  */
 
 .ve-ui-mwSyntaxHighlightInspector-content .ve-ui-mwExtensionWindow-input textarea {
-	/* T176636 */
-	font-family: monospace, monospace;
-}
-
-.ve-ui-mwSyntaxHighlightInspector-content .oo-ui-numberInputWidget {
-	width: 10em;
+	font-family: monospace, Courier;
 }

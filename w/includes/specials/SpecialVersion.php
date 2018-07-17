@@ -78,16 +78,9 @@ class SpecialVersion extends SpecialPage {
 		// Now figure out what to do
 		switch ( strtolower( $parts[0] ) ) {
 			case 'credits':
-				$out->addModuleStyles( 'mediawiki.special.version' );
-
 				$wikiText = '{{int:version-credits-not-found}}';
 				if ( $extName === 'MediaWiki' ) {
 					$wikiText = file_get_contents( $IP . '/CREDITS' );
-					// Put the contributor list into columns
-					$wikiText = str_replace(
-						[ '<!-- BEGIN CONTRIBUTOR LIST -->', '<!-- END CONTRIBUTOR LIST -->' ],
-						[ '<div class="mw-version-credits">', '</div>' ],
-						$wikiText );
 				} elseif ( ( $extNode !== null ) && isset( $extNode['path'] ) ) {
 					$file = $this->getExtAuthorsFileName( dirname( $extNode['path'] ) );
 					if ( $file ) {
@@ -169,9 +162,7 @@ class SpecialVersion extends SpecialPage {
 		$ret .= '<div class="plainlinks">';
 		$ret .= "__NOTOC__
 		" . self::getCopyrightAndAuthorList() . "\n
-		" . '<div class="mw-version-license-info">' .
-		wfMessage( 'version-license-info' )->text() .
-		'</div>';
+		" . wfMessage( 'version-license-info' )->text();
 		$ret .= '</div>';
 
 		return str_replace( "\t\t", '', $ret ) . "\n";
@@ -193,7 +184,7 @@ class SpecialVersion extends SpecialPage {
 				wfMessage( 'version-poweredby-others' )->text() . ']]';
 		}
 
-		$translatorsLink = '[https://translatewiki.net/wiki/Translating:MediaWiki/Credits ' .
+		$translatorsLink = '[//translatewiki.net/wiki/Translating:MediaWiki/Credits ' .
 			wfMessage( 'version-poweredby-translators' )->text() . ']';
 
 		$authorList = [
@@ -205,7 +196,6 @@ class SpecialVersion extends SpecialPage {
 			'Roan Kattouw', 'Trevor Parscal', 'Bryan Tong Minh', 'Sam Reed',
 			'Victor Vasiliev', 'Rotem Liss', 'Platonides', 'Antoine Musso',
 			'Timo Tijhof', 'Daniel Kinzler', 'Jeroen De Dauw', 'Brad Jorsch',
-			'Bartosz Dziewoński', 'Ed Sanders', 'Moriel Schottlender',
 			$othersLink, $translatorsLink
 		];
 
@@ -219,7 +209,7 @@ class SpecialVersion extends SpecialPage {
 	 * @return string
 	 */
 	public static function softwareInformation() {
-		$dbr = wfGetDB( DB_REPLICA );
+		$dbr = wfGetDB( DB_SLAVE );
 
 		// Put the software in an array of form 'name' => 'version'. All messages should
 		// be loaded here, so feel free to use wfMessage in the 'name'. Raw HTML or
@@ -368,7 +358,6 @@ class SpecialVersion extends SpecialPage {
 		if ( self::$extensionTypes === false ) {
 			self::$extensionTypes = [
 				'specialpage' => wfMessage( 'version-specialpages' )->text(),
-				'editor' => wfMessage( 'version-editors' )->text(),
 				'parserhook' => wfMessage( 'version-parserhooks' )->text(),
 				'variable' => wfMessage( 'version-variables' )->text(),
 				'media' => wfMessage( 'version-mediahandlers' )->text(),
@@ -515,7 +504,7 @@ class SpecialVersion extends SpecialPage {
 				// in their proper section
 				continue;
 			}
-			$authors = array_map( function ( $arr ) {
+			$authors = array_map( function( $arr ) {
 				// If a homepage is set, link to it
 				if ( isset( $arr['homepage'] ) ) {
 					return "[{$arr['homepage']} {$arr['name']}]";
@@ -644,7 +633,7 @@ class SpecialVersion extends SpecialPage {
 			usort( $wgExtensionCredits[$type], [ $this, 'compare' ] );
 
 			foreach ( $wgExtensionCredits[$type] as $extension ) {
-				$out .= $this->getCreditsForExtension( $type, $extension );
+				$out .= $this->getCreditsForExtension( $extension );
 			}
 		}
 
@@ -680,12 +669,11 @@ class SpecialVersion extends SpecialPage {
 	 *  - Description of extension (descriptionmsg or description)
 	 *  - List of authors (author) and link to a ((AUTHORS)|(CREDITS))(\.txt)? file if it exists
 	 *
-	 * @param string $type Category name of the extension
 	 * @param array $extension
 	 *
 	 * @return string Raw HTML
 	 */
-	public function getCreditsForExtension( $type, array $extension ) {
+	public function getCreditsForExtension( array $extension ) {
 		$out = $this->getOutput();
 
 		// We must obtain the information for all the bits and pieces!
@@ -736,9 +724,7 @@ class SpecialVersion extends SpecialPage {
 				}
 			}
 			$cache = wfGetCache( CACHE_ANYTHING );
-			$memcKey = $cache->makeKey(
-				'specialversion-ext-version-text', $extension['path'], $this->coreId
-			);
+			$memcKey = wfMemcKey( 'specialversion-ext-version-text', $extension['path'], $this->coreId );
 			list( $vcsVersion, $vcsLink, $vcsDate ) = $cache->get( $memcKey );
 
 			if ( !$vcsVersion ) {
@@ -798,12 +784,12 @@ class SpecialVersion extends SpecialPage {
 		if ( isset( $extension['name'] ) ) {
 			$licenseName = null;
 			if ( isset( $extension['license-name'] ) ) {
-				$licenseName = new HtmlArmor( $out->parseInline( $extension['license-name'] ) );
+				$licenseName = $out->parseInline( $extension['license-name'] );
 			} elseif ( $this->getExtLicenseFileName( $extensionPath ) ) {
-				$licenseName = $this->msg( 'version-ext-license' )->text();
+				$licenseName = $this->msg( 'version-ext-license' )->escaped();
 			}
 			if ( $licenseName !== null ) {
-				$licenseLink = $this->getLinkRenderer()->makeLink(
+				$licenseLink = Linker::link(
 					$this->getPageTitle( 'License/' . $extension['name'] ),
 					$licenseName,
 					[
@@ -844,7 +830,7 @@ class SpecialVersion extends SpecialPage {
 		// Finally! Create the table
 		$html = Html::openElement( 'tr', [
 				'class' => 'mw-version-ext',
-				'id' => Sanitizer::escapeIdForAttribute( 'mw-version-ext-' . $type . '-' . $extension['name'] )
+				'id' => Sanitizer::escapeId( 'mw-version-ext-' . $extension['name'] )
 			]
 		);
 
@@ -969,7 +955,6 @@ class SpecialVersion extends SpecialPage {
 	 */
 	public function listAuthors( $authors, $extName, $extDir ) {
 		$hasOthers = false;
-		$linkRenderer = $this->getLinkRenderer();
 
 		$list = [];
 		foreach ( (array)$authors as $item ) {
@@ -977,9 +962,9 @@ class SpecialVersion extends SpecialPage {
 				$hasOthers = true;
 
 				if ( $extName && $this->getExtAuthorsFileName( $extDir ) ) {
-					$text = $linkRenderer->makeLink(
+					$text = Linker::link(
 						$this->getPageTitle( "Credits/$extName" ),
-						$this->msg( 'version-poweredby-others' )->text()
+						$this->msg( 'version-poweredby-others' )->escaped()
 					);
 				} else {
 					$text = $this->msg( 'version-poweredby-others' )->escaped();
@@ -996,9 +981,9 @@ class SpecialVersion extends SpecialPage {
 		}
 
 		if ( $extName && !$hasOthers && $this->getExtAuthorsFileName( $extDir ) ) {
-			$list[] = $text = $linkRenderer->makeLink(
+			$list[] = $text = Linker::link(
 				$this->getPageTitle( "Credits/$extName" ),
-				$this->msg( 'version-poweredby-others' )->text()
+				$this->msg( 'version-poweredby-others' )->escaped()
 			);
 		}
 

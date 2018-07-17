@@ -29,7 +29,7 @@ more stuff
 				"WikitextContentTest_testGetParserOutput",
 				CONTENT_MODEL_WIKITEXT,
 				"hello ''world''\n",
-				"<div class=\"mw-parser-output\"><p>hello <i>world</i>\n</p>\n\n\n</div>"
+				"<p>hello <i>world</i>\n</p>"
 			],
 			// TODO: more...?
 		];
@@ -40,7 +40,7 @@ more stuff
 			[ "WikitextContentTest_testGetSecondaryDataUpdates_1",
 				CONTENT_MODEL_WIKITEXT, "hello ''world''\n",
 				[
-					LinksUpdate::class => [
+					'LinksUpdate' => [
 						'mRecursive' => true,
 						'mLinks' => []
 					]
@@ -49,7 +49,7 @@ more stuff
 			[ "WikitextContentTest_testGetSecondaryDataUpdates_2",
 				CONTENT_MODEL_WIKITEXT, "hello [[world test 21344]]\n",
 				[
-					LinksUpdate::class => [
+					'LinksUpdate' => [
 						'mRecursive' => true,
 						'mLinks' => [
 							[ 'World_test_21344' => 0 ]
@@ -103,16 +103,16 @@ more stuff
 
 	public static function dataGetSection() {
 		return [
-			[ self::$sections,
+			[ WikitextContentTest::$sections,
 				"0",
 				"Intro"
 			],
-			[ self::$sections,
+			[ WikitextContentTest::$sections,
 				"2",
 				"== test ==
 just a test"
 			],
-			[ self::$sections,
+			[ WikitextContentTest::$sections,
 				"8",
 				false
 			],
@@ -138,38 +138,38 @@ just a test"
 
 	public static function dataReplaceSection() {
 		return [
-			[ self::$sections,
+			[ WikitextContentTest::$sections,
 				"0",
 				"No more",
 				null,
-				trim( preg_replace( '/^Intro/sm', 'No more', self::$sections ) )
+				trim( preg_replace( '/^Intro/sm', 'No more', WikitextContentTest::$sections ) )
 			],
-			[ self::$sections,
+			[ WikitextContentTest::$sections,
 				"",
 				"No more",
 				null,
 				"No more"
 			],
-			[ self::$sections,
+			[ WikitextContentTest::$sections,
 				"2",
 				"== TEST ==\nmore fun",
 				null,
 				trim( preg_replace(
 					'/^== test ==.*== foo ==/sm', "== TEST ==\nmore fun\n\n== foo ==",
-					self::$sections
+					WikitextContentTest::$sections
 				) )
 			],
-			[ self::$sections,
+			[ WikitextContentTest::$sections,
 				"8",
 				"No more",
 				null,
-				self::$sections
+				WikitextContentTest::$sections
 			],
-			[ self::$sections,
+			[ WikitextContentTest::$sections,
 				"new",
 				"No more",
 				"New",
-				trim( self::$sections ) . "\n\n\n== New ==\n\nNo more"
+				trim( WikitextContentTest::$sections ) . "\n\n\n== New ==\n\nNo more"
 			],
 		];
 	}
@@ -268,6 +268,16 @@ just a test"
 			],
 			[ 'Foo',
 				null,
+				'comma',
+				false
+			],
+			[ 'Foo, bar',
+				null,
+				'comma',
+				true
+			],
+			[ 'Foo',
+				null,
 				'link',
 				false
 			],
@@ -289,6 +299,11 @@ just a test"
 			[ '#REDIRECT [[bar]]',
 				true,
 				'any',
+				false
+			],
+			[ '#REDIRECT [[bar]]',
+				true,
+				'comma',
 				false
 			],
 			[ '#REDIRECT [[bar]]',
@@ -431,11 +446,11 @@ just a test"
 		return [
 			[ "WikitextContentTest_testGetSecondaryDataUpdates_1",
 				CONTENT_MODEL_WIKITEXT, "hello ''world''\n",
-				[ LinksDeletionUpdate::class => [] ]
+				[ 'LinksDeletionUpdate' => [] ]
 			],
 			[ "WikitextContentTest_testGetSecondaryDataUpdates_2",
 				CONTENT_MODEL_WIKITEXT, "hello [[world test 21344]]\n",
-				[ LinksDeletionUpdate::class => [] ]
+				[ 'LinksDeletionUpdate' => [] ]
 			],
 			// @todo more...?
 		];

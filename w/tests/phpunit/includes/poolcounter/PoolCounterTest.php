@@ -9,9 +9,6 @@ abstract class PoolCounterAbstractMock extends PoolCounter {
 	}
 }
 
-/**
- * @covers PoolCounter
- */
 class PoolCounterTest extends MediaWikiTestCase {
 	public function testConstruct() {
 		$poolCounterConfig = [
@@ -21,13 +18,13 @@ class PoolCounterTest extends MediaWikiTestCase {
 			'maxqueue' => 100,
 		];
 
-		$poolCounter = $this->getMockBuilder( PoolCounterAbstractMock::class )
+		$poolCounter = $this->getMockBuilder( 'PoolCounterAbstractMock' )
 			->setConstructorArgs( [ $poolCounterConfig, 'testCounter', 'someKey' ] )
 			// don't mock anything - the proper syntax would be setMethods(null), but due
 			// to a PHPUnit bug that does not work with getMockForAbstractClass()
 			->setMethods( [ 'idontexist' ] )
 			->getMockForAbstractClass();
-		$this->assertInstanceOf( PoolCounter::class, $poolCounter );
+		$this->assertInstanceOf( 'PoolCounter', $poolCounter );
 	}
 
 	public function testConstructWithSlots() {
@@ -39,15 +36,15 @@ class PoolCounterTest extends MediaWikiTestCase {
 			'maxqueue' => 100,
 		];
 
-		$poolCounter = $this->getMockBuilder( PoolCounterAbstractMock::class )
+		$poolCounter = $this->getMockBuilder( 'PoolCounterAbstractMock' )
 			->setConstructorArgs( [ $poolCounterConfig, 'testCounter', 'key' ] )
 			->setMethods( [ 'idontexist' ] ) // don't mock anything
 			->getMockForAbstractClass();
-		$this->assertInstanceOf( PoolCounter::class, $poolCounter );
+		$this->assertInstanceOf( 'PoolCounter', $poolCounter );
 	}
 
 	public function testHashKeyIntoSlots() {
-		$poolCounter = $this->getMockBuilder( PoolCounterAbstractMock::class )
+		$poolCounter = $this->getMockBuilder( 'PoolCounterAbstractMock' )
 			// don't mock anything - the proper syntax would be setMethods(null), but due
 			// to a PHPUnit bug that does not work with getMockForAbstractClass()
 			->setMethods( [ 'idontexist' ] )
@@ -59,26 +56,17 @@ class PoolCounterTest extends MediaWikiTestCase {
 
 		$keysWithTwoSlots = $keysWithFiveSlots = [];
 		foreach ( range( 1, 100 ) as $i ) {
-			$keysWithTwoSlots[] = $hashKeyIntoSlots->invoke( $poolCounter, 'test', 'key ' . $i, 2 );
-			$keysWithFiveSlots[] = $hashKeyIntoSlots->invoke( $poolCounter, 'test', 'key ' . $i, 5 );
+			$keysWithTwoSlots[] = $hashKeyIntoSlots->invoke( $poolCounter, 'key ' . $i, 2 );
+			$keysWithFiveSlots[] = $hashKeyIntoSlots->invoke( $poolCounter, 'key ' . $i, 5 );
 		}
 
-		$twoSlotKeys = [];
-		for ( $i = 0; $i <= 1; $i++ ) {
-			$twoSlotKeys[] = "test:$i";
-		}
-		$fiveSlotKeys = [];
-		for ( $i = 0; $i <= 4; $i++ ) {
-			$fiveSlotKeys[] = "test:$i";
-		}
-
-		$this->assertArrayEquals( $twoSlotKeys, array_unique( $keysWithTwoSlots ) );
-		$this->assertArrayEquals( $fiveSlotKeys, array_unique( $keysWithFiveSlots ) );
+		$this->assertArrayEquals( range( 0, 1 ), array_unique( $keysWithTwoSlots ) );
+		$this->assertArrayEquals( range( 0, 4 ), array_unique( $keysWithFiveSlots ) );
 
 		// make sure it is deterministic
 		$this->assertEquals(
-			$hashKeyIntoSlots->invoke( $poolCounter, 'test', 'asdfgh', 1000 ),
-			$hashKeyIntoSlots->invoke( $poolCounter, 'test', 'asdfgh', 1000 )
+			$hashKeyIntoSlots->invoke( $poolCounter, 'asdfgh', 1000 ),
+			$hashKeyIntoSlots->invoke( $poolCounter, 'asdfgh', 1000 )
 		);
 	}
 }

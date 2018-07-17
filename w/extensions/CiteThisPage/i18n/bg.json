@@ -3,12 +3,11 @@
 		"authors": [
 			"DCLXVI",
 			"Turin",
-			"Vodnokon4e",
-			"StanProg"
+			"Vodnokon4e"
 		]
 	},
 	"citethispage": "Цитиране",
-	"citethispage-desc": "Добавя специална страница и препратка за [[Special:CiteThisPage|цитиране]]",
+	"citethispage-desc": "Добавя специална страница и препратка за [[Special:Cite|цитиране]]",
 	"citethispage-link": "Цитиране на страницата",
 	"tooltip-citethispage": "Информация за начините за цитиране на тази страница",
 	"citethispage-change-submit": "Цитиране",

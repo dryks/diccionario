@@ -9,6 +9,16 @@ namespace OOUI;
  */
 class Widget extends Element {
 
+	/* Static Properties */
+
+	/**
+	 * Whether this widget will behave reasonably when wrapped in a HTML `<label>`. If this is true,
+	 * wrappers such as FieldLayout may use a `<label>`.
+	 *
+	 * @var boolean
+	 */
+	public static $supportsSimpleLabel = false;
+
 	/* Properties */
 
 	/**
@@ -22,7 +32,7 @@ class Widget extends Element {
 
 	/**
 	 * @param array $config Configuration options
-	 * @param bool $config['disabled'] Disable (default: false)
+	 * @param boolean $config['disabled'] Disable (default: false)
 	 */
 	public function __construct( array $config = [] ) {
 		// Initialize config
@@ -39,7 +49,7 @@ class Widget extends Element {
 	/**
 	 * Check if the widget is disabled.
 	 *
-	 * @return bool Button is disabled
+	 * @return boolean Button is disabled
 	 */
 	public function isDisabled() {
 		return $this->disabled;
@@ -50,7 +60,7 @@ class Widget extends Element {
 	 *
 	 * This should probably change the widgets' appearance and prevent it from being used.
 	 *
-	 * @param bool $disabled Disable widget
+	 * @param boolean $disabled Disable widget
 	 * @return $this
 	 */
 	public function setDisabled( $disabled ) {
@@ -60,16 +70,6 @@ class Widget extends Element {
 		$this->setAttributes( [ 'aria-disabled' => $this->disabled ? 'true' : 'false' ] );
 
 		return $this;
-	}
-
-	/**
-	 * Get an ID of a labelable node which is part of this widget, if any, to be used for
-	 * `<label for>` value.
-	 *
-	 * @return string|null The ID of the labelable node
-	 */
-	public function getInputId() {
-		return null;
 	}
 
 	public function getConfig( &$config ) {

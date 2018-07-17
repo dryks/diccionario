@@ -28,8 +28,6 @@
  * @since 1.19
  */
 
-use Wikimedia\Rdbms\IDatabase;
-
 /**
  * Interface for log entries. Every log entry has these methods.
  *
@@ -170,23 +168,19 @@ class DatabaseLogEntry extends LogEntryBase {
 	 * @return array
 	 */
 	public static function getSelectQueryData() {
-		$commentQuery = CommentStore::getStore()->getJoin( 'log_comment' );
-		$actorQuery = ActorMigration::newMigration()->getJoin( 'log_user' );
-
-		$tables = array_merge(
-			[ 'logging' ], $commentQuery['tables'], $actorQuery['tables'], [ 'user' ]
-		);
+		$tables = [ 'logging', 'user' ];
 		$fields = [
 			'log_id', 'log_type', 'log_action', 'log_timestamp',
+			'log_user', 'log_user_text',
 			'log_namespace', 'log_title', // unused log_page
-			'log_params', 'log_deleted',
+			'log_comment', 'log_params', 'log_deleted',
 			'user_id', 'user_name', 'user_editcount',
-		] + $commentQuery['fields'] + $actorQuery['fields'];
+		];
 
 		$joins = [
 			// IPs don't have an entry in user table
-			'user' => [ 'LEFT JOIN', 'user_id=' . $actorQuery['fields']['log_user'] ],
-		] + $commentQuery['joins'] + $actorQuery['joins'];
+			'user' => [ 'LEFT JOIN', 'log_user=user_id' ],
+		];
 
 		return [
 			'tables' => $tables,
@@ -211,30 +205,6 @@ class DatabaseLogEntry extends LogEntryBase {
 		} else {
 			return new self( $row );
 		}
-	}
-
-	/**
-	 * Loads a LogEntry with the given id from database
-	 *
-	 * @param int $id
-	 * @param IDatabase $db
-	 * @return DatabaseLogEntry|null
-	 */
-	public static function newFromId( $id, IDatabase $db ) {
-		$queryInfo = self::getSelectQueryData();
-		$queryInfo['conds'] += [ 'log_id' => $id ];
-		$row = $db->selectRow(
-			$queryInfo['tables'],
-			$queryInfo['fields'],
-			$queryInfo['conds'],
-			__METHOD__,
-			$queryInfo['options'],
-			$queryInfo['join_conds']
-		);
-		if ( !$row ) {
-			return null;
-		}
-		return self::newFromRow( $row );
 	}
 
 	/** @var stdClass Database result row. */
@@ -291,9 +261,9 @@ class DatabaseLogEntry extends LogEntryBase {
 	public function getParameters() {
 		if ( !isset( $this->params ) ) {
 			$blob = $this->getRawParameters();
-			Wikimedia\suppressWarnings();
+			MediaWiki\suppressWarnings();
 			$params = LogEntryBase::extractParams( $blob );
-			Wikimedia\restoreWarnings();
+			MediaWiki\restoreWarnings();
 			if ( $params !== false ) {
 				$this->params = $params;
 				$this->legacy = false;
@@ -319,14 +289,11 @@ class DatabaseLogEntry extends LogEntryBase {
 
 	public function getPerformer() {
 		if ( !$this->performer ) {
-			$actorId = isset( $this->row->log_actor ) ? (int)$this->row->log_actor : 0;
 			$userId = (int)$this->row->log_user;
-			if ( $userId !== 0 || $actorId !== 0 ) {
+			if ( $userId !== 0 ) {
 				// logged-in users
 				if ( isset( $this->row->user_name ) ) {
 					$this->performer = User::newFromRow( $this->row );
-				} elseif ( $actorId !== 0 ) {
-					$this->performer = User::newFromActorId( $actorId );
 				} else {
 					$this->performer = User::newFromId( $userId );
 				}
@@ -353,7 +320,7 @@ class DatabaseLogEntry extends LogEntryBase {
 	}
 
 	public function getComment() {
-		return CommentStore::getStore()->getComment( 'log_comment', $this->row )->text;
+		return $this->row->log_comment;
 	}
 
 	public function getDeleted() {
@@ -385,11 +352,8 @@ class RCDatabaseLogEntry extends DatabaseLogEntry {
 
 	public function getPerformer() {
 		if ( !$this->performer ) {
-			$actorId = isset( $this->row->rc_actor ) ? (int)$this->row->rc_actor : 0;
 			$userId = (int)$this->row->rc_user;
-			if ( $actorId !== 0 ) {
-				$this->performer = User::newFromActorId( $actorId );
-			} elseif ( $userId !== 0 ) {
+			if ( $userId !== 0 ) {
 				$this->performer = User::newFromId( $userId );
 			} else {
 				$userText = $this->row->rc_user_text;
@@ -414,9 +378,7 @@ class RCDatabaseLogEntry extends DatabaseLogEntry {
 	}
 
 	public function getComment() {
-		return CommentStore::getStore()
-			// Legacy because the row may have used RecentChange::selectFields()
-			->getCommentLegacy( wfGetDB( DB_REPLICA ), 'rc_comment', $this->row )->text;
+		return $this->row->rc_comment;
 	}
 
 	public function getDeleted() {
@@ -466,13 +428,15 @@ class ManualLogEntry extends LogEntryBase {
 	/** @var int ID of the log entry */
 	protected $id;
 
-	/** @var bool Can this log entry be patrolled? */
+	/** @var Can this log entry be patrolled? */
 	protected $isPatrollable = false;
 
 	/** @var bool Whether this is a legacy log entry */
 	protected $legacy = false;
 
 	/**
+	 * Constructor.
+	 *
 	 * @since 1.19
 	 * @param string $type
 	 * @param string $subtype
@@ -625,9 +589,10 @@ class ManualLogEntry extends LogEntryBase {
 	 * @throws MWException
 	 */
 	public function insert( IDatabase $dbw = null ) {
-		global $wgActorTableSchemaMigrationStage;
+		global $wgContLang;
 
 		$dbw = $dbw ?: wfGetDB( DB_MASTER );
+		$id = $dbw->nextSequenceValue( 'logging_log_id_seq' );
 
 		if ( $this->timestamp === null ) {
 			$this->timestamp = wfTimestampNow();
@@ -636,33 +601,11 @@ class ManualLogEntry extends LogEntryBase {
 		// Trim spaces on user supplied text
 		$comment = trim( $this->getComment() );
 
+		// Truncate for whole multibyte characters.
+		$comment = $wgContLang->truncate( $comment, 255 );
+
 		$params = $this->getParameters();
 		$relations = $this->relations;
-
-		// Ensure actor relations are set
-		if ( $wgActorTableSchemaMigrationStage >= MIGRATION_WRITE_BOTH &&
-			empty( $relations['target_author_actor'] )
-		) {
-			$actorIds = [];
-			if ( !empty( $relations['target_author_id'] ) ) {
-				foreach ( $relations['target_author_id'] as $id ) {
-					$actorIds[] = User::newFromId( $id )->getActorId( $dbw );
-				}
-			}
-			if ( !empty( $relations['target_author_ip'] ) ) {
-				foreach ( $relations['target_author_ip'] as $ip ) {
-					$actorIds[] = User::newFromName( $ip, false )->getActorId( $dbw );
-				}
-			}
-			if ( $actorIds ) {
-				$relations['target_author_actor'] = $actorIds;
-				$params['authorActors'] = $actorIds;
-			}
-		}
-		if ( $wgActorTableSchemaMigrationStage >= MIGRATION_WRITE_NEW ) {
-			unset( $relations['target_author_id'], $relations['target_author_ip'] );
-			unset( $params['authorIds'], $params['authorIPs'] );
-		}
 
 		// Additional fields for which there's no space in the database table schema
 		$revId = $this->getAssociatedRevId();
@@ -672,23 +615,24 @@ class ManualLogEntry extends LogEntryBase {
 		}
 
 		$data = [
+			'log_id' => $id,
 			'log_type' => $this->getType(),
 			'log_action' => $this->getSubtype(),
 			'log_timestamp' => $dbw->timestamp( $this->getTimestamp() ),
+			'log_user' => $this->getPerformer()->getId(),
+			'log_user_text' => $this->getPerformer()->getName(),
 			'log_namespace' => $this->getTarget()->getNamespace(),
 			'log_title' => $this->getTarget()->getDBkey(),
 			'log_page' => $this->getTarget()->getArticleID(),
+			'log_comment' => $comment,
 			'log_params' => LogEntryBase::makeParamBlob( $params ),
 		];
 		if ( isset( $this->deleted ) ) {
 			$data['log_deleted'] = $this->deleted;
 		}
-		$data += CommentStore::getStore()->insert( $dbw, 'log_comment', $comment );
-		$data += ActorMigration::newMigration()
-			->getInsertValues( $dbw, 'log_user', $this->getPerformer() );
 
 		$dbw->insert( 'logging', $data, __METHOD__ );
-		$this->id = $dbw->insertId();
+		$this->id = !is_null( $id ) ? $id : $dbw->insertId();
 
 		$rows = [];
 		foreach ( $relations as $tag => $values ) {
@@ -761,32 +705,39 @@ class ManualLogEntry extends LogEntryBase {
 	 *
 	 * @param int $newId Id of the log entry.
 	 * @param string $to One of: rcandudp (default), rc, udp
+	 * @return RecentChange|null
 	 */
 	public function publish( $newId, $to = 'rcandudp' ) {
-		DeferredUpdates::addCallableUpdate(
-			function () use ( $newId, $to ) {
-				$log = new LogPage( $this->getType() );
-				if ( !$log->isRestricted() ) {
-					$rc = $this->getRecentChange( $newId );
+		$log = new LogPage( $this->getType() );
+		if ( $log->isRestricted() ) {
+			return null;
+		}
 
-					if ( $to === 'rc' || $to === 'rcandudp' ) {
-						// save RC, passing tags so they are applied there
-						$tags = $this->getTags();
-						if ( is_null( $tags ) ) {
-							$tags = [];
-						}
-						$rc->addTags( $tags );
-						$rc->save( 'pleasedontudp' );
-					}
+		$rc = $this->getRecentChange( $newId );
 
-					if ( $to === 'udp' || $to === 'rcandudp' ) {
-						$rc->notifyRCFeeds();
-					}
-				}
-			},
-			DeferredUpdates::POSTSEND,
-			wfGetDB( DB_MASTER )
-		);
+		if ( $to === 'rc' || $to === 'rcandudp' ) {
+			$rc->save( 'pleasedontudp' );
+		}
+
+		if ( $to === 'udp' || $to === 'rcandudp' ) {
+			$rc->notifyRCFeeds();
+		}
+
+		// Log the autopatrol if the log entry is patrollable
+		if ( $this->getIsPatrollable() &&
+			$rc->getAttribute( 'rc_patrolled' ) === 1 ) {
+			PatrolLog::record( $rc, true, $this->getPerformer() );
+		}
+
+		// Add change tags to the log entry and (if applicable) the associated revision
+		$tags = $this->getTags();
+		if ( !is_null( $tags ) ) {
+			$rcId = $rc->getAttribute( 'rc_id' );
+			$revId = $this->getAssociatedRevId(); // Use null if $revId is 0
+			ChangeTags::addTags( $tags, $rcId, $revId > 0 ? $revId : null, $newId );
+		}
+
+		return $rc;
 	}
 
 	public function getType() {

@@ -50,11 +50,6 @@ class WebInstallerName extends WebInstallerPage {
 			wfMessage( 'config-ns-other-default' )->inContentLanguage()->text()
 		);
 
-		$pingbackInfo = ( new Pingback() )->getSystemInfo();
-		// Database isn't available in config yet, so take it
-		// from the installer
-		$pingbackInfo['database'] = $this->getVar( 'wgDBtype' );
-
 		$this->addHTML(
 			$this->parent->getTextBox( [
 				'var' => 'wgSitename',
@@ -76,7 +71,7 @@ class WebInstallerName extends WebInstallerPage {
 			$this->parent->getTextBox( [
 				'var' => 'wgMetaNamespace',
 				'label' => '', // @todo Needs a label?
-				'attribs' => [ 'class' => 'enabledByOther' ]
+				'attribs' => [ 'readonly' => 'readonly', 'class' => 'enabledByOther' ]
 			] ) .
 			$this->getFieldsetStart( 'config-admin-box' ) .
 			$this->parent->getTextBox( [
@@ -104,15 +99,6 @@ class WebInstallerName extends WebInstallerPage {
 				'var' => '_Subscribe',
 				'label' => 'config-subscribe',
 				'help' => $this->parent->getHelpBox( 'config-subscribe-help' )
-			] ) .
-			$this->parent->getCheckBox( [
-				'var' => 'wgPingback',
-				'label' => 'config-pingback',
-				'help' => $this->parent->getHelpBox(
-					'config-pingback-help',
-					FormatJson::encode( $pingbackInfo, true )
-				),
-				'value' => true,
 			] ) .
 			$this->getFieldsetEnd() .
 			$this->parent->getInfoBox( wfMessage( 'config-almost-done' )->text() ) .
@@ -143,7 +129,7 @@ class WebInstallerName extends WebInstallerPage {
 		$retVal = true;
 		$this->parent->setVarsFromRequest( [ 'wgSitename', '_NamespaceType',
 			'_AdminName', '_AdminPassword', '_AdminPasswordConfirm', '_AdminEmail',
-			'_Subscribe', '_SkipOptional', 'wgMetaNamespace', 'wgPingback' ] );
+			'_Subscribe', '_SkipOptional', 'wgMetaNamespace' ] );
 
 		// Validate site name
 		if ( strval( $this->getVar( 'wgSitename' ) ) === '' ) {
@@ -251,7 +237,7 @@ class WebInstallerName extends WebInstallerPage {
 			$retVal = false;
 		}
 		// If they asked to subscribe to mediawiki-announce but didn't give
-		// an e-mail, show an error. T31332
+		// an e-mail, show an error. Bug 29332
 		if ( !$email && $this->getVar( '_Subscribe' ) ) {
 			$this->parent->showError( 'config-subscribe-noemail' );
 			$retVal = false;

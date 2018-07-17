@@ -1,5 +1,9 @@
 <?php
 /**
+ *
+ *
+ * Created on Dec 27, 2012
+ *
  * Copyright © 2012 Yuri Astrakhan "<Firstname><Lastname>@gmail.com"
  *
  * This program is free software; you can redistribute it and/or modify
@@ -77,14 +81,14 @@ class ApiModuleManager extends ContextSource {
 	 *
 	 * @code
 	 *  $modules['foo'] = 'ApiFoo';
-	 *  $modules['bar'] = [
-	 *      'class' => ApiBar::class,
+	 *  $modules['bar'] = array(
+	 *      'class' => 'ApiBar',
 	 *      'factory' => function( $main, $name ) { ... }
-	 *  ];
-	 *  $modules['xyzzy'] = [
-	 *      'class' => ApiXyzzy::class,
-	 *      'factory' => [ XyzzyFactory::class, 'newApiModule' ]
-	 *  ];
+	 *  );
+	 *  $modules['xyzzy'] = array(
+	 *      'class' => 'ApiXyzzy',
+	 *      'factory' => array( 'XyzzyFactory', 'newApiModule' )
+	 *  );
 	 * @endcode
 	 *
 	 * @param array $modules A map of ModuleName => ModuleSpec; The ModuleSpec
@@ -93,6 +97,7 @@ class ApiModuleManager extends ContextSource {
 	 * @param string $group Which group modules belong to (action,format,...)
 	 */
 	public function addModules( array $modules, $group ) {
+
 		foreach ( $modules as $name => $moduleSpec ) {
 			if ( is_array( $moduleSpec ) ) {
 				$class = $moduleSpec['class'];

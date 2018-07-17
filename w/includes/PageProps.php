@@ -19,12 +19,12 @@
  *
  * @file
  */
-use Wikimedia\ScopedCallback;
 
 /**
  * Gives access to properties of a page.
  *
  * @since 1.27
+ *
  */
 class PageProps {
 
@@ -55,7 +55,7 @@ class PageProps {
 		}
 		$previousValue = self::$instance;
 		self::$instance = $store;
-		return new ScopedCallback( function () use ( $previousValue ) {
+		return new ScopedCallback( function() use ( $previousValue ) {
 			self::$instance = $previousValue;
 		} );
 	}
@@ -85,16 +85,6 @@ class PageProps {
 	}
 
 	/**
-	 * Ensure that cache has at least this size
-	 * @param int $size
-	 */
-	public function ensureCacheSize( $size ) {
-		if ( $this->cache->getSize() < $size ) {
-			$this->cache->resize( $size );
-		}
-	}
-
-	/**
 	 * Given one or more Titles and one or more names of properties,
 	 * returns an associative array mapping page ID to property value.
 	 * Pages in the provided set of Titles that do not have a value for
@@ -102,7 +92,7 @@ class PageProps {
 	 * single Title is provided, it does not need to be passed in an array,
 	 * but an array will always be returned. If a single property name is
 	 * provided, it does not need to be passed in an array. In that case,
-	 * an associative array mapping page ID to property value will be
+	 * an associtive array mapping page ID to property value will be
 	 * returned; otherwise, an associative array mapping page ID to
 	 * an associative array mapping property name to property value will be
 	 * returned. An empty array will be returned if no matching properties
@@ -140,7 +130,7 @@ class PageProps {
 		}
 
 		if ( $queryIDs ) {
-			$dbr = wfGetDB( DB_REPLICA );
+			$dbr = wfGetDB( DB_SLAVE );
 			$result = $dbr->select(
 				'page_props',
 				[
@@ -198,7 +188,7 @@ class PageProps {
 		}
 
 		if ( $queryIDs != [] ) {
-			$dbr = wfGetDB( DB_REPLICA );
+			$dbr = wfGetDB( DB_SLAVE );
 			$result = $dbr->select(
 				'page_props',
 				[
@@ -242,8 +232,6 @@ class PageProps {
 	private function getGoodIDs( $titles ) {
 		$result = [];
 		if ( is_array( $titles ) ) {
-			( new LinkBatch( $titles ) )->execute();
-
 			foreach ( $titles as $title ) {
 				$pageID = $title->getArticleID();
 				if ( $pageID > 0 ) {

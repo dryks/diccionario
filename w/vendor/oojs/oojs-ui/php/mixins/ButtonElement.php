@@ -26,10 +26,10 @@ trait ButtonElement {
 
 	/**
 	 * @param array $config Configuration options
-	 * @param bool $config['framed'] Render button with a frame (default: true)
+	 * @param boolean $config['framed'] Render button with a frame (default: true)
 	 */
 	public function initializeButtonElement( array $config = [] ) {
-		// Properties
+		// Parent constructor
 		if ( ! $this instanceof Element ) {
 			throw new Exception( "ButtonElement trait can only be used on Element instances" );
 		}
@@ -40,15 +40,11 @@ trait ButtonElement {
 		$this->addClasses( [ 'oo-ui-buttonElement' ] );
 		$this->button->addClasses( [ 'oo-ui-buttonElement-button' ] );
 		$this->toggleFramed( isset( $config['framed'] ) ? $config['framed'] : true );
+		$this->button->setAttributes( [
+			'role' => 'button',
+		] );
 
-		// Add `role="button"` on `<a>` elements, where it's needed
-		if ( strtolower( $this->button->getTag() ) === 'a' ) {
-			$this->button->setAttributes( [
-				'role' => 'button',
-			] );
-		}
-
-		$this->registerConfigCallback( function ( &$config ) {
+		$this->registerConfigCallback( function( &$config ) {
 			if ( $this->framed !== true ) {
 				$config['framed'] = $this->framed;
 			}
@@ -58,7 +54,7 @@ trait ButtonElement {
 	/**
 	 * Toggle frame.
 	 *
-	 * @param bool $framed Make button framed, omit to toggle
+	 * @param boolean $framed Make button framed, omit to toggle
 	 * @return $this
 	 */
 	public function toggleFramed( $framed = null ) {
@@ -71,7 +67,7 @@ trait ButtonElement {
 	/**
 	 * Check if button has a frame.
 	 *
-	 * @return bool Button is framed
+	 * @return boolean Button is framed
 	 */
 	public function isFramed() {
 		return $this->framed;

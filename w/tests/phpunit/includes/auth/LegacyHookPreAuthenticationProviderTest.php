@@ -2,8 +2,6 @@
 
 namespace MediaWiki\Auth;
 
-use MediaWiki\MediaWikiServices;
-
 /**
  * @group AuthManager
  * @group Database
@@ -15,13 +13,11 @@ class LegacyHookPreAuthenticationProviderTest extends \MediaWikiTestCase {
 	 * @return LegacyHookPreAuthenticationProvider
 	 */
 	protected function getProvider() {
-		$request = $this->getMockBuilder( \FauxRequest::class )
-			->setMethods( [ 'getIP' ] )->getMock();
+		$request = $this->getMock( 'FauxRequest', [ 'getIP' ] );
 		$request->expects( $this->any() )->method( 'getIP' )->will( $this->returnValue( '127.0.0.42' ) );
 
 		$manager = new AuthManager(
-			$request,
-			MediaWikiServices::getInstance()->getMainConfig()
+			$request, \ConfigFactory::getDefaultInstance()->makeConfig( 'main' )
 		);
 
 		$provider = new LegacyHookPreAuthenticationProvider();
@@ -40,7 +36,7 @@ class LegacyHookPreAuthenticationProviderTest extends \MediaWikiTestCase {
 	 * @return object $mock->expects( $expect )->method( ... ).
 	 */
 	protected function hook( $hook, $expect ) {
-		$mock = $this->getMockBuilder( __CLASS__ )->setMethods( [ "on$hook" ] )->getMock();
+		$mock = $this->getMock( __CLASS__, [ "on$hook" ] );
 		$this->mergeMwGlobalArrayValue( 'wgHooks', [
 			$hook => [ $mock ],
 		] );
@@ -101,7 +97,7 @@ class LegacyHookPreAuthenticationProviderTest extends \MediaWikiTestCase {
 			if ( $msgForLoginUserMigrated !== null ) {
 				$h->will( $this->returnCallback(
 					function ( $user, &$msg ) use ( $username, $msgForLoginUserMigrated ) {
-						$this->assertInstanceOf( \User::class, $user );
+						$this->assertInstanceOf( 'User', $user );
 						$this->assertSame( $username, $user->getName() );
 						$msg = $msgForLoginUserMigrated;
 						return false;
@@ -111,7 +107,7 @@ class LegacyHookPreAuthenticationProviderTest extends \MediaWikiTestCase {
 			} else {
 				$h->will( $this->returnCallback(
 					function ( $user, &$msg ) use ( $username ) {
-						$this->assertInstanceOf( \User::class, $user );
+						$this->assertInstanceOf( 'User', $user );
 						$this->assertSame( $username, $user->getName() );
 						return true;
 					}
@@ -122,7 +118,7 @@ class LegacyHookPreAuthenticationProviderTest extends \MediaWikiTestCase {
 						function ( $user, $pass, &$abort, &$msg )
 							use ( $username, $password, $abortForAbortLogin, $msgForAbortLogin )
 						{
-							$this->assertInstanceOf( \User::class, $user );
+							$this->assertInstanceOf( 'User', $user );
 							$this->assertSame( $username, $user->getName() );
 							if ( $password !== null ) {
 								$this->assertSame( $password, $pass );
@@ -137,7 +133,7 @@ class LegacyHookPreAuthenticationProviderTest extends \MediaWikiTestCase {
 				} else {
 					$h2->will( $this->returnCallback(
 						function ( $user, $pass, &$abort, &$msg ) use ( $username, $password ) {
-							$this->assertInstanceOf( \User::class, $user );
+							$this->assertInstanceOf( 'User', $user );
 							$this->assertSame( $username, $user->getName() );
 							if ( $password !== null ) {
 								$this->assertSame( $password, $pass );
@@ -160,7 +156,7 @@ class LegacyHookPreAuthenticationProviderTest extends \MediaWikiTestCase {
 		if ( $failMsg === null ) {
 			$this->assertEquals( \StatusValue::newGood(), $status, 'should succeed' );
 		} else {
-			$this->assertInstanceOf( \StatusValue::class, $status, 'should fail (type)' );
+			$this->assertInstanceOf( 'StatusValue', $status, 'should fail (type)' );
 			$this->assertFalse( $status->isOk(), 'should fail (ok)' );
 			$errors = $status->getErrors();
 			$this->assertEquals( $failMsg, $errors[0]['message'], 'should fail (message)' );
@@ -282,14 +278,14 @@ class LegacyHookPreAuthenticationProviderTest extends \MediaWikiTestCase {
 	 * @dataProvider provideTestForAccountCreation
 	 * @param string $msg
 	 * @param Status|null $status
-	 * @param StatusValue $result
+	 * @param StatusValue Result
 	 */
 	public function testTestForAccountCreation( $msg, $status, $result ) {
 		$this->hook( 'AbortNewAccount', $this->once() )
 			->will( $this->returnCallback( function ( $user, &$error, &$abortStatus )
 				use ( $msg, $status )
 			{
-				$this->assertInstanceOf( \User::class, $user );
+				$this->assertInstanceOf( 'User', $user );
 				$this->assertSame( 'User', $user->getName() );
 				$error = $msg;
 				$abortStatus = $status;
@@ -329,38 +325,80 @@ class LegacyHookPreAuthenticationProviderTest extends \MediaWikiTestCase {
 	 * @param string|null $failMsg
 	 */
 	public function testTestUserForCreation( $error, $failMsg ) {
-		$testUser = self::getTestUser()->getUser();
-		$provider = $this->getProvider();
-		$options = [ 'flags' => \User::READ_LOCKING, 'creating' => true ];
-
 		$this->hook( 'AbortNewAccount', $this->never() );
 		$this->hook( 'AbortAutoAccount', $this->once() )
-			->will( $this->returnCallback( function ( $user, &$abortError ) use ( $testUser, $error ) {
-				$this->assertInstanceOf( \User::class, $user );
-				$this->assertSame( $testUser->getName(), $user->getName() );
+			->will( $this->returnCallback( function ( $user, &$abortError ) use ( $error ) {
+				$this->assertInstanceOf( 'User', $user );
+				$this->assertSame( 'UTSysop', $user->getName() );
 				$abortError = $error;
 				return $error === null;
 			} ) );
-		$status = $provider->testUserForCreation(
-			$testUser, AuthManager::AUTOCREATE_SOURCE_SESSION, $options
+
+		$status = $this->getProvider()->testUserForCreation(
+			\User::newFromName( 'UTSysop' ), AuthManager::AUTOCREATE_SOURCE_SESSION
 		);
+
 		$this->unhook( 'AbortNewAccount' );
 		$this->unhook( 'AbortAutoAccount' );
+
 		if ( $failMsg === null ) {
 			$this->assertEquals( \StatusValue::newGood(), $status, 'should succeed' );
 		} else {
-			$this->assertInstanceOf( \StatusValue::class, $status, 'should fail (type)' );
+			$this->assertInstanceOf( 'StatusValue', $status, 'should fail (type)' );
 			$this->assertFalse( $status->isOk(), 'should fail (ok)' );
 			$errors = $status->getErrors();
 			$this->assertEquals( $failMsg, $errors[0]['message'], 'should fail (message)' );
 		}
 
 		$this->hook( 'AbortAutoAccount', $this->never() );
-		$this->hook( 'AbortNewAccount', $this->never() );
-		$status = $provider->testUserForCreation( $testUser, false, $options );
+		$this->hook( 'AbortNewAccount', $this->once() )
+			->will( $this->returnCallback(
+				function ( $user, &$abortError, &$abortStatus ) use ( $error ) {
+					$this->assertInstanceOf( 'User', $user );
+					$this->assertSame( 'UTSysop', $user->getName() );
+					$abortError = $error;
+					return $error === null;
+				}
+			) );
+		$status = $this->getProvider()->testUserForCreation( \User::newFromName( 'UTSysop' ), false );
 		$this->unhook( 'AbortNewAccount' );
 		$this->unhook( 'AbortAutoAccount' );
-		$this->assertEquals( \StatusValue::newGood(), $status, 'should succeed' );
+		if ( $failMsg === null ) {
+			$this->assertEquals( \StatusValue::newGood(), $status, 'should succeed' );
+		} else {
+			$this->assertInstanceOf( 'StatusValue', $status, 'should fail (type)' );
+			$this->assertFalse( $status->isOk(), 'should fail (ok)' );
+			$errors = $status->getErrors();
+			$msg = $errors[0]['message'];
+			$this->assertInstanceOf( \Message::class, $msg );
+			$this->assertEquals(
+				'createaccount-hook-aborted', $msg->getKey(), 'should fail (message)'
+			);
+		}
+
+		if ( $error !== false ) {
+			$this->hook( 'AbortAutoAccount', $this->never() );
+			$this->hook( 'AbortNewAccount', $this->once() )
+				->will( $this->returnCallback(
+					function ( $user, &$abortError, &$abortStatus ) use ( $error ) {
+						$this->assertInstanceOf( 'User', $user );
+						$this->assertSame( 'UTSysop', $user->getName() );
+						$abortStatus = $error ? \Status::newFatal( $error ) : \Status::newGood();
+						return $error === null;
+					}
+			) );
+			$status = $this->getProvider()->testUserForCreation( \User::newFromName( 'UTSysop' ), false );
+			$this->unhook( 'AbortNewAccount' );
+			$this->unhook( 'AbortAutoAccount' );
+			if ( $failMsg === null ) {
+				$this->assertEquals( \StatusValue::newGood(), $status, 'should succeed' );
+			} else {
+				$this->assertInstanceOf( 'StatusValue', $status, 'should fail (type)' );
+				$this->assertFalse( $status->isOk(), 'should fail (ok)' );
+				$errors = $status->getErrors();
+				$this->assertEquals( $failMsg, $errors[0]['message'], 'should fail (message)' );
+			}
+		}
 	}
 
 	public static function provideTestUserForCreation() {

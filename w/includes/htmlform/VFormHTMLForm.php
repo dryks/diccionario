@@ -37,6 +37,11 @@ class VFormHTMLForm extends HTMLForm {
 	 */
 	protected $displayFormat = 'vform';
 
+	public function isVForm() {
+		wfDeprecated( __METHOD__, '1.25' );
+		return true;
+	}
+
 	public static function loadInputFromParameters( $fieldname, $descriptor,
 		HTMLForm $parent = null
 	) {
@@ -45,7 +50,7 @@ class VFormHTMLForm extends HTMLForm {
 		return $field;
 	}
 
-	public function getHTML( $submitResult ) {
+	function getHTML( $submitResult ) {
 		// This is required for VForm HTMLForms that use that style regardless
 		// of wgUseMediaWikiUIEverywhere (since they pre-date it).
 		// When wgUseMediaWikiUIEverywhere is removed, this should be consolidated
@@ -62,16 +67,16 @@ class VFormHTMLForm extends HTMLForm {
 
 	protected function getFormAttributes() {
 		$attribs = parent::getFormAttributes();
-		$attribs['class'] = [ 'mw-htmlform', 'mw-ui-vform', 'mw-ui-container' ];
+		$attribs['class'] = [ 'mw-ui-vform', 'mw-ui-container', 'visualClear' ];
 		return $attribs;
 	}
 
-	public function wrapForm( $html ) {
+	function wrapForm( $html ) {
 		// Always discard $this->mWrapperLegend
 		return Html::rawElement( 'form', $this->getFormAttributes(), $html );
 	}
 
-	public function getButtons() {
+	function getButtons() {
 		$buttons = '';
 
 		if ( $this->mShowSubmit ) {
@@ -109,21 +114,6 @@ class VFormHTMLForm extends HTMLForm {
 					'class' => 'mw-ui-button mw-ui-big mw-ui-block',
 				]
 			) . "\n";
-		}
-
-		if ( $this->mShowCancel ) {
-			$target = $this->mCancelTarget ?: Title::newMainPage();
-			if ( $target instanceof Title ) {
-				$target = $target->getLocalURL();
-			}
-			$buttons .= Html::element(
-					'a',
-					[
-						'class' => 'mw-ui-button mw-ui-big mw-ui-block',
-						'href' => $target,
-					],
-					$this->msg( 'cancel' )->text()
-				) . "\n";
 		}
 
 		foreach ( $this->mButtons as $button ) {

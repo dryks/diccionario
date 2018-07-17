@@ -78,7 +78,8 @@ abstract class PasswordTestCase extends MediaWikiTestCase {
 
 	/**
 	 * @dataProvider providePasswordTests
-	 * @covers InvalidPassword
+	 * @covers InvalidPassword::equals
+	 * @covers InvalidPassword::toString
 	 */
 	public function testInvalidUnequalNormal( $shouldMatch, $hash, $password ) {
 		$invalid = $this->passwordFactory->newFromCiphertext( null );
@@ -86,27 +87,5 @@ abstract class PasswordTestCase extends MediaWikiTestCase {
 
 		$this->assertFalse( $invalid->equals( $normal ) );
 		$this->assertFalse( $normal->equals( $invalid ) );
-	}
-
-	protected function getValidTypes() {
-		return array_keys( $this->getTypeConfigs() );
-	}
-
-	public function provideTypes( $type ) {
-		$params = [];
-		foreach ( $this->getValidTypes() as $type ) {
-			$params[] = [ $type ];
-		}
-		return $params;
-	}
-
-	/**
-	 * @dataProvider provideTypes
-	 */
-	public function testCrypt( $type ) {
-		$fromType = $this->passwordFactory->newFromType( $type );
-		$fromType->crypt( 'password' );
-		$fromPlaintext = $this->passwordFactory->newFromPlaintext( 'password', $fromType );
-		$this->assertTrue( $fromType->equals( $fromPlaintext ) );
 	}
 }

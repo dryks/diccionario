@@ -62,6 +62,10 @@ class CopyFileBackend extends Maintenance {
 
 		$rateFile = $this->getOption( 'ratefile' );
 
+		if ( $this->hasOption( 'utf8only' ) && !extension_loaded( 'mbstring' ) ) {
+			$this->error( "Cannot check for UTF-8, mbstring extension missing.", 1 ); // die
+		}
+
 		foreach ( $containers as $container ) {
 			if ( $subDir != '' ) {
 				$backendRel = "$container/$subDir";
@@ -81,7 +85,7 @@ class CopyFileBackend extends Maintenance {
 					'adviseStat' => true // avoid HEADs
 				] );
 				if ( $srcPathsRel === null ) {
-					$this->fatalError( "Could not list files in $container." );
+					$this->error( "Could not list files in $container.", 1 ); // die
 				}
 			}
 
@@ -93,7 +97,7 @@ class CopyFileBackend extends Maintenance {
 					'adviseStat' => true // avoid HEADs
 				] );
 				if ( $dstPathsRel === null ) {
-					$this->fatalError( "Could not list files in $container." );
+					$this->error( "Could not list files in $container.", 1 ); // die
 				}
 				$this->statCache = [];
 				foreach ( $dstPathsRel as $dstPathRel ) {
@@ -109,11 +113,11 @@ class CopyFileBackend extends Maintenance {
 			foreach ( $srcPathsRel as $srcPathRel ) {
 				// Check up on the rate file periodically to adjust the concurrency
 				if ( $rateFile && ( !$count || ( $count % 500 ) == 0 ) ) {
-					$this->setBatchSize( max( 1, (int)file_get_contents( $rateFile ) ) );
-					$this->output( "\tBatch size is now {$this->getBatchSize()}.\n" );
+					$this->mBatchSize = max( 1, (int)file_get_contents( $rateFile ) );
+					$this->output( "\tBatch size is now {$this->mBatchSize}.\n" );
 				}
 				$batchPaths[$srcPathRel] = 1; // remove duplicates
-				if ( count( $batchPaths ) >= $this->getBatchSize() ) {
+				if ( count( $batchPaths ) >= $this->mBatchSize ) {
 					$this->copyFileBatch( array_keys( $batchPaths ), $backendRel, $src, $dst );
 					$batchPaths = []; // done
 				}
@@ -136,11 +140,11 @@ class CopyFileBackend extends Maintenance {
 				foreach ( $delPathsRel as $delPathRel ) {
 					// Check up on the rate file periodically to adjust the concurrency
 					if ( $rateFile && ( !$count || ( $count % 500 ) == 0 ) ) {
-						$this->setBatchSize( max( 1, (int)file_get_contents( $rateFile ) ) );
-						$this->output( "\tBatch size is now {$this->getBatchSize()}.\n" );
+						$this->mBatchSize = max( 1, (int)file_get_contents( $rateFile ) );
+						$this->output( "\tBatch size is now {$this->mBatchSize}.\n" );
 					}
 					$batchPaths[$delPathRel] = 1; // remove duplicates
-					if ( count( $batchPaths ) >= $this->getBatchSize() ) {
+					if ( count( $batchPaths ) >= $this->mBatchSize ) {
 						$this->delFileBatch( array_keys( $batchPaths ), $backendRel, $dst );
 						$batchPaths = []; // done
 					}
@@ -174,12 +178,12 @@ class CopyFileBackend extends Maintenance {
 		$srcPathsRel = $src->getFileList( [
 			'dir' => $src->getRootStoragePath() . "/$backendRel" ] );
 		if ( $srcPathsRel === null ) {
-			$this->fatalError( "Could not list files in source container." );
+			$this->error( "Could not list files in source container.", 1 ); // die
 		}
 		$dstPathsRel = $dst->getFileList( [
 			'dir' => $dst->getRootStoragePath() . "/$backendRel" ] );
 		if ( $dstPathsRel === null ) {
-			$this->fatalError( "Could not list files in destination container." );
+			$this->error( "Could not list files in destination container.", 1 ); // die
 		}
 		// Get the list of destination files
 		$relFilesDstSha1 = [];
@@ -263,7 +267,7 @@ class CopyFileBackend extends Maintenance {
 			$status = $dst->prepare( [ 'dir' => dirname( $dstPath ), 'bypassReadOnly' => 1 ] );
 			if ( !$status->isOK() ) {
 				$this->error( print_r( $status->getErrorsArray(), true ) );
-				$this->fatalError( "$wikiId: Could not copy $srcPath to $dstPath." );
+				$this->error( "$wikiId: Could not copy $srcPath to $dstPath.", 1 ); // die
 			}
 			$ops[] = [ 'op' => 'store',
 				'src' => $fsFile->getPath(), 'dst' => $dstPath, 'overwrite' => 1 ];
@@ -280,7 +284,7 @@ class CopyFileBackend extends Maintenance {
 		$elapsed_ms = floor( ( microtime( true ) - $t_start ) * 1000 );
 		if ( !$status->isOK() ) {
 			$this->error( print_r( $status->getErrorsArray(), true ) );
-			$this->fatalError( "$wikiId: Could not copy file batch." );
+			$this->error( "$wikiId: Could not copy file batch.", 1 ); // die
 		} elseif ( count( $copiedRel ) ) {
 			$this->output( "\n\tCopied these file(s) [{$elapsed_ms}ms]:\n\t" .
 				implode( "\n\t", $copiedRel ) . "\n\n" );
@@ -317,7 +321,7 @@ class CopyFileBackend extends Maintenance {
 		$elapsed_ms = floor( ( microtime( true ) - $t_start ) * 1000 );
 		if ( !$status->isOK() ) {
 			$this->error( print_r( $status->getErrorsArray(), true ) );
-			$this->fatalError( "$wikiId: Could not delete file batch." );
+			$this->error( "$wikiId: Could not delete file batch.", 1 ); // die
 		} elseif ( count( $deletedRel ) ) {
 			$this->output( "\n\tDeleted these file(s) [{$elapsed_ms}ms]:\n\t" .
 				implode( "\n\t", $deletedRel ) . "\n\n" );
@@ -374,5 +378,5 @@ class CopyFileBackend extends Maintenance {
 	}
 }
 
-$maintClass = CopyFileBackend::class;
+$maintClass = 'CopyFileBackend';
 require_once RUN_MAINTENANCE_IF_MAIN;

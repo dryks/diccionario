@@ -45,7 +45,7 @@ class MultiConfig implements Config {
 	}
 
 	/**
-	 * @inheritDoc
+	 * @see Config::get
 	 */
 	public function get( $name ) {
 		foreach ( $this->configs as $config ) {
@@ -58,7 +58,7 @@ class MultiConfig implements Config {
 	}
 
 	/**
-	 * @inheritDoc
+	 * @see Config::has
 	 */
 	public function has( $name ) {
 		foreach ( $this->configs as $config ) {

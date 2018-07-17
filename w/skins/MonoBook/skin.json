@@ -7,7 +7,7 @@
 	"url": "https://www.mediawiki.org/wiki/Skin:MonoBook",
 	"descriptionmsg": "monobook-desc",
 	"namemsg": "skinname-monobook",
-	"license-name": "GPL-2.0-or-later",
+	"license-name": "GPL-2.0+",
 	"type": "skin",
 	"requires": {
 		"MediaWiki": ">= 1.25.0"
@@ -25,11 +25,9 @@
 	},
 	"ResourceModules": {
 		"skins.monobook.styles": {
+			"position": "top",
 			"styles": {
-				"resources/screen-common.less": {
-					"media": "screen"
-				},
-				"resources/screen-desktop.less": {
+				"main.css": {
 					"media": "screen"
 				}
 			}
@@ -41,15 +39,12 @@
 	},
 	"ResourceModuleSkinStyles": {
 		"monobook": {
-			"+mediawiki.action.view.redirectPage": "resources/skinStyles/mediawiki.action.view.redirectPage.css",
-			"+mediawiki.special.preferences.styles": "resources/skinStyles/mediawiki.special.preferences.styles.less",
-			"+mediawiki.notification": "resources/skinStyles/mediawiki.notification.less",
-			"+oojs-ui-core.styles": "resources/skinStyles/ooui.less"
+			"+mediawiki.special.preferences.styles": "skinStyles/mediawiki.special.preferences.styles.less"
 		}
 	},
 	"AutoloadClasses": {
-		"SkinMonoBook": "includes/SkinMonoBook.php",
-		"MonoBookTemplate": "includes/MonoBookTemplate.php"
+		"SkinMonoBook": "SkinMonoBook.php",
+		"MonoBookTemplate": "MonoBookTemplate.php"
 	},
 	"manifest_version": 1
 }

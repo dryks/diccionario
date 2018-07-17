@@ -1,5 +1,9 @@
 <?php
 /**
+ *
+ *
+ * Created on June 06, 2011
+ *
  * Copyright © 2011 Sam Reed
  *
  * This program is free software; you can redistribute it and/or modify
@@ -39,16 +43,16 @@ class ApiFeedContributions extends ApiBase {
 
 		$config = $this->getConfig();
 		if ( !$config->get( 'Feed' ) ) {
-			$this->dieWithError( 'feed-unavailable' );
+			$this->dieUsage( 'Syndication feeds are not available', 'feed-unavailable' );
 		}
 
 		$feedClasses = $config->get( 'FeedClasses' );
 		if ( !isset( $feedClasses[$params['feedformat']] ) ) {
-			$this->dieWithError( 'feed-invalid' );
+			$this->dieUsage( 'Invalid subscription feed type', 'feed-invalid' );
 		}
 
 		if ( $params['showsizediff'] && $this->getConfig()->get( 'MiserMode' ) ) {
-			$this->dieWithError( 'apierror-sizediffdisabled' );
+			$this->dieUsage( 'Size difference is disabled in Miser Mode', 'sizediffdisabled' );
 		}
 
 		$msg = wfMessage( 'Contributions' )->inContentLanguage()->text();
@@ -66,21 +70,15 @@ class ApiFeedContributions extends ApiBase {
 			$feedUrl
 		);
 
-		// Convert year/month parameters to end parameter
-		$params['start'] = '';
-		$params['end'] = '';
-		$params = ContribsPager::processDateFilter( $params );
-
 		$pager = new ContribsPager( $this->getContext(), [
 			'target' => $target,
 			'namespace' => $params['namespace'],
-			'start' => $params['start'],
-			'end' => $params['end'],
+			'year' => $params['year'],
+			'month' => $params['month'],
 			'tagFilter' => $params['tagfilter'],
 			'deletedOnly' => $params['deletedonly'],
 			'topOnly' => $params['toponly'],
 			'newOnly' => $params['newonly'],
-			'hideMinor' => $params['hideminor'],
 			'showSizeDiff' => $params['showsizediff'],
 		] );
 
@@ -210,7 +208,6 @@ class ApiFeedContributions extends ApiBase {
 			'deletedonly' => false,
 			'toponly' => false,
 			'newonly' => false,
-			'hideminor' => false,
 			'showsizediff' => [
 				ApiBase::PARAM_DFLT => false,
 			],

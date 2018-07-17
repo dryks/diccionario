@@ -2,7 +2,7 @@
 /**
  * Contain classes to list log entries
  *
- * Copyright © 2004 Brion Vibber <brion@pobox.com>
+ * Copyright © 2004 Brion Vibber <brion@pobox.com>, 2008 Aaron Schulz
  * https://www.mediawiki.org/
  *
  * This program is free software; you can redistribute it and/or modify
@@ -45,16 +45,12 @@ class LogPager extends ReverseChronologicalPager {
 	/** @var string */
 	private $action = '';
 
-	/** @var bool */
-	private $performerRestrictionsEnforced = false;
-
-	/** @var bool */
-	private $actionRestrictionsEnforced = false;
-
 	/** @var LogEventsList */
 	public $mLogEventsList;
 
 	/**
+	 * Constructor
+	 *
 	 * @param LogEventsList $list
 	 * @param string|array $types Log types to show
 	 * @param string $performer The user who made the log entries
@@ -82,7 +78,7 @@ class LogPager extends ReverseChronologicalPager {
 		$this->getDateCond( $year, $month );
 		$this->mTagFilter = $tagFilter;
 
-		$this->mDb = wfGetDB( DB_REPLICA, 'logpager' );
+		$this->mDb = wfGetDB( DB_SLAVE, 'logpager' );
 	}
 
 	public function getDefaultQuery() {
@@ -103,11 +99,13 @@ class LogPager extends ReverseChronologicalPager {
 			return $filters;
 		}
 		foreach ( $wgFilterLogTypes as $type => $default ) {
-			$hide = $this->getRequest()->getInt( "hide_{$type}_log", $default );
-
-			$filters[$type] = $hide;
-			if ( $hide ) {
-				$this->mConds[] = 'log_type != ' . $this->mDb->addQuotes( $type );
+			// Avoid silly filtering
+			if ( $type !== 'patrol' || $this->getUser()->useNPPatrol() ) {
+				$hide = $this->getRequest()->getInt( "hide_{$type}_log", $default );
+				$filters[$type] = $hide;
+				if ( $hide ) {
+					$this->mConds[] = 'log_type != ' . $this->mDb->addQuotes( $type );
+				}
 			}
 		}
 
@@ -173,18 +171,23 @@ class LogPager extends ReverseChronologicalPager {
 		if ( is_null( $usertitle ) ) {
 			return;
 		}
-		// Normalize username first so that non-existent users used
-		// in maintenance scripts work
-		$name = $usertitle->getText();
+		/* Fetch userid at first, if known, provides awesome query plan afterwards */
+		$userid = User::idFromName( $name );
+		if ( !$userid ) {
+			$this->mConds['log_user_text'] = IP::sanitizeIP( $name );
+		} else {
+			$this->mConds['log_user'] = $userid;
+		}
+		// Paranoia: avoid brute force searches (bug 17342)
+		$user = $this->getUser();
+		if ( !$user->isAllowed( 'deletedhistory' ) ) {
+			$this->mConds[] = $this->mDb->bitAnd( 'log_deleted', LogPage::DELETED_USER ) . ' = 0';
+		} elseif ( !$user->isAllowedAny( 'suppressrevision', 'viewsuppressed' ) ) {
+			$this->mConds[] = $this->mDb->bitAnd( 'log_deleted', LogPage::SUPPRESSED_USER ) .
+				' != ' . LogPage::SUPPRESSED_USER;
+		}
 
-		// Assume no joins required for log_user
-		$this->mConds[] = ActorMigration::newMigration()->getWhere(
-			wfGetDB( DB_REPLICA ), 'log_user', User::newFromName( $name, false )
-		)['conds'];
-
-		$this->enforcePerformerRestrictions();
-
-		$this->performer = $name;
+		$this->performer = $usertitle->getText();
 	}
 
 	/**
@@ -250,7 +253,14 @@ class LogPager extends ReverseChronologicalPager {
 		} else {
 			$this->mConds['log_title'] = $title->getDBkey();
 		}
-		$this->enforceActionRestrictions();
+		// Paranoia: avoid brute force searches (bug 17342)
+		$user = $this->getUser();
+		if ( !$user->isAllowed( 'deletedhistory' ) ) {
+			$this->mConds[] = $db->bitAnd( 'log_deleted', LogPage::DELETED_ACTION ) . ' = 0';
+		} elseif ( !$user->isAllowedAny( 'suppressrevision', 'viewsuppressed' ) ) {
+			$this->mConds[] = $db->bitAnd( 'log_deleted', LogPage::SUPPRESSED_ACTION ) .
+				' != ' . LogPage::SUPPRESSED_ACTION;
+		}
 	}
 
 	/**
@@ -292,13 +302,14 @@ class LogPager extends ReverseChronologicalPager {
 		$options = $basic['options'];
 		$joins = $basic['join_conds'];
 
+		$index = [];
 		# Add log_search table if there are conditions on it.
 		# This filters the results to only include log rows that have
 		# log_search records with the specified ls_field and ls_value values.
 		if ( array_key_exists( 'ls_field', $this->mConds ) ) {
 			$tables[] = 'log_search';
-			$options['IGNORE INDEX'] = [ 'log_search' => 'ls_log_id' ];
-			$options['USE INDEX'] = [ 'logging' => 'PRIMARY' ];
+			$index['log_search'] = 'ls_field_val';
+			$index['logging'] = 'PRIMARY';
 			if ( !$this->hasEqualsClause( 'ls_field' )
 				|| !$this->hasEqualsClause( 'ls_value' )
 			) {
@@ -307,6 +318,9 @@ class LogPager extends ReverseChronologicalPager {
 				# no duplicate log rows. Otherwise, we need to remove the duplicates.
 				$options[] = 'DISTINCT';
 			}
+		}
+		if ( count( $index ) ) {
+			$options['USE INDEX'] = $index;
 		}
 		# Don't show duplicate rows when using log_search
 		$joins['log_search'] = [ 'INNER JOIN', 'ls_log_id=log_id' ];
@@ -410,40 +424,5 @@ class LogPager extends ReverseChronologicalPager {
 		$this->mDb->setBigSelects();
 		parent::doQuery();
 		$this->mDb->setBigSelects( 'default' );
-	}
-
-	/**
-	 * Paranoia: avoid brute force searches (T19342)
-	 */
-	private function enforceActionRestrictions() {
-		if ( $this->actionRestrictionsEnforced ) {
-			return;
-		}
-		$this->actionRestrictionsEnforced = true;
-		$user = $this->getUser();
-		if ( !$user->isAllowed( 'deletedhistory' ) ) {
-			$this->mConds[] = $this->mDb->bitAnd( 'log_deleted', LogPage::DELETED_ACTION ) . ' = 0';
-		} elseif ( !$user->isAllowedAny( 'suppressrevision', 'viewsuppressed' ) ) {
-			$this->mConds[] = $this->mDb->bitAnd( 'log_deleted', LogPage::SUPPRESSED_ACTION ) .
-				' != ' . LogPage::SUPPRESSED_USER;
-		}
-	}
-
-	/**
-	 * Paranoia: avoid brute force searches (T19342)
-	 */
-	private function enforcePerformerRestrictions() {
-		// Same as enforceActionRestrictions(), except for _USER instead of _ACTION bits.
-		if ( $this->performerRestrictionsEnforced ) {
-			return;
-		}
-		$this->performerRestrictionsEnforced = true;
-		$user = $this->getUser();
-		if ( !$user->isAllowed( 'deletedhistory' ) ) {
-			$this->mConds[] = $this->mDb->bitAnd( 'log_deleted', LogPage::DELETED_USER ) . ' = 0';
-		} elseif ( !$user->isAllowedAny( 'suppressrevision', 'viewsuppressed' ) ) {
-			$this->mConds[] = $this->mDb->bitAnd( 'log_deleted', LogPage::SUPPRESSED_USER ) .
-				' != ' . LogPage::SUPPRESSED_ACTION;
-		}
 	}
 }

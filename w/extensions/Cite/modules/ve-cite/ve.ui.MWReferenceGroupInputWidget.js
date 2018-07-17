@@ -1,15 +1,15 @@
 /*!
  * VisualEditor UserInterface MWReferenceGroupInput class.
  *
- * @copyright 2011-2018 VisualEditor Team's Cite sub-team and others; see AUTHORS.txt
- * @license MIT
+ * @copyright 2011-2016 Cite VisualEditor Team and others; see AUTHORS.txt
+ * @license The MIT License (MIT); see LICENSE.txt
  */
 
 /**
  * Creates an ve.ui.MWReferenceGroupInput object.
  *
  * @class
- * @extends OO.ui.ComboBoxInputWidget
+ * @extends OO.ui.ComboBoxWidget
  *
  * @constructor
  * @param {Object} [config] Configuration options
@@ -21,14 +21,14 @@ ve.ui.MWReferenceGroupInputWidget = function VeUiMWReferenceGroupInputWidget( co
 	this.emptyGroupName = config.emptyGroupName;
 
 	// Parent constructor
-	ve.ui.MWReferenceGroupInputWidget.super.call( this, ve.extendObject( { placeholder: config.emptyGroupName }, config ) );
+	OO.ui.ComboBoxWidget.call( this, $.extend( true, { input: { placeholder: config.emptyGroupName } }, config ) );
 
 	this.$element.addClass( 've-ui-mwReferenceGroupInputWidget' );
 };
 
 /* Inheritance */
 
-OO.inheritClass( ve.ui.MWReferenceGroupInputWidget, OO.ui.ComboBoxInputWidget );
+OO.inheritClass( ve.ui.MWReferenceGroupInputWidget, OO.ui.ComboBoxWidget );
 
 /* Methods */
 

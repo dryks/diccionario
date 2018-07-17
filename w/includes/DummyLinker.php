@@ -6,10 +6,48 @@
 class DummyLinker {
 
 	/**
-	 * @deprecated since 1.28, use LinkRenderer::getLinkClasses() instead
+	 * @deprecated since 1.27
 	 */
+	public function getInterwikiLinkAttributes( $title, $unused = null, $class = 'external' ) {
+		wfDeprecated( __METHOD__, '1.27' );
+		return Linker::getInterwikiLinkAttributes(
+			$title,
+			$unused,
+			$class
+		);
+	}
+
+	/**
+	 * @deprecated since 1.27
+	 */
+	public function getInternalLinkAttributes( $title, $unused = null, $class = '' ) {
+		wfDeprecated( __METHOD__, '1.27' );
+		return Linker::getInternalLinkAttributes(
+			$title,
+			$unused,
+			$class
+		);
+	}
+
+	/**
+	 * @deprecated since 1.27
+	 */
+	public function getInternalLinkAttributesObj(
+		$nt,
+		$unused = null,
+		$class = '',
+		$title = false
+	) {
+		wfDeprecated( __METHOD__, '1.27' );
+		return Linker::getInternalLinkAttributesObj(
+			$nt,
+			$unused,
+			$class,
+			$title
+		);
+	}
+
 	public function getLinkColour( $t, $threshold ) {
-		wfDeprecated( __METHOD__, '1.28' );
 		return Linker::getLinkColour( $t, $threshold );
 	}
 
@@ -34,7 +72,7 @@ class DummyLinker {
 		$html = null,
 		$customAttribs = [],
 		$query = [],
-		$options = [ 'known' ]
+		$options = [ 'known', 'noclasses' ]
 	) {
 		return Linker::linkKnown(
 			$target,
@@ -411,17 +449,12 @@ class DummyLinker {
 		);
 	}
 
-	/**
-	 * @deprecated since 1.28, use TemplatesOnThisPageFormatter directly
-	 */
 	public function formatTemplates(
 		$templates,
 		$preview = false,
 		$section = false,
 		$more = null
 	) {
-		wfDeprecated( __METHOD__, '1.28' );
-
 		return Linker::formatTemplates(
 			$templates,
 			$preview,
@@ -434,12 +467,7 @@ class DummyLinker {
 		return Linker::formatHiddenCategories( $hiddencats );
 	}
 
-	/**
-	 * @deprecated since 1.28, use Language::formatSize() directly
-	 */
 	public function formatSize( $size ) {
-		wfDeprecated( __METHOD__, '1.28' );
-
 		return Linker::formatSize( $size );
 	}
 

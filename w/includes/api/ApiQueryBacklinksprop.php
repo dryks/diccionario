@@ -2,7 +2,9 @@
 /**
  * API module to handle links table back-queries
  *
- * Copyright © 2014 Wikimedia Foundation and contributors
+ * Created on Aug 19, 2014
+ *
+ * Copyright © 2014 Brad Jorsch <bjorsch@wikimedia.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -51,7 +53,6 @@ class ApiQueryBacklinksprop extends ApiQueryGeneratorBase {
 			'code' => 'lh',
 			'prefix' => 'pl',
 			'linktable' => 'pagelinks',
-			'indexes' => [ 'pl_namespace', 'pl_backlinks_namespace' ],
 			'from_namespace' => true,
 			'showredirects' => true,
 		],
@@ -59,7 +60,6 @@ class ApiQueryBacklinksprop extends ApiQueryGeneratorBase {
 			'code' => 'ti',
 			'prefix' => 'tl',
 			'linktable' => 'templatelinks',
-			'indexes' => [ 'tl_namespace', 'tl_backlinks_namespace' ],
 			'from_namespace' => true,
 			'showredirects' => true,
 		],
@@ -67,7 +67,6 @@ class ApiQueryBacklinksprop extends ApiQueryGeneratorBase {
 			'code' => 'fu',
 			'prefix' => 'il',
 			'linktable' => 'imagelinks',
-			'indexes' => [ 'il_to', 'il_backlinks_namespace' ],
 			'from_namespace' => true,
 			'to_namespace' => NS_FILE,
 			'exampletitle' => 'File:Example.jpg',
@@ -101,13 +100,6 @@ class ApiQueryBacklinksprop extends ApiQueryGeneratorBase {
 		$pageSet = $this->getPageSet();
 		$titles = $pageSet->getGoodAndMissingTitles();
 		$map = $pageSet->getGoodAndMissingTitlesByNamespace();
-
-		// Add in special pages, they can theoretically have backlinks too.
-		// (although currently they only do for prop=redirects)
-		foreach ( $pageSet->getSpecialTitles() as $id => $title ) {
-			$titles[] = $title;
-			$map[$title->getNamespace()][$title->getDBkey()] = $id;
-		}
 
 		// Determine our fields to query on
 		$p = $settings['prefix'];
@@ -159,9 +151,7 @@ class ApiQueryBacklinksprop extends ApiQueryGeneratorBase {
 				}
 			} else {
 				$this->addWhereFld( "{$p}_from_namespace", $params['namespace'] );
-				if ( !empty( $settings['from_namespace'] )
-					&& $params['namespace'] !== null && count( $params['namespace'] ) > 1
-				) {
+				if ( !empty( $settings['from_namespace'] ) && count( $params['namespace'] ) > 1 ) {
 					$sortby["{$p}_from_namespace"] = 'int';
 				}
 			}
@@ -227,9 +217,8 @@ class ApiQueryBacklinksprop extends ApiQueryGeneratorBase {
 		$this->addFieldsIf( 'page_namespace', $miser_ns !== null );
 
 		if ( $hasNS ) {
-			// Can't use LinkBatch because it throws away Special titles.
-			// And we already have the needed data structure anyway.
-			$this->addWhere( $db->makeWhereFrom2d( $map, $bl_namespace, $bl_title ) );
+			$lb = new LinkBatch( $titles );
+			$this->addWhere( $lb->constructSet( $p, $db ) );
 		} else {
 			$where = [];
 			foreach ( $titles as $t ) {
@@ -246,7 +235,7 @@ class ApiQueryBacklinksprop extends ApiQueryGeneratorBase {
 			if ( isset( $show['fragment'] ) && isset( $show['!fragment'] ) ||
 				isset( $show['redirect'] ) && isset( $show['!redirect'] )
 			) {
-				$this->dieWithError( 'apierror-show' );
+				$this->dieUsageMsg( 'show' );
 			}
 			$this->addWhereIf( "rd_fragment != $emptyString", isset( $show['fragment'] ) );
 			$this->addWhereIf(
@@ -259,24 +248,6 @@ class ApiQueryBacklinksprop extends ApiQueryGeneratorBase {
 
 		// Override any ORDER BY from above with what we calculated earlier.
 		$this->addOption( 'ORDER BY', array_keys( $sortby ) );
-
-		// MySQL's optimizer chokes if we have too many values in "$bl_title IN
-		// (...)" and chooses the wrong index, so specify the correct index to
-		// use for the query. See T139056 for details.
-		if ( !empty( $settings['indexes'] ) ) {
-			list( $idxNoFromNS, $idxWithFromNS ) = $settings['indexes'];
-			if ( $params['namespace'] !== null && !empty( $settings['from_namespace'] ) ) {
-				$this->addOption( 'USE INDEX', [ $settings['linktable'] => $idxWithFromNS ] );
-			} else {
-				$this->addOption( 'USE INDEX', [ $settings['linktable'] => $idxNoFromNS ] );
-			}
-		}
-
-		// MySQL (or at least 5.5.5-10.0.23-MariaDB) chooses a really bad query
-		// plan if it thinks there will be more matching rows in the linktable
-		// than are in page. Use STRAIGHT_JOIN here to force it to use the
-		// intended, fast plan. See T145079 for details.
-		$this->addOption( 'STRAIGHT_JOIN' );
 
 		$this->addOption( 'LIMIT', $params['limit'] + 1 );
 
@@ -432,6 +403,6 @@ class ApiQueryBacklinksprop extends ApiQueryGeneratorBase {
 
 	public function getHelpUrls() {
 		$name = ucfirst( $this->getModuleName() );
-		return "https://www.mediawiki.org/wiki/Special:MyLanguage/API:{$name}";
+		return "https://www.mediawiki.org/wiki/API:{$name}";
 	}
 }

@@ -24,9 +24,6 @@
  * @author Brian Wolff
  */
 
-use Wikimedia\Rdbms\IResultWrapper;
-use Wikimedia\Rdbms\IDatabase;
-
 /**
  * Special:ListDuplicatedFiles Lists all files where the current version is
  *   a duplicate of the current version of some other file.
@@ -75,10 +72,19 @@ class ListDuplicatedFilesPage extends QueryPage {
 	 * Pre-fill the link cache
 	 *
 	 * @param IDatabase $db
-	 * @param IResultWrapper $res
+	 * @param ResultWrapper $res
 	 */
 	function preprocessResults( $db, $res ) {
-		$this->executeLBFromResultWrapper( $res );
+		if ( $res->numRows() > 0 ) {
+			$linkBatch = new LinkBatch();
+
+			foreach ( $res as $row ) {
+				$linkBatch->add( $row->namespace, $row->title );
+			}
+
+			$res->seek( 0 );
+			$linkBatch->execute();
+		}
 	}
 
 	/**

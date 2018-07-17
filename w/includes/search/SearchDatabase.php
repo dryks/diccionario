@@ -21,8 +21,6 @@
  * @ingroup Search
  */
 
-use Wikimedia\Rdbms\IDatabase;
-
 /**
  * Base search engine base class for database-backed searches
  * @ingroup Search
@@ -35,13 +33,14 @@ class SearchDatabase extends SearchEngine {
 	protected $db;
 
 	/**
+	 * Constructor
 	 * @param IDatabase $db The database to search from
 	 */
 	public function __construct( IDatabase $db = null ) {
 		if ( $db ) {
 			$this->db = $db;
 		} else {
-			$this->db = wfGetDB( DB_REPLICA );
+			$this->db = wfGetDB( DB_SLAVE );
 		}
 	}
 

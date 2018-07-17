@@ -3,7 +3,7 @@
 	/**
 	 * DateTimeInputWidgets can be used to input a date, a time, or a date and
 	 * time, in either UTC or the user's local timezone.
-	 * Please see the [OOUI documentation on MediaWiki] [1] for more information and examples.
+	 * Please see the [OOjs UI documentation on MediaWiki] [1] for more information and examples.
 	 *
 	 * This widget can be used inside a HTML form, such as a OO.ui.FormLayout.
 	 *
@@ -12,7 +12,7 @@
 	 *     var dateTimeInput = new mw.widgets.datetime.DateTimeInputWidget( {} )
 	 *     $( 'body' ).append( dateTimeInput.$element );
 	 *
-	 * [1]: https://www.mediawiki.org/wiki/OOUI/Widgets/Inputs
+	 * [1]: https://www.mediawiki.org/wiki/OOjs_UI/Widgets/Inputs
 	 *
 	 * @class
 	 * @extends OO.ui.InputWidget
@@ -50,11 +50,6 @@
 			formatter: {},
 			calendar: {}
 		}, config );
-
-		// See InputWidget#reusePreInfuseDOM about config.$input
-		if ( config.$input ) {
-			config.$input.addClass( 'oo-ui-element-hidden' );
-		}
 
 		if ( $.isPlainObject( config.formatter ) && config.formatter.format === undefined ) {
 			config.formatter.format = '@' + config.type;
@@ -177,21 +172,11 @@
 
 	/* Static properties */
 
-	mw.widgets.datetime.DateTimeInputWidget.static.supportsSimpleLabel = false;
+	mw.widgets.datetime.DateTimeInputWidget[ 'static' ].supportsSimpleLabel = false;
 
 	/* Events */
 
 	/* Methods */
-
-	/**
-	 * Get the currently focused field, if any
-	 *
-	 * @private
-	 * @return {jQuery}
-	 */
-	mw.widgets.datetime.DateTimeInputWidget.prototype.getFocusedField = function () {
-		return this.$fields.find( this.getElementDocument().activeElement );
-	};
 
 	/**
 	 * Convert a date string to a Date
@@ -400,10 +385,6 @@
 				$field = $( '<span>' )
 					.width( sz )
 					.data( 'mw-widgets-datetime-dateTimeInputWidget-placeholder', placeholder );
-				if ( spec.type !== 'static' ) {
-					$field.prop( 'tabIndex', -1 );
-					$field.on( 'focus', this.onFieldFocus.bind( this, $field ) );
-				}
 				if ( spec.type === 'static' ) {
 					$field.text( spec.value );
 				} else {
@@ -422,7 +403,7 @@
 			this.clearButton = new OO.ui.ButtonWidget( {
 				classes: [ 'mw-widgets-datetime-dateTimeInputWidget-field', 'mw-widgets-datetime-dateTimeInputWidget-clearButton' ],
 				framed: false,
-				icon: 'trash',
+				icon: 'remove',
 				disabled: disabled
 			} ).connect( this, {
 				click: 'onClearClick'
@@ -597,7 +578,6 @@
 	 * @private
 	 * @param {jQuery} $field
 	 * @param {jQuery.Event} e Key down event
-	 * @return {boolean} False to cancel the default event
 	 */
 	mw.widgets.datetime.DateTimeInputWidget.prototype.onFieldKeyDown = function ( $field, e ) {
 		var spec = $field.data( 'mw-widgets-datetime-dateTimeInputWidget-fieldSpec' );
@@ -642,8 +622,6 @@
 	 * @param {jQuery.Event} e Focus event
 	 */
 	mw.widgets.datetime.DateTimeInputWidget.prototype.onFieldFocus = function ( $field ) {
-		var spec = $field.data( 'mw-widgets-datetime-dateTimeInputWidget-fieldSpec' );
-
 		if ( !this.isDisabled() ) {
 			if ( this.getValueAsDate() === null ) {
 				this.setValue( this.formatter.getDefaultDate() );
@@ -653,7 +631,7 @@
 			}
 
 			if ( this.calendar ) {
-				this.calendar.toggle( !!spec.calendarComponent );
+				this.calendar.toggle( true );
 			}
 		}
 	};
@@ -721,13 +699,12 @@
 	 * @private
 	 * @param {jQuery} $field
 	 * @param {jQuery.Event} e Change event
-	 * @return {boolean} False to cancel the default event
 	 */
 	mw.widgets.datetime.DateTimeInputWidget.prototype.onFieldWheel = function ( $field, e ) {
 		var delta = 0,
 			spec = $field.data( 'mw-widgets-datetime-dateTimeInputWidget-fieldSpec' );
 
-		if ( this.isDisabled() || !this.getFocusedField().length ) {
+		if ( this.isDisabled() ) {
 			return;
 		}
 
@@ -813,7 +790,7 @@
 	 * @inheritdoc
 	 */
 	mw.widgets.datetime.DateTimeInputWidget.prototype.focus = function () {
-		if ( !this.getFocusedField().length ) {
+		if ( !this.$fields.find( document.activeElement ).length ) {
 			this.$fields.find( '.mw-widgets-datetime-dateTimeInputWidget-editField' ).first().focus();
 		}
 		return this;
@@ -823,7 +800,7 @@
 	 * @inheritdoc
 	 */
 	mw.widgets.datetime.DateTimeInputWidget.prototype.blur = function () {
-		this.getFocusedField().blur();
+		this.$fields.find( document.activeElement ).blur();
 		return this;
 	};
 

@@ -88,8 +88,8 @@ class LocalPasswordPrimaryAuthenticationProvider
 			'user_id', 'user_password', 'user_password_expires',
 		];
 
-		$dbr = wfGetDB( DB_REPLICA );
-		$row = $dbr->selectRow(
+		$dbw = wfGetDB( DB_MASTER );
+		$row = $dbw->selectRow(
 			'user',
 			$fields,
 			[ 'user_name' => $username ],
@@ -102,19 +102,18 @@ class LocalPasswordPrimaryAuthenticationProvider
 			return $this->failResponse( $req );
 		}
 
-		$oldRow = clone $row;
 		// Check for *really* old password hashes that don't even have a type
 		// The old hash format was just an md5 hex hash, with no type information
 		if ( preg_match( '/^[0-9a-f]{32}$/', $row->user_password ) ) {
 			if ( $this->config->get( 'PasswordSalt' ) ) {
-				$row->user_password = ":B:{$row->user_id}:{$row->user_password}";
+				$row->user_password = ":A:{$row->user_id}:{$row->user_password}";
 			} else {
 				$row->user_password = ":A:{$row->user_password}";
 			}
 		}
 
 		$status = $this->checkPasswordValidity( $username, $req->password );
-		if ( !$status->isOK() ) {
+		if ( !$status->isOk() ) {
 			// Fatal, can't log in
 			return AuthenticationResponse::newFail( $status->getMessage() );
 		}
@@ -135,19 +134,13 @@ class LocalPasswordPrimaryAuthenticationProvider
 
 		// @codeCoverageIgnoreStart
 		if ( $this->getPasswordFactory()->needsUpdate( $pwhash ) ) {
-			$newHash = $this->getPasswordFactory()->newFromPlaintext( $req->password );
-			\DeferredUpdates::addCallableUpdate( function () use ( $newHash, $oldRow ) {
-				$dbw = wfGetDB( DB_MASTER );
-				$dbw->update(
-					'user',
-					[ 'user_password' => $newHash->toString() ],
-					[
-						'user_id' => $oldRow->user_id,
-						'user_password' => $oldRow->user_password
-					],
-					__METHOD__
-				);
-			} );
+			$pwhash = $this->getPasswordFactory()->newFromPlaintext( $req->password );
+			$dbw->update(
+				'user',
+				[ 'user_password' => $pwhash->toString() ],
+				[ 'user_id' => $row->user_id ],
+				__METHOD__
+			);
 		}
 		// @codeCoverageIgnoreEnd
 
@@ -162,8 +155,8 @@ class LocalPasswordPrimaryAuthenticationProvider
 			return false;
 		}
 
-		$dbr = wfGetDB( DB_REPLICA );
-		$row = $dbr->selectRow(
+		$dbw = wfGetDB( DB_MASTER );
+		$row = $dbw->selectRow(
 			'user',
 			[ 'user_password' ],
 			[ 'user_name' => $username ],
@@ -245,14 +238,14 @@ class LocalPasswordPrimaryAuthenticationProvider
 
 		$pwhash = null;
 
-		if ( get_class( $req ) === PasswordAuthenticationRequest::class ) {
-			if ( $this->loginOnly ) {
-				$pwhash = $this->getPasswordFactory()->newFromCiphertext( null );
-				$expiry = null;
-			} else {
-				$pwhash = $this->getPasswordFactory()->newFromPlaintext( $req->password );
-				$expiry = $this->getNewPasswordExpiry( $username );
-			}
+		if ( $this->loginOnly ) {
+			$pwhash = $this->getPasswordFactory()->newFromCiphertext( null );
+			$expiry = null;
+			// @codeCoverageIgnoreStart
+		} elseif ( get_class( $req ) === PasswordAuthenticationRequest::class ) {
+			// @codeCoverageIgnoreEnd
+			$pwhash = $this->getPasswordFactory()->newFromPlaintext( $req->password );
+			$expiry = $this->getNewPasswordExpiry( $username );
 		}
 
 		if ( $pwhash ) {
@@ -300,7 +293,7 @@ class LocalPasswordPrimaryAuthenticationProvider
 				// Nothing we can do besides claim it, because the user isn't in
 				// the DB yet
 				if ( $req->username !== $user->getName() ) {
-					$req = clone $req;
+					$req = clone( $req );
 					$req->username = $user->getName();
 				}
 				$ret = AuthenticationResponse::newPass( $req->username );

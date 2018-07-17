@@ -18,9 +18,6 @@
  * @file
  */
 
-use Wikimedia\Rdbms\IDatabase;
-use Wikimedia\Rdbms\DBQueryError;
-
 /**
  * LCStore implementation which uses the standard DB functions to store data.
  * This will work on any MediaWiki installation.
@@ -42,7 +39,7 @@ class LCStoreDB implements LCStore {
 		if ( $this->writesDone && $this->dbw ) {
 			$db = $this->dbw; // see the changes in finishWrite()
 		} else {
-			$db = wfGetDB( DB_REPLICA );
+			$db = wfGetDB( DB_SLAVE );
 		}
 
 		$value = $db->selectField(

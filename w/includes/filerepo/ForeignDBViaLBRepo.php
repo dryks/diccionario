@@ -37,13 +37,10 @@ class ForeignDBViaLBRepo extends LocalRepo {
 	protected $tablePrefix;
 
 	/** @var array */
-	protected $fileFactory = [ ForeignDBFile::class, 'newFromTitle' ];
+	protected $fileFactory = [ 'ForeignDBFile', 'newFromTitle' ];
 
 	/** @var array */
-	protected $fileFromRowFactory = [ ForeignDBFile::class, 'newFromRow' ];
-
-	/** @var bool */
-	protected $hasSharedCache;
+	protected $fileFromRowFactory = [ 'ForeignDBFile', 'newFromRow' ];
 
 	/**
 	 * @param array|null $info
@@ -59,22 +56,23 @@ class ForeignDBViaLBRepo extends LocalRepo {
 	 * @return IDatabase
 	 */
 	function getMasterDB() {
-		return wfGetLB( $this->wiki )->getConnectionRef( DB_MASTER, [], $this->wiki );
+		return wfGetDB( DB_MASTER, [], $this->wiki );
 	}
 
 	/**
 	 * @return IDatabase
 	 */
-	function getReplicaDB() {
-		return wfGetLB( $this->wiki )->getConnectionRef( DB_REPLICA, [], $this->wiki );
+	function getSlaveDB() {
+		return wfGetDB( DB_SLAVE, [], $this->wiki );
 	}
 
 	/**
 	 * @return Closure
 	 */
 	protected function getDBFactory() {
-		return function ( $index ) {
-			return wfGetLB( $this->wiki )->getConnectionRef( $index, [], $this->wiki );
+		$wiki = $this->wiki;
+		return function( $index ) use ( $wiki ) {
+			return wfGetDB( $index, [], $wiki );
 		};
 	}
 
@@ -100,7 +98,7 @@ class ForeignDBViaLBRepo extends LocalRepo {
 	}
 
 	protected function assertWritableRepo() {
-		throw new MWException( static::class . ': write operations are not supported.' );
+		throw new MWException( get_class( $this ) . ': write operations are not supported.' );
 	}
 
 	public function getInfo() {

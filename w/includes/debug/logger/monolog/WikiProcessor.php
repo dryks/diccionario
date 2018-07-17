@@ -25,7 +25,8 @@ namespace MediaWiki\Logger\Monolog;
  * wiki / request ID, and MediaWiki version.
  *
  * @since 1.25
- * @copyright © 2013 Wikimedia Foundation and contributors
+ * @author Bryan Davis <bd808@wikimedia.org>
+ * @copyright © 2013 Bryan Davis and Wikimedia Foundation.
  */
 class WikiProcessor {
 
@@ -35,13 +36,15 @@ class WikiProcessor {
 	 */
 	public function __invoke( array $record ) {
 		global $wgVersion;
-		$record['extra']['host'] = wfHostname();
-		$record['extra']['wiki'] = wfWikiID();
-		$record['extra']['mwversion'] = $wgVersion;
-		$record['extra']['reqId'] = \WebRequest::getRequestId();
-		if ( wfIsCLI() && isset( $_SERVER['argv'] ) ) {
-			$record['extra']['cli_argv'] = implode( ' ', $_SERVER['argv'] );
-		}
+		$record['extra'] = array_merge(
+			$record['extra'],
+			[
+				'host' => wfHostname(),
+				'wiki' => wfWikiID(),
+				'mwversion' => $wgVersion,
+				'reqId' => \WebRequest::getRequestId(),
+			]
+		);
 		return $record;
 	}
 

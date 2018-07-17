@@ -16,7 +16,7 @@ abstract class Theme {
 	/* Static Methods */
 
 	/**
-	 * @param Theme|null $theme Theme to use throughout the application
+	 * @param Theme|null $theme
 	 */
 	public static function setSingleton( Theme $theme = null ) {
 		self::$singleton = $theme;
@@ -57,13 +57,14 @@ abstract class Theme {
 	 */
 	public function updateElementClasses( Element $element ) {
 		$classes = $this->getElementClasses( $element );
+		$traits = class_uses( $element );
 
-		if ( method_exists( $element, 'getIconElement' ) ) {
+		if ( in_array( IconElement::class, $traits ) ) {
 			$element->getIconElement()
 				->removeClasses( $classes['off'] )
 				->addClasses( $classes['on'] );
 		}
-		if ( method_exists( $element, 'getIndicatorElement' ) ) {
+		if ( in_array( IndicatorElement::class, $traits ) ) {
 			$element->getIndicatorElement()
 				->removeClasses( $classes['off'] )
 				->addClasses( $classes['on'] );

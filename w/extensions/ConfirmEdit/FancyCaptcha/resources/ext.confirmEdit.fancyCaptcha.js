@@ -1,18 +1,30 @@
 ( function ( $, mw ) {
+	var api = new mw.Api();
 	$( document ).on( 'click', '.fancycaptcha-reload', function () {
 		var $this = $( this ),
-			$root = $this.closest( '.fancycaptcha-captcha-container' ),
-			$captchaImage = $root.find( '.fancycaptcha-image' );
+			$root, $captchaImage;
+
+		$root = $this.closest( '.fancycaptcha-captcha-container' );
 
 		$this.addClass( 'fancycaptcha-reload-loading' );
 
+		$captchaImage = $root.find( '.fancycaptcha-image' );
+
 		// AJAX request to get captcha index key
-		new mw.Api().post( { action: 'fancycaptchareload' } ).done( function ( data ) {
-			var captchaIndex = data.fancycaptchareload.index,
-				imgSrc;
+		api.post( {
+			action: 'fancycaptchareload',
+			format: 'xml'
+		}, {
+			dataType: 'xml'
+		} )
+		.done( function ( xmldata ) {
+			var imgSrc, captchaIndex;
+
+			captchaIndex = $( xmldata ).find( 'fancycaptchareload' ).attr( 'index' );
 			if ( typeof captchaIndex === 'string' ) {
 				// replace index key with a new one for captcha image
-				imgSrc = $captchaImage.attr( 'src' ).replace( /(wpCaptchaId=)\w+/, '$1' + captchaIndex );
+				imgSrc = $captchaImage.attr( 'src' )
+				.replace( /(wpCaptchaId=)\w+/, '$1' + captchaIndex );
 				$captchaImage.attr( 'src', imgSrc );
 
 				// replace index key with a new one for hidden tag
@@ -24,10 +36,10 @@
 				$root.find( '[name="wpCaptchaWord"]' ).val( '' ).focus();
 			}
 		} )
-			.always( function () {
-				$this.removeClass( 'fancycaptcha-reload-loading' );
-			} );
+		.always( function () {
+			$this.removeClass( 'fancycaptcha-reload-loading' );
+		} );
 
 		return false;
 	} );
-}( jQuery, mediaWiki ) );
+} )( jQuery, mediaWiki );

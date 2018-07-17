@@ -34,7 +34,7 @@
  * format (protect, delete, move, etc), and the just-do-something format (watch, rollback,
  * patrol, etc). The FormAction and FormlessAction classes represent these two groups.
  */
-abstract class Action implements MessageLocalizer {
+abstract class Action {
 
 	/**
 	 * Page on which we're performing the action
@@ -62,7 +62,7 @@ abstract class Action implements MessageLocalizer {
 	 * the action is disabled, or null if it's not recognised
 	 * @param string $action
 	 * @param array $overrides
-	 * @return bool|null|string|callable|Action
+	 * @return bool|null|string|callable
 	 */
 	final private static function getClass( $action, array $overrides ) {
 		global $wgActions;
@@ -88,7 +88,7 @@ abstract class Action implements MessageLocalizer {
 	 * @since 1.17
 	 * @param string $action
 	 * @param Page $page
-	 * @param IContextSource|null $context
+	 * @param IContextSource $context
 	 * @return Action|bool|null False if the action is disabled, null
 	 *     if it is not recognised
 	 */
@@ -151,7 +151,7 @@ abstract class Action implements MessageLocalizer {
 			return 'view';
 		}
 
-		$action = self::factory( $actionName, $context->getWikiPage(), $context );
+		$action = Action::factory( $actionName, $context->getWikiPage(), $context );
 		if ( $action instanceof Action ) {
 			return $action->getName();
 		}
@@ -253,16 +253,18 @@ abstract class Action implements MessageLocalizer {
 	 *
 	 * @return Message
 	 */
-	final public function msg( $key ) {
+	final public function msg() {
 		$params = func_get_args();
 		return call_user_func_array( [ $this->getContext(), 'msg' ], $params );
 	}
 
 	/**
+	 * Constructor.
+	 *
 	 * Only public since 1.21
 	 *
 	 * @param Page $page
-	 * @param IContextSource|null $context
+	 * @param IContextSource $context
 	 */
 	public function __construct( Page $page, IContextSource $context = null ) {
 		if ( $context === null ) {
@@ -388,7 +390,7 @@ abstract class Action implements MessageLocalizer {
 	public function addHelpLink( $to, $overrideBaseUrl = false ) {
 		global $wgContLang;
 		$msg = wfMessage( $wgContLang->lc(
-			self::getActionName( $this->getContext() )
+			Action::getActionName( $this->getContext() )
 			) . '-helppage' );
 
 		if ( !$msg->isDisabled() ) {

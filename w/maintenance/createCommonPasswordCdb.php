@@ -26,11 +26,9 @@ require_once __DIR__ . '/Maintenance.php';
 /**
  * Maintenance script to create common password cdb database.
  *
- * Meant to take a file like those from
- * https://github.com/danielmiessler/SecLists
- * For example:
- * https://github.com/danielmiessler/SecLists/blob/fe2b40dd84/Passwords/rockyou.txt?raw=true
- *
+ * Meant to take a file like
+ * https://github.com/danielmiessler/SecLists/blob/master/Passwords/rockyou.txt?raw=true
+ * as input.
  * @see serialized/commonpasswords.cdb and PasswordPolicyChecks::checkPopularPasswordBlacklist
  * @since 1.27
  * @ingroup Maintenance
@@ -60,12 +58,12 @@ class GenerateCommonPassword extends Maintenance {
 		$outfile = $this->getArg( 1 );
 
 		if ( !is_readable( $infile ) && $infile !== 'php://stdin' ) {
-			$this->fatalError( "Cannot open input file $infile for reading" );
+			$this->error( "Cannot open input file $infile for reading", 1 );
 		}
 
 		$file = fopen( $infile, 'r' );
 		if ( $file === false ) {
-			$this->fatalError( "Cannot read input file $infile" );
+			$this->error( "Cannot read input file $infile", 1 );
 		}
 
 		try {
@@ -109,10 +107,11 @@ class GenerateCommonPassword extends Maintenance {
 				" (out of $i) passwords to $outfile\n"
 			);
 		} catch ( \Cdb\Exception $e ) {
-			$this->fatalError( "Error writing cdb file: " . $e->getMessage(), 2 );
+			$this->error( "Error writing cdb file: " . $e->getMessage(), 2 );
 		}
+
 	}
 }
 
-$maintClass = GenerateCommonPassword::class;
+$maintClass = "GenerateCommonPassword";
 require_once RUN_MAINTENANCE_IF_MAIN;

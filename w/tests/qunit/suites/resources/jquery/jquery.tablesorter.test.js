@@ -81,24 +81,6 @@
 			[ 'Strasse' ]
 		],
 
-		// Data set "digraph"
-		digraphWords = [
-			[ 'London' ],
-			[ 'Ljubljana' ],
-			[ 'Luxembourg' ],
-			[ 'Njivice' ],
-			[ 'Norwich' ],
-			[ 'New York' ]
-		],
-		digraphWordsSorted = [
-			[ 'London' ],
-			[ 'Luxembourg' ],
-			[ 'Ljubljana' ],
-			[ 'New York' ],
-			[ 'Norwich' ],
-			[ 'Njivice' ]
-		],
-
 		complexMDYDates = [
 			[ 'January, 19 2010' ],
 			[ 'April 21 1991' ],
@@ -130,7 +112,7 @@
 			[ '$ 1.50' ],
 			[ '$ 3.00' ],
 			[ '$3.50' ],
-			// Commas sort after dots
+			// Comma's sort after dots
 			// Not intentional but test to detect changes
 			[ '€ 2,99' ]
 		],
@@ -184,8 +166,8 @@
 		],
 		isoDateSortingSorted = [
 			[ '2009' ],
-			[ '2009-12-25T12:30:45+01:00' ],
 			[ '2009-12-25T12:30:45' ],
+			[ '2009-12-25T12:30:45+01:00' ],
 			[ '2009-12-25T12:30:45.001Z' ],
 			[ '2009-12-25T12:30:45.111' ],
 			[ '2010-01-31' ],
@@ -205,11 +187,11 @@
 						'jul', 'aug', 'sep', 'oct', 'nov', 'dec' ]
 				},
 				names: [ 'January', 'February', 'March', 'April', 'May', 'June',
-					'July', 'August', 'September', 'October', 'November', 'December' ],
+						'July', 'August', 'September', 'October', 'November', 'December' ],
 				genitive: [ 'January', 'February', 'March', 'April', 'May', 'June',
-					'July', 'August', 'September', 'October', 'November', 'December' ],
+						'July', 'August', 'September', 'October', 'November', 'December' ],
 				abbrev: [ 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-					'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec' ]
+						'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec' ]
 			};
 		},
 		teardown: function () {
@@ -238,16 +220,16 @@
 			$tbody = $table.find( 'tbody' ),
 			$tr = $( '<tr>' );
 
-		header.forEach( function ( str ) {
+		$.each( header, function ( i, str ) {
 			var $th = $( '<th>' );
 			$th.text( str ).appendTo( $tr );
 		} );
 		$tr.appendTo( $thead );
 
 		for ( i = 0; i < data.length; i++ ) {
+			/*jshint loopfunc: true */
 			$tr = $( '<tr>' );
-			// eslint-disable-next-line no-loop-func
-			data[ i ].forEach( function ( str ) {
+			$.each( data[ i ], function ( j, str ) {
 				var $td = $( '<td>' );
 				$td.text( str ).appendTo( $tr );
 			} );
@@ -286,7 +268,7 @@
 	 * @param {function($table)} callback something to do with the table before we compare
 	 */
 	function tableTest( msg, header, data, expected, callback ) {
-		QUnit.test( msg, function ( assert ) {
+		QUnit.test( msg, 1, function ( assert ) {
 			var extracted,
 				$table = tableCreate( header, data );
 
@@ -310,7 +292,7 @@
 	 * @param {function($table)} callback Something to do with the table before we compare
 	 */
 	function tableTestHTML( msg, html, expected, callback ) {
-		QUnit.test( msg, function ( assert ) {
+		QUnit.test( msg, 1, function ( assert ) {
 			var extracted,
 				$table = $( html );
 
@@ -492,19 +474,18 @@
 		simple,
 		simpleAsc,
 		function ( $table ) {
-			var event;
 			$table.tablesorter(
 				{ sortList: [ { 0: 'desc' }, { 1: 'desc' } ] }
 			);
 			$table.find( '.headerSort:eq(0)' ).click();
 
 			// Pretend to click while pressing the multi-sort key
-			event = $.Event( 'click' );
+			var event = $.Event( 'click' );
 			event[ $table.data( 'tablesorter' ).config.sortMultiSortKey ] = true;
 			$table.find( '.headerSort:eq(1)' ).trigger( event );
 		}
 	);
-	QUnit.test( 'Reset sorting making table appear unsorted', function ( assert ) {
+	QUnit.test( 'Reset sorting making table appear unsorted', 3, function ( assert ) {
 		var $table = tableCreate( header, simple );
 		$table.tablesorter(
 			{ sortList: [
@@ -590,7 +571,7 @@
 		}
 	);
 
-	QUnit.test( 'Basic planet table: one unsortable column', function ( assert ) {
+	QUnit.test( 'Basic planet table: one unsortable column', 3, function ( assert ) {
 		var $table = tableCreate( header, planets ),
 			$cell;
 		$table.find( 'tr:eq(0) > th:eq(0)' ).addClass( 'unsortable' );
@@ -623,7 +604,7 @@
 
 	// Regression tests!
 	tableTest(
-		'T30775: German-style (dmy) short numeric dates',
+		'Bug 28775: German-style (dmy) short numeric dates',
 		[ 'Date' ],
 		[
 			// German-style dates are day-month-year
@@ -651,7 +632,7 @@
 	);
 
 	tableTest(
-		'T30775: American-style (mdy) short numeric dates',
+		'Bug 28775: American-style (mdy) short numeric dates',
 		[ 'Date' ],
 		[
 			// American-style dates are month-day-year
@@ -678,7 +659,7 @@
 	);
 
 	tableTest(
-		'T19141: IPv4 address sorting',
+		'Bug 17141: IPv4 address sorting',
 		[ 'IP' ],
 		ipv4,
 		ipv4Sorted,
@@ -688,7 +669,7 @@
 		}
 	);
 	tableTest(
-		'T19141: IPv4 address sorting (reverse)',
+		'Bug 17141: IPv4 address sorting (reverse)',
 		[ 'IP' ],
 		ipv4,
 		reversed( ipv4Sorted ),
@@ -716,23 +697,7 @@
 		}
 	);
 
-	tableTest(
-		'Digraphs with custom collation',
-		[ 'City' ],
-		digraphWords,
-		digraphWordsSorted,
-		function ( $table ) {
-			mw.config.set( 'tableSorterCollation', {
-				lj: 'lzzzz',
-				nj: 'nzzzz'
-			} );
-
-			$table.tablesorter();
-			$table.find( '.headerSort:eq(0)' ).click();
-		}
-	);
-
-	QUnit.test( 'Rowspan not exploded on init', function ( assert ) {
+	QUnit.test( 'Rowspan not exploded on init', 1, function ( assert ) {
 		var $table = tableCreate( header, planets );
 
 		// Modify the table to have a multiple-row-spanning cell:
@@ -854,7 +819,7 @@
 		}
 	);
 
-	QUnit.test( 'Test detection routine', function ( assert ) {
+	QUnit.test( 'Test detection routine', 1, function ( assert ) {
 		var $table;
 		$table = $(
 			'<table class="sortable">' +
@@ -875,7 +840,7 @@
 	} );
 
 	/** FIXME: the diff output is not very readeable. */
-	QUnit.test( 'T34047 - caption must be before thead', function ( assert ) {
+	QUnit.test( 'bug 32047 - caption must be before thead', 1, function ( assert ) {
 		var $table;
 		$table = $(
 			'<table class="sortable">' +
@@ -891,11 +856,11 @@
 		assert.equal(
 			$table.children().get( 0 ).nodeName,
 			'CAPTION',
-			'First element after <thead> must be <caption> (T34047)'
+			'First element after <thead> must be <caption> (bug 32047)'
 		);
 	} );
 
-	QUnit.test( 'data-sort-value attribute, when available, should override sorting position', function ( assert ) {
+	QUnit.test( 'data-sort-value attribute, when available, should override sorting position', 3, function ( assert ) {
 		var $table, data;
 
 		// Example 1: All cells except one cell without data-sort-value,
@@ -992,7 +957,7 @@
 		], 'Order matches expected order (based on data-sort-value attribute values)' );
 
 		// Example 3: Test that live changes are used from data-sort-value,
-		// even if they change after the tablesorter is constructed (T40152).
+		// even if they change after the tablesorter is constructed (bug 38152).
 		$table = $(
 			'<table class="sortable"><thead><tr><th>Data</th></tr></thead>' +
 				'<tbody>' +
@@ -1008,7 +973,7 @@
 			.tablesorter()
 			.find( '.headerSort:eq(0)' ).click();
 
-		// Change the sortValue data properties (T40152)
+		// Change the sortValue data properties (bug 38152)
 		// - change data
 		$table.find( 'td:contains(A)' ).data( 'sortValue', 3 );
 		// - add data
@@ -1055,7 +1020,7 @@
 
 	} );
 
-	tableTest( 'T10115: sort numbers with commas (ascending)',
+	tableTest( 'bug 8115: sort numbers with commas (ascending)',
 		[ 'Numbers' ], numbers, numbersAsc,
 		function ( $table ) {
 			$table.tablesorter();
@@ -1063,16 +1028,16 @@
 		}
 	);
 
-	tableTest( 'T10115: sort numbers with commas (descending)',
+	tableTest( 'bug 8115: sort numbers with commas (descending)',
 		[ 'Numbers' ], numbers, reversed( numbersAsc ),
 		function ( $table ) {
 			$table.tablesorter();
 			$table.find( '.headerSort:eq(0)' ).click().click();
 		}
 	);
-	// TODO add numbers sorting tests for T10115 with a different language
+	// TODO add numbers sorting tests for bug 8115 with a different language
 
-	QUnit.test( 'T34888 - Tables inside a tableheader cell', function ( assert ) {
+	QUnit.test( 'bug 32888 - Tables inside a tableheader cell', 2, function ( assert ) {
 		var $table;
 		$table = $(
 			'<table class="sortable" id="mw-bug-32888">' +
@@ -1088,12 +1053,12 @@
 		assert.equal(
 			$table.find( '> thead:eq(0) > tr > th.headerSort' ).length,
 			1,
-			'Child tables inside a headercell should not interfere with sortable headers (T34888)'
+			'Child tables inside a headercell should not interfere with sortable headers (bug 32888)'
 		);
 		assert.equal(
 			$( '#mw-bug-32888-2' ).find( 'th.headerSort' ).length,
 			0,
-			'The headers of child tables inside a headercell should not be sortable themselves (T34888)'
+			'The headers of child tables inside a headercell should not be sortable themselves (bug 32888)'
 		);
 	} );
 
@@ -1136,7 +1101,7 @@
 		}
 	);
 
-	QUnit.test( 'Sorting images using alt text', function ( assert ) {
+	QUnit.test( 'Sorting images using alt text', 1, function ( assert ) {
 		var $table = $(
 			'<table class="sortable">' +
 				'<tr><th>THEAD</th></tr>' +
@@ -1153,7 +1118,7 @@
 		);
 	} );
 
-	QUnit.test( 'Sorting images using alt text (complex)', function ( assert ) {
+	QUnit.test( 'Sorting images using alt text (complex)', 1, function ( assert ) {
 		var $table = $(
 			'<table class="sortable">' +
 				'<tr><th>THEAD</th></tr>' +
@@ -1174,7 +1139,7 @@
 		);
 	} );
 
-	QUnit.test( 'Sorting images using alt text (with format autodetection)', function ( assert ) {
+	QUnit.test( 'Sorting images using alt text (with format autodetection)', 1, function ( assert ) {
 		var $table = $(
 			'<table class="sortable">' +
 				'<tr><th>THEAD</th></tr>' +
@@ -1193,7 +1158,7 @@
 		);
 	} );
 
-	QUnit.test( 'T40911 - The row with the largest amount of columns should receive the sort indicators', function ( assert ) {
+	QUnit.test( 'bug 38911 - The row with the largest amount of columns should receive the sort indicators', 3, function ( assert ) {
 		var $table = $(
 			'<table class="sortable">' +
 				'<thead>' +
@@ -1223,7 +1188,7 @@
 		);
 	} );
 
-	QUnit.test( 'rowspans in table headers should prefer the last row when rows are equal in length', function ( assert ) {
+	QUnit.test( 'rowspans in table headers should prefer the last row when rows are equal in length', 2, function ( assert ) {
 		var $table = $(
 			'<table class="sortable">' +
 				'<thead>' +
@@ -1248,7 +1213,7 @@
 		);
 	} );
 
-	QUnit.test( 'holes in the table headers should not throw JS errors', function ( assert ) {
+	QUnit.test( 'holes in the table headers should not throw JS errors', 2, function ( assert ) {
 		var $table = $(
 			'<table class="sortable">' +
 				'<thead>' +
@@ -1270,8 +1235,8 @@
 		);
 	} );
 
-	// T55527
-	QUnit.test( 'td cells in thead should not be taken into account for longest row calculation', function ( assert ) {
+	// bug 53527
+	QUnit.test( 'td cells in thead should not be taken into account for longest row calculation', 2, function ( assert ) {
 		var $table = $(
 			'<table class="sortable">' +
 				'<thead>' +
@@ -1291,7 +1256,7 @@
 		);
 	} );
 
-	// T43889 - exploding rowspans in more complex cases
+	// bug 41889 - exploding rowspans in more complex cases
 	tableTestHTML(
 		'Rowspan exploding with row headers',
 		'<table class="sortable">' +
@@ -1306,9 +1271,9 @@
 		]
 	);
 
-	// T55211 - exploding rowspans in more complex cases
+	// bug 53211 - exploding rowspans in more complex cases
 	QUnit.test(
-		'Rowspan exploding with row headers and colspans', function ( assert ) {
+		'Rowspan exploding with row headers and colspans', 1, function ( assert ) {
 			var $table = $( '<table class="sortable">' +
 				'<thead><tr><th rowspan="2">n</th><th colspan="2">foo</th><th rowspan="2">baz</th></tr>' +
 				'<tr><th>foo</th><th>bar</th></tr></thead>' +
@@ -1425,7 +1390,7 @@
 		]
 	);
 
-	QUnit.test( 'T105731 - incomplete rows in table body', function ( assert ) {
+	QUnit.test( 'bug 105731 - incomplete rows in table body', 3, function ( assert ) {
 		var $table, parsers;
 		$table = $(
 			'<table class="sortable">' +
@@ -1455,12 +1420,12 @@
 
 		assert.equal(
 			parsers[ 1 ].format( $table.find( 'tbody > tr > td:eq(1)' ).text() ),
-			-Infinity,
-			'empty cell is sorted as number -Infinity'
+			0,
+			'empty cell is sorted as number 0'
 		);
 	} );
 
-	QUnit.test( 'bug T114721 - use of expand-child class', function ( assert ) {
+	QUnit.test( 'bug T114721 - use of expand-child class', 2, function ( assert ) {
 		var $table, parsers;
 		$table = $(
 			'<table class="sortable">' +

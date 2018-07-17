@@ -26,19 +26,25 @@ class HTMLFancyCaptchaField extends HTMLFormField {
 	}
 
 	public function getInputHTML( $value ) {
+		global $wgEnableAPI;
+
 		$out = $this->mParent->getOutput();
 
-		// Uses addModuleStyles so it is loaded even when JS is disabled.
+		// Uses addModuleStyles so it is loaded when JS is disabled.
 		$out->addModuleStyles( 'ext.confirmEdit.fancyCaptcha.styles' );
 
-		// Loaded only for clients with JS enabled
-		$out->addModules( 'ext.confirmEdit.fancyCaptcha' );
+		if ( $wgEnableAPI ) {
+			// Loaded only if JS is enabled
+			$out->addModules( 'ext.confirmEdit.fancyCaptcha' );
 
-		$captchaReload = Html::element(
-			'small',
-			[ 'class' => 'confirmedit-captcha-reload fancycaptcha-reload' ],
-			$this->mParent->msg( 'fancycaptcha-reload-text' )->text()
-		);
+			$captchaReload = Html::element(
+				'small',
+				[ 'class' => 'confirmedit-captcha-reload fancycaptcha-reload' ],
+				wfMessage( 'fancycaptcha-reload-text' )->text()
+			);
+		} else {
+			$captchaReload = '';
+		}
 
 		$attribs = [
 			'type' => 'text',
@@ -50,7 +56,7 @@ class HTMLFancyCaptchaField extends HTMLFormField {
 			'autocomplete' => 'off',
 			'autocorrect' => 'off',
 			'autocapitalize' => 'off',
-			'placeholder' => $this->mParent->msg( 'fancycaptcha-imgcaptcha-ph' )->text()
+			'placeholder' => wfMessage( 'fancycaptcha-imgcaptcha-ph' )
 		];
 		$attribs += $this->getAttributes( [ 'tabindex', 'required', 'autofocus' ] );
 
@@ -68,7 +74,7 @@ class HTMLFancyCaptchaField extends HTMLFormField {
 			// use raw element, the message will contain a link
 			$html .= Html::rawElement( 'small', [
 				'class' => 'mw-createacct-captcha-assisted'
-			], $this->mParent->msg( 'createacct-imgcaptcha-help' )->parse() );
+			], wfMessage( 'createacct-imgcaptcha-help' )->parse() );
 		}
 
 		$html .= Html::closeElement( 'div' );
@@ -79,8 +85,7 @@ class HTMLFancyCaptchaField extends HTMLFormField {
 	public function getLabel() {
 		// slight abuse of what getLabel() should mean; $mLabel is used for the pre-label text
 		// as the actual label is always the same
-		return $this->mParent->msg( 'captcha-label' )->text() . ' '
-			. $this->mParent->msg( 'fancycaptcha-captcha' )->text();
+		return wfMessage( 'captcha-label' )->text() . ' ' . wfMessage( 'fancycaptcha-captcha' )->text();
 	}
 
 	public function getLabelHtml( $cellAttributes = [] ) {

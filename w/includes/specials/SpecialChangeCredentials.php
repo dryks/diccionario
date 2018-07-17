@@ -81,13 +81,17 @@ class SpecialChangeCredentials extends AuthManagerSpecialPage {
 			return;
 		}
 
+		if ( $this->getRequest()->getCheck( 'wpCancel' ) ) {
+			$returnUrl = $this->getReturnUrl() ?: Title::newMainPage()->getFullURL();
+			$this->getOutput()->redirect( $returnUrl );
+			return;
+		}
+
 		if ( !$this->authRequests ) {
 			// messages used: changecredentials-invalidsubpage, removecredentials-invalidsubpage
 			$this->showSubpageList( $this->msg( static::$messagePrefix . '-invalidsubpage', $subPage ) );
 			return;
 		}
-
-		$this->getOutput()->addBacklinkSubtitle( $this->getPageTitle() );
 
 		$status = $this->trySubmit();
 
@@ -126,27 +130,7 @@ class SpecialChangeCredentials extends AuthManagerSpecialPage {
 		if ( !static::$loadUserData ) {
 			return [];
 		} else {
-			$descriptor = parent::getAuthFormDescriptor( $requests, $action );
-
-			$any = false;
-			foreach ( $descriptor as &$field ) {
-				if ( $field['type'] === 'password' && $field['name'] !== 'retype' ) {
-					$any = true;
-					if ( isset( $field['cssclass'] ) ) {
-						$field['cssclass'] .= ' mw-changecredentials-validate-password';
-					} else {
-						$field['cssclass'] = 'mw-changecredentials-validate-password';
-					}
-				}
-			}
-
-			if ( $any ) {
-				$this->getOutput()->addModules( [
-					'mediawiki.special.changecredentials.js'
-				] );
-			}
-
-			return $descriptor;
+			return parent::getAuthFormDescriptor( $requests, $action );
 		}
 	}
 
@@ -157,16 +141,20 @@ class SpecialChangeCredentials extends AuthManagerSpecialPage {
 
 		$form->addPreText(
 			Html::openElement( 'dl' )
-			. Html::element( 'dt', [], wfMessage( 'credentialsform-provider' )->text() )
+			. Html::element( 'dt', [], wfMessage( 'credentialsform-provider' ) )
 			. Html::element( 'dd', [], $info['provider'] )
-			. Html::element( 'dt', [], wfMessage( 'credentialsform-account' )->text() )
+			. Html::element( 'dt', [], wfMessage( 'credentialsform-account' ) )
 			. Html::element( 'dd', [], $info['account'] )
 			. Html::closeElement( 'dl' )
 		);
 
 		// messages used: changecredentials-submit removecredentials-submit
+		// changecredentials-submit-cancel removecredentials-submit-cancel
 		$form->setSubmitTextMsg( static::$messagePrefix . '-submit' );
-		$form->showCancel()->setCancelTarget( $this->getReturnUrl() ?: Title::newMainPage() );
+		$form->addButton( [
+			'name' => 'wpCancel',
+			'value' => $this->msg( static::$messagePrefix . '-submit-cancel' )->text()
+		] );
 
 		return $form;
 	}
@@ -206,7 +194,6 @@ class SpecialChangeCredentials extends AuthManagerSpecialPage {
 			$groupedRequests[(string)$info['provider']][] = $req;
 		}
 
-		$linkRenderer = $this->getLinkRenderer();
 		$out->addHTML( Html::openElement( 'dl' ) );
 		foreach ( $groupedRequests as $group => $members ) {
 			$out->addHTML( Html::element( 'dt', [], $group ) );
@@ -214,10 +201,8 @@ class SpecialChangeCredentials extends AuthManagerSpecialPage {
 				/** @var AuthenticationRequest $req */
 				$info = $req->describeCredentials();
 				$out->addHTML( Html::rawElement( 'dd', [],
-					$linkRenderer->makeLink(
-						$this->getPageTitle( $req->getUniqueId() ),
-						$info['account']
-					)
+					Linker::link( $this->getPageTitle( $req->getUniqueId() ),
+						htmlspecialchars( $info['account'], ENT_QUOTES ) )
 				) );
 			}
 		}

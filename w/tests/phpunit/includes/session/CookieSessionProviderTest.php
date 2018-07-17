@@ -5,7 +5,6 @@ namespace MediaWiki\Session;
 use MediaWikiTestCase;
 use User;
 use Psr\Log\LogLevel;
-use Wikimedia\TestingAccessWrapper;
 
 /**
  * @group Session
@@ -23,6 +22,7 @@ class CookieSessionProviderTest extends MediaWikiTestCase {
 			'CookieHttpOnly' => true,
 			'SessionName' => false,
 			'CookieExpiration' => 100,
+			'ExtendedLoginCookies' => [ 'UserID', 'Token' ],
 			'ExtendedLoginCookieExpiration' => 200,
 		] );
 	}
@@ -77,7 +77,7 @@ class CookieSessionProviderTest extends MediaWikiTestCase {
 		}
 
 		$config = $this->getConfig();
-		$p = TestingAccessWrapper::newFromObject(
+		$p = \TestingAccessWrapper::newFromObject(
 			new CookieSessionProvider( [ 'priority' => 1 ] )
 		);
 		$p->setLogger( new \TestLogger() );
@@ -96,7 +96,7 @@ class CookieSessionProviderTest extends MediaWikiTestCase {
 		], $p->cookieOptions );
 
 		$config->set( 'SessionName', 'SessionName' );
-		$p = TestingAccessWrapper::newFromObject(
+		$p = \TestingAccessWrapper::newFromObject(
 			new CookieSessionProvider( [ 'priority' => 3 ] )
 		);
 		$p->setLogger( new \TestLogger() );
@@ -114,7 +114,7 @@ class CookieSessionProviderTest extends MediaWikiTestCase {
 			'httpOnly' => true,
 		], $p->cookieOptions );
 
-		$p = TestingAccessWrapper::newFromObject( new CookieSessionProvider( [
+		$p = \TestingAccessWrapper::newFromObject( new CookieSessionProvider( [
 			'priority' => 10,
 			'callUserSetCookiesHook' => true,
 			'cookieOptions' => [
@@ -148,16 +148,8 @@ class CookieSessionProviderTest extends MediaWikiTestCase {
 		$this->assertTrue( $provider->persistsSessionId() );
 		$this->assertTrue( $provider->canChangeUser() );
 
-		$extendedCookies = [ 'UserID', 'UserName', 'Token' ];
-
-		$this->assertEquals(
-			$extendedCookies,
-			TestingAccessWrapper::newFromObject( $provider )->getExtendedLoginCookies(),
-			'List of extended cookies (subclasses can add values, but we\'re calling the core one here)'
-		);
-
 		$msg = $provider->whyNoSession();
-		$this->assertInstanceOf( \Message::class, $msg );
+		$this->assertInstanceOf( 'Message', $msg );
 		$this->assertSame( 'sessionprovider-nocookies', $msg->getKey() );
 	}
 
@@ -173,7 +165,7 @@ class CookieSessionProviderTest extends MediaWikiTestCase {
 		$provider->setConfig( $this->getConfig() );
 		$provider->setManager( new SessionManager() );
 
-		$user = static::getTestSysop()->getUser();
+		$user = User::newFromName( 'UTSysop' );
 		$id = $user->getId();
 		$name = $user->getName();
 		$token = $user->getToken( true );
@@ -398,7 +390,7 @@ class CookieSessionProviderTest extends MediaWikiTestCase {
 
 		$sessionId = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 		$store = new TestBagOStuff();
-		$user = static::getTestSysop()->getUser();
+		$user = User::newFromName( 'UTSysop' );
 		$anon = new User;
 
 		$backend = new SessionBackend(
@@ -413,11 +405,9 @@ class CookieSessionProviderTest extends MediaWikiTestCase {
 			new \Psr\Log\NullLogger(),
 			10
 		);
-		TestingAccessWrapper::newFromObject( $backend )->usePhpSessionHandling = false;
+		\TestingAccessWrapper::newFromObject( $backend )->usePhpSessionHandling = false;
 
-		$mock = $this->getMockBuilder( stdClass::class )
-			->setMethods( [ 'onUserSetCookies' ] )
-			->getMock();
+		$mock = $this->getMock( 'stdClass', [ 'onUserSetCookies' ] );
 		$mock->expects( $this->never() )->method( 'onUserSetCookies' );
 		$this->mergeMwGlobalArrayValue( 'wgHooks', [ 'UserSetCookies' => [ $mock ] ] );
 
@@ -485,7 +475,7 @@ class CookieSessionProviderTest extends MediaWikiTestCase {
 		$provider->setManager( SessionManager::singleton() );
 
 		$sessionId = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
-		$user = static::getTestSysop()->getUser();
+		$user = User::newFromName( 'UTSysop' );
 		$this->assertFalse( $user->requiresHTTPS(), 'sanity check' );
 
 		$backend = new SessionBackend(
@@ -500,7 +490,7 @@ class CookieSessionProviderTest extends MediaWikiTestCase {
 			new \Psr\Log\NullLogger(),
 			10
 		);
-		TestingAccessWrapper::newFromObject( $backend )->usePhpSessionHandling = false;
+		\TestingAccessWrapper::newFromObject( $backend )->usePhpSessionHandling = false;
 		$backend->setUser( $user );
 		$backend->setRememberUser( $remember );
 		$backend->setForceHTTPS( $secure );
@@ -516,10 +506,10 @@ class CookieSessionProviderTest extends MediaWikiTestCase {
 			'httpOnly' => $config->get( 'CookieHttpOnly' ),
 			'raw' => false,
 		];
-
-		$normalExpiry = $config->get( 'CookieExpiration' );
 		$extendedExpiry = $config->get( 'ExtendedLoginCookieExpiration' );
 		$extendedExpiry = (int)( $extendedExpiry === null ? 0 : $extendedExpiry );
+		$this->assertEquals( [ 'UserID', 'Token' ], $config->get( 'ExtendedLoginCookies' ),
+			'sanity check' );
 		$expect = [
 			'MySessionName' => [
 				'value' => (string)$sessionId,
@@ -527,11 +517,10 @@ class CookieSessionProviderTest extends MediaWikiTestCase {
 			] + $defaults,
 			'xUserID' => [
 				'value' => (string)$user->getId(),
-				'expire' => $remember ? $extendedExpiry : $normalExpiry,
+				'expire' => $extendedExpiry,
 			] + $defaults,
 			'xUserName' => [
 				'value' => $user->getName(),
-				'expire' => $remember ? $extendedExpiry : $normalExpiry
 			] + $defaults,
 			'xToken' => [
 				'value' => $remember ? $user->getToken() : '',
@@ -563,15 +552,13 @@ class CookieSessionProviderTest extends MediaWikiTestCase {
 	}
 
 	protected function getSentRequest() {
-		$sentResponse = $this->getMockBuilder( \FauxResponse::class )
-			->setMethods( [ 'headersSent', 'setCookie', 'header' ] )->getMock();
+		$sentResponse = $this->getMock( 'FauxResponse', [ 'headersSent', 'setCookie', 'header' ] );
 		$sentResponse->expects( $this->any() )->method( 'headersSent' )
 			->will( $this->returnValue( true ) );
 		$sentResponse->expects( $this->never() )->method( 'setCookie' );
 		$sentResponse->expects( $this->never() )->method( 'header' );
 
-		$sentRequest = $this->getMockBuilder( \FauxRequest::class )
-			->setMethods( [ 'response' ] )->getMock();
+		$sentRequest = $this->getMock( 'FauxRequest', [ 'response' ] );
 		$sentRequest->expects( $this->any() )->method( 'response' )
 			->will( $this->returnValue( $sentResponse ) );
 		return $sentRequest;
@@ -590,7 +577,7 @@ class CookieSessionProviderTest extends MediaWikiTestCase {
 
 		$sessionId = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 		$store = new TestBagOStuff();
-		$user = static::getTestSysop()->getUser();
+		$user = User::newFromName( 'UTSysop' );
 		$anon = new User;
 
 		$backend = new SessionBackend(
@@ -605,11 +592,10 @@ class CookieSessionProviderTest extends MediaWikiTestCase {
 			new \Psr\Log\NullLogger(),
 			10
 		);
-		TestingAccessWrapper::newFromObject( $backend )->usePhpSessionHandling = false;
+		\TestingAccessWrapper::newFromObject( $backend )->usePhpSessionHandling = false;
 
 		// Anonymous user
-		$mock = $this->getMockBuilder( stdClass::class )
-			->setMethods( [ 'onUserSetCookies' ] )->getMock();
+		$mock = $this->getMock( 'stdClass', [ 'onUserSetCookies' ] );
 		$mock->expects( $this->never() )->method( 'onUserSetCookies' );
 		$this->mergeMwGlobalArrayValue( 'wgHooks', [ 'UserSetCookies' => [ $mock ] ] );
 		$backend->setUser( $anon );
@@ -627,8 +613,7 @@ class CookieSessionProviderTest extends MediaWikiTestCase {
 		$provider->persistSession( $backend, $this->getSentRequest() );
 
 		// Logged-in user, no remember
-		$mock = $this->getMockBuilder( __CLASS__ )
-			->setMethods( [ 'onUserSetCookies' ] )->getMock();
+		$mock = $this->getMock( __CLASS__, [ 'onUserSetCookies' ] );
 		$mock->expects( $this->once() )->method( 'onUserSetCookies' )
 			->will( $this->returnCallback( function ( $u, &$sessionData, &$cookies ) use ( $user ) {
 				$this->assertSame( $user, $u );
@@ -671,8 +656,7 @@ class CookieSessionProviderTest extends MediaWikiTestCase {
 		$provider->persistSession( $backend, $this->getSentRequest() );
 
 		// Logged-in user, remember
-		$mock = $this->getMockBuilder( __CLASS__ )
-			->setMethods( [ 'onUserSetCookies' ] )->getMock();
+		$mock = $this->getMock( __CLASS__, [ 'onUserSetCookies' ] );
 		$mock->expects( $this->once() )->method( 'onUserSetCookies' )
 			->will( $this->returnCallback( function ( $u, &$sessionData, &$cookies ) use ( $user ) {
 				$this->assertSame( $user, $u );
@@ -737,7 +721,7 @@ class CookieSessionProviderTest extends MediaWikiTestCase {
 	}
 
 	public function testSetLoggedOutCookie() {
-		$provider = TestingAccessWrapper::newFromObject( new CookieSessionProvider( [
+		$provider = \TestingAccessWrapper::newFromObject( new CookieSessionProvider( [
 			'priority' => 1,
 			'sessionName' => 'MySessionName',
 			'cookieOptions' => [ 'prefix' => 'x' ],
@@ -784,7 +768,7 @@ class CookieSessionProviderTest extends MediaWikiTestCase {
 		$provider->setLogger( new \Psr\Log\NullLogger() );
 		$provider->setConfig( $this->getConfig() );
 		$provider->setManager( SessionManager::singleton() );
-		$provider = TestingAccessWrapper::newFromObject( $provider );
+		$provider = \TestingAccessWrapper::newFromObject( $provider );
 
 		$request = new \FauxRequest();
 		$request->setCookies( [
@@ -816,27 +800,19 @@ class CookieSessionProviderTest extends MediaWikiTestCase {
 
 	public function testGetLoginCookieExpiration() {
 		$config = $this->getConfig();
-		$provider = TestingAccessWrapper::newFromObject( new CookieSessionProvider( [
+		$provider = \TestingAccessWrapper::newFromObject( new CookieSessionProvider( [
 			'priority' => 10
 		] ) );
 		$provider->setLogger( new \Psr\Log\NullLogger() );
 		$provider->setConfig( $config );
 		$provider->setManager( SessionManager::singleton() );
 
-		// First cookie is an extended cookie, remember me true
-		$this->assertSame( 200, $provider->getLoginCookieExpiration( 'Token', true ) );
-		$this->assertSame( 100, $provider->getLoginCookieExpiration( 'User', true ) );
-
-		// First cookie is an extended cookie, remember me false
-		$this->assertSame( 100, $provider->getLoginCookieExpiration( 'UserID', false ) );
-		$this->assertSame( 100, $provider->getLoginCookieExpiration( 'User', false ) );
+		$this->assertSame( 200, $provider->getLoginCookieExpiration( 'Token' ) );
+		$this->assertSame( 100, $provider->getLoginCookieExpiration( 'User' ) );
 
 		$config->set( 'ExtendedLoginCookieExpiration', null );
 
-		$this->assertSame( 100, $provider->getLoginCookieExpiration( 'Token', true ) );
-		$this->assertSame( 100, $provider->getLoginCookieExpiration( 'User', true ) );
-
-		$this->assertSame( 100, $provider->getLoginCookieExpiration( 'Token', false ) );
-		$this->assertSame( 100, $provider->getLoginCookieExpiration( 'User', false ) );
+		$this->assertSame( 100, $provider->getLoginCookieExpiration( 'Token' ) );
+		$this->assertSame( 100, $provider->getLoginCookieExpiration( 'User' ) );
 	}
 }

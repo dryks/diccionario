@@ -60,8 +60,8 @@ class SubpageImportTitleFactoryTest extends MediaWikiTestCase {
 	 * @dataProvider basicProvider
 	 */
 	public function testBasic( ForeignTitle $foreignTitle, Title $rootPage,
-		Title $title
-	) {
+		Title $title ) {
+
 		$factory = new SubpageImportTitleFactory( $rootPage );
 		$testTitle = $factory->createTitleFromForeignTitle( $foreignTitle );
 
@@ -80,7 +80,7 @@ class SubpageImportTitleFactoryTest extends MediaWikiTestCase {
 	 * @dataProvider failureProvider
 	 */
 	public function testFailures( Title $rootPage ) {
-		$this->setExpectedException( MWException::class );
+		$this->setExpectedException( 'MWException' );
 		new SubpageImportTitleFactory( $rootPage );
 	}
 }

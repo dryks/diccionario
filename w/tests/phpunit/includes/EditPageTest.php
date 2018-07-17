@@ -29,16 +29,8 @@ class EditPageTest extends MediaWikiLangTestCase {
 		$wgNamespaceContentModels[12312] = "testing";
 		$wgContentHandlers["testing"] = 'DummyContentHandlerForTesting';
 
-		MWNamespace::clearCaches();
+		MWNamespace::getCanonicalNamespaces( true ); # reset namespace cache
 		$wgContLang->resetNamespaces(); # reset namespace cache
-	}
-
-	protected function tearDown() {
-		global $wgContLang;
-
-		MWNamespace::clearCaches();
-		$wgContLang->resetNamespaces(); # reset namespace cache
-		parent::tearDown();
 	}
 
 	/**
@@ -61,7 +53,7 @@ class EditPageTest extends MediaWikiLangTestCase {
 				false
 			],
 			[
-				"An initial section with a fake heder (T34617)\n\n== Test == ??\nwtf",
+				"An initial section with a fake heder (bug 32617)\n\n== Test == ??\nwtf",
 				false
 			],
 			[
@@ -69,7 +61,7 @@ class EditPageTest extends MediaWikiLangTestCase {
 				"Section"
 			],
 			[
-				"== Section== \t\r\n followed by whitespace (T37051)",
+				"== Section== \t\r\n followed by whitespace (bug 35051)",
 				'Section',
 			],
 		];
@@ -171,10 +163,6 @@ class EditPageTest extends MediaWikiLangTestCase {
 
 		if ( !isset( $edit['wpStarttime'] ) ) {
 			$edit['wpStarttime'] = wfTimestampNow();
-		}
-
-		if ( !isset( $edit['wpUnicodeCheck'] ) ) {
-			$edit['wpUnicodeCheck'] = EditPage::UNICODE_CHECK;
 		}
 
 		$req = new FauxRequest( $edit, true ); // session ??
@@ -359,8 +347,6 @@ class EditPageTest extends MediaWikiLangTestCase {
 			$pageTitle2, null, $user, $edit, $expectedCode, $expectedText, $desc );
 
 		wfGetDB( DB_MASTER )->commit( __METHOD__ );
-
-		$this->assertEquals( 0, DeferredUpdates::pendingUpdatesCount(), 'No deferred updates' );
 
 		if ( $expectedCode != EditPage::AS_BLANK_ARTICLE ) {
 			$latest = $page->getLatest();
@@ -709,15 +695,14 @@ hello
 			'wpTextbox1' => serialize( 'non-text content' ),
 			'wpEditToken' => $user->getEditToken(),
 			'wpEdittime' => '',
-			'wpStarttime' => wfTimestampNow(),
-			'wpUnicodeCheck' => EditPage::UNICODE_CHECK,
+			'wpStarttime' => wfTimestampNow()
 		];
 
 		$req = new FauxRequest( $edit, true );
 		$ep->importFormData( $req );
 
 		$this->setExpectedException(
-			MWException::class,
+			'MWException',
 			'This content model is not supported: testing'
 		);
 

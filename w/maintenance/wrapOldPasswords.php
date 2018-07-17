@@ -1,7 +1,4 @@
 <?php
-
-use MediaWiki\MediaWikiServices;
-
 /**
  * Maintenance script to wrap all old-style passwords in a layered type
  *
@@ -43,6 +40,12 @@ class WrapOldPasswords extends Maintenance {
 	}
 
 	public function execute() {
+		global $wgAuth;
+
+		if ( !$wgAuth->allowSetLocalPassword() ) {
+			$this->error( '$wgAuth does not allow local passwords. Aborting.', true );
+		}
+
 		$passwordFactory = new PasswordFactory();
 		$passwordFactory->init( RequestContext::getMain()->getConfig() );
 
@@ -51,12 +54,12 @@ class WrapOldPasswords extends Maintenance {
 
 		// Check that type exists and is a layered type
 		if ( !isset( $typeInfo[$layeredType] ) ) {
-			$this->fatalError( 'Undefined password type' );
+			$this->error( 'Undefined password type', true );
 		}
 
 		$passObj = $passwordFactory->newFromType( $layeredType );
 		if ( !$passObj instanceof LayeredParameterizedPassword ) {
-			$this->fatalError( 'Layered parameterized password type must be used.' );
+			$this->error( 'Layered parameterized password type must be used.', true );
 		}
 
 		// Extract the first layer type
@@ -68,7 +71,6 @@ class WrapOldPasswords extends Maintenance {
 		$typeCond = 'user_password' . $dbw->buildLike( ":$firstType:", $dbw->anyString() );
 
 		$minUserId = 0;
-		$lbFactory = MediaWikiServices::getInstance()->getDBLoadBalancerFactory();
 		do {
 			$this->beginTransaction( $dbw, __METHOD__ );
 
@@ -81,7 +83,7 @@ class WrapOldPasswords extends Maintenance {
 				__METHOD__,
 				[
 					'ORDER BY' => 'user_id',
-					'LIMIT' => $this->getBatchSize(),
+					'LIMIT' => $this->mBatchSize,
 					'LOCK IN SHARE MODE',
 				]
 			);
@@ -111,7 +113,6 @@ class WrapOldPasswords extends Maintenance {
 			}
 
 			$this->commitTransaction( $dbw, __METHOD__ );
-			$lbFactory->waitForReplication();
 
 			// Clear memcached so old passwords are wiped out
 			foreach ( $updateUsers as $user ) {
@@ -121,5 +122,5 @@ class WrapOldPasswords extends Maintenance {
 	}
 }
 
-$maintClass = WrapOldPasswords::class;
+$maintClass = "WrapOldPasswords";
 require_once RUN_MAINTENANCE_IF_MAIN;

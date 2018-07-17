@@ -23,8 +23,6 @@
 
 require_once __DIR__ . '/Maintenance.php';
 
-use Wikimedia\Rdbms\ResultWrapper;
-
 /**
  * Maintenance script that sends purge requests for pages edited in a date
  * range to squid/varnish.
@@ -67,7 +65,7 @@ class PurgeChangedPages extends Maintenance {
 			}
 		}
 
-		$dbr = $this->getDB( DB_REPLICA );
+		$dbr = $this->getDB( DB_SLAVE );
 		$minTime = $dbr->timestamp( $this->getOption( 'starttime' ) );
 		$maxTime = $dbr->timestamp( $this->getOption( 'endtime' ) );
 
@@ -79,7 +77,7 @@ class PurgeChangedPages extends Maintenance {
 		$stuckCount = 0; // loop breaker
 		while ( true ) {
 			// Adjust bach size if we are stuck in a second that had many changes
-			$bSize = ( $stuckCount + 1 ) * $this->getBatchSize();
+			$bSize = $this->mBatchSize + ( $stuckCount * $this->mBatchSize );
 
 			$res = $dbr->select(
 				[ 'page', 'revision' ],
@@ -190,5 +188,5 @@ class PurgeChangedPages extends Maintenance {
 	}
 }
 
-$maintClass = PurgeChangedPages::class;
+$maintClass = "PurgeChangedPages";
 require_once RUN_MAINTENANCE_IF_MAIN;

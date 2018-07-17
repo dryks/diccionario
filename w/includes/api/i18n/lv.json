@@ -5,10 +5,9 @@
 			"Silraks"
 		]
 	},
-	"apihelp-block-summary": "Bloķēt lietotāju",
+	"apihelp-block-description": "Bloķēt lietotāju",
 	"apihelp-block-param-reason": "Bloķēšanas iemesls:",
-	"apihelp-delete-summary": "Dzēst lapas",
-	"apihelp-emailuser-summary": "Sūtīt e-pastu lietotājam",
-	"apihelp-userrights-param-userid": "Lietotāja ID:",
-	"apierror-nosuchuserid": "Nav lietotāja ar ID $1."
+	"apihelp-delete-description": "Dzēst lapas",
+	"apihelp-emailuser-description": "Sūtīt e-pastu lietotājam",
+	"apihelp-userrights-param-userid": "Lietotāja ID:"
 }

@@ -1,51 +1,10 @@
 <?php
 
-use Wikimedia\TestingAccessWrapper;
-
 /**
  * @group BagOStuff
  */
-class HashBagOStuffTest extends PHPUnit\Framework\TestCase {
+class HashBagOStuffTest extends PHPUnit_Framework_TestCase {
 
-	use MediaWikiCoversValidator;
-
-	/**
-	 * @covers HashBagOStuff::__construct
-	 */
-	public function testConstruct() {
-		$this->assertInstanceOf(
-			HashBagOStuff::class,
-			new HashBagOStuff()
-		);
-	}
-
-	/**
-	 * @covers HashBagOStuff::__construct
-	 * @expectedException InvalidArgumentException
-	 */
-	public function testConstructBadZero() {
-		$cache = new HashBagOStuff( [ 'maxKeys' => 0 ] );
-	}
-
-	/**
-	 * @covers HashBagOStuff::__construct
-	 * @expectedException InvalidArgumentException
-	 */
-	public function testConstructBadNeg() {
-		$cache = new HashBagOStuff( [ 'maxKeys' => -1 ] );
-	}
-
-	/**
-	 * @covers HashBagOStuff::__construct
-	 * @expectedException InvalidArgumentException
-	 */
-	public function testConstructBadType() {
-		$cache = new HashBagOStuff( [ 'maxKeys' => 'x' ] );
-	}
-
-	/**
-	 * @covers HashBagOStuff::delete
-	 */
 	public function testDelete() {
 		$cache = new HashBagOStuff();
 		for ( $i = 0; $i < 10; $i++ ) {
@@ -56,9 +15,6 @@ class HashBagOStuffTest extends PHPUnit\Framework\TestCase {
 		}
 	}
 
-	/**
-	 * @covers HashBagOStuff::clear
-	 */
 	public function testClear() {
 		$cache = new HashBagOStuff();
 		for ( $i = 0; $i < 10; $i++ ) {
@@ -71,10 +27,6 @@ class HashBagOStuffTest extends PHPUnit\Framework\TestCase {
 		}
 	}
 
-	/**
-	 * @covers HashBagOStuff::doGet
-	 * @covers HashBagOStuff::expire
-	 */
 	public function testExpire() {
 		$cache = new HashBagOStuff();
 		$cacheInternal = TestingAccessWrapper::newFromObject( $cache );
@@ -93,8 +45,6 @@ class HashBagOStuffTest extends PHPUnit\Framework\TestCase {
 
 	/**
 	 * Ensure maxKeys eviction prefers keeping new keys.
-	 *
-	 * @covers HashBagOStuff::set
 	 */
 	public function testEvictionAdd() {
 		$cache = new HashBagOStuff( [ 'maxKeys' => 10 ] );
@@ -105,15 +55,13 @@ class HashBagOStuffTest extends PHPUnit\Framework\TestCase {
 		for ( $i = 10; $i < 20; $i++ ) {
 			$cache->set( "key$i", 1 );
 			$this->assertEquals( 1, $cache->get( "key$i" ) );
-			$this->assertEquals( false, $cache->get( "key" . ( $i - 10 ) ) );
+			$this->assertEquals( false, $cache->get( "key" . $i - 10 ) );
 		}
 	}
 
 	/**
 	 * Ensure maxKeys eviction prefers recently set keys
 	 * even if the keys pre-exist.
-	 *
-	 * @covers HashBagOStuff::set
 	 */
 	public function testEvictionSet() {
 		$cache = new HashBagOStuff( [ 'maxKeys' => 3 ] );
@@ -137,9 +85,6 @@ class HashBagOStuffTest extends PHPUnit\Framework\TestCase {
 
 	/**
 	 * Ensure maxKeys eviction prefers recently retrieved keys (LRU).
-	 *
-	 * @covers HashBagOStuff::doGet
-	 * @covers HashBagOStuff::hasKey
 	 */
 	public function testEvictionGet() {
 		$cache = new HashBagOStuff( [ 'maxKeys' => 3 ] );

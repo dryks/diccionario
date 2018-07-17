@@ -16,6 +16,8 @@ class GadgetResourceLoaderModule extends ResourceLoaderWikiModule {
 	private $gadget;
 
 	/**
+	 * Creates an instance of this class
+	 *
 	 * @param array $options
 	 */
 	public function __construct( array $options ) {
@@ -45,15 +47,15 @@ class GadgetResourceLoaderModule extends ResourceLoaderWikiModule {
 	 */
 	protected function getPages( ResourceLoaderContext $context ) {
 		$gadget = $this->getGadget();
-		$pages = [];
+		$pages = array();
 
 		foreach ( $gadget->getStyles() as $style ) {
-			$pages[$style] = [ 'type' => 'style' ];
+			$pages[$style] = array( 'type' => 'style' );
 		}
 
 		if ( $gadget->supportsResourceLoader() ) {
 			foreach ( $gadget->getScripts() as $script ) {
-				$pages[$script] = [ 'type' => 'script' ];
+				$pages[$script] = array( 'type' => 'script' );
 			}
 		}
 
@@ -62,21 +64,19 @@ class GadgetResourceLoaderModule extends ResourceLoaderWikiModule {
 
 	/**
 	 * Overrides ResourceLoaderModule::getDependencies()
-	 * @param ResourceLoaderContext $context
-	 * @return string[] Names of resources this module depends on
+	 * @param $context ResourceLoaderContext
+	 * @return Array: Names of resources this module depends on
 	 */
 	public function getDependencies( ResourceLoaderContext $context = null ) {
 		return $this->getGadget()->getDependencies();
 	}
 
 	/**
-	 * Overrides ResourceLoaderWikiModule::getType()
-	 * @return string ResourceLoaderModule::LOAD_STYLES or ResourceLoaderModule::LOAD_GENERAL
+	 * Overrides ResourceLoaderModule::getPosition()
+	 * @return String: 'bottom' or 'top'
 	 */
-	public function getType() {
-		return $this->getGadget()->getType() === 'styles'
-			? ResourceLoaderModule::LOAD_STYLES
-			: ResourceLoaderModule::LOAD_GENERAL;
+	public function getPosition() {
+		return $this->getGadget()->getPosition();
 	}
 
 	public function getMessages() {
@@ -85,9 +85,5 @@ class GadgetResourceLoaderModule extends ResourceLoaderWikiModule {
 
 	public function getTargets() {
 		return $this->getGadget()->getTargets();
-	}
-
-	public function getGroup() {
-		return 'site';
 	}
 }

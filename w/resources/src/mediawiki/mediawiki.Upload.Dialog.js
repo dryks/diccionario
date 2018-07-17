@@ -29,9 +29,6 @@
 	 * @uses mw.Upload
 	 * @uses mw.Upload.BookletLayout
 	 * @extends OO.ui.ProcessDialog
-	 *
-	 * @constructor
-	 * @param {Object} [config] Configuration options
 	 * @cfg {Function} [bookletClass=mw.Upload.BookletLayout] Booklet class to be
 	 *     used for the steps
 	 * @cfg {Object} [booklet] Booklet constructor configuration
@@ -58,14 +55,9 @@
 
 	/**
 	 * @inheritdoc
-	 * @property name
-	 */
-	mw.Upload.Dialog.static.name = 'mwUploadDialog';
-
-	/**
-	 * @inheritdoc
 	 * @property title
 	 */
+	/*jshint -W024*/
 	mw.Upload.Dialog.static.title = mw.msg( 'upload-dialog-title' );
 
 	/**
@@ -77,13 +69,7 @@
 			flags: 'safe',
 			action: 'cancel',
 			label: mw.msg( 'upload-dialog-button-cancel' ),
-			modes: [ 'upload', 'insert' ]
-		},
-		{
-			flags: 'safe',
-			action: 'cancelupload',
-			label: mw.msg( 'upload-dialog-button-back' ),
-			modes: [ 'info' ]
+			modes: [ 'upload', 'insert', 'info' ]
 		},
 		{
 			flags: [ 'primary', 'progressive' ],
@@ -92,7 +78,7 @@
 			modes: 'insert'
 		},
 		{
-			flags: [ 'primary', 'progressive' ],
+			flags: [ 'primary', 'constructive' ],
 			label: mw.msg( 'upload-dialog-button-save' ),
 			action: 'save',
 			modes: 'info'
@@ -104,6 +90,8 @@
 			modes: 'upload'
 		}
 	];
+
+	/*jshint +W024*/
 
 	/* Methods */
 
@@ -131,7 +119,6 @@
 	 * @return {mw.Upload.BookletLayout} An upload booklet
 	 */
 	mw.Upload.Dialog.prototype.createUploadBooklet = function () {
-		// eslint-disable-next-line new-cap
 		return new this.bookletClass( $.extend( {
 			$overlay: this.$overlay
 		}, this.bookletConfig ) );
@@ -209,10 +196,7 @@
 			} );
 		}
 		if ( action === 'cancel' ) {
-			return new OO.ui.Process( this.close().closed );
-		}
-		if ( action === 'cancelupload' ) {
-			return new OO.ui.Process( this.uploadBooklet.initialize() );
+			return new OO.ui.Process( this.close() );
 		}
 
 		return mw.Upload.Dialog.parent.prototype.getActionProcess.call( this, action );

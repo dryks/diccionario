@@ -20,20 +20,18 @@
  * @file
  */
 
-use Wikimedia\Rdbms\IResultWrapper;
-
 class UserArrayFromResult extends UserArray implements Countable {
-	/** @var IResultWrapper */
+	/** @var ResultWrapper */
 	public $res;
 
 	/** @var int */
 	public $key;
 
-	/** @var bool|User */
+	/** @var bool|stdClass */
 	public $current;
 
 	/**
-	 * @param IResultWrapper $res
+	 * @param ResultWrapper $res
 	 */
 	function __construct( $res ) {
 		$this->res = $res;

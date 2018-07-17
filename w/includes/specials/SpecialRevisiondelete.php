@@ -73,28 +73,28 @@ class SpecialRevisionDelete extends UnlistedSpecialPage {
 			'success' => 'revdelete-success',
 			'failure' => 'revdelete-failure',
 			'text' => 'revdelete-text-text',
-			'selected' => 'revdelete-selected-text',
+			'selected'=> 'revdelete-selected-text',
 		],
 		'archive' => [
 			'check-label' => 'revdelete-hide-text',
 			'success' => 'revdelete-success',
 			'failure' => 'revdelete-failure',
 			'text' => 'revdelete-text-text',
-			'selected' => 'revdelete-selected-text',
+			'selected'=> 'revdelete-selected-text',
 		],
 		'oldimage' => [
 			'check-label' => 'revdelete-hide-image',
 			'success' => 'revdelete-success',
 			'failure' => 'revdelete-failure',
 			'text' => 'revdelete-text-file',
-			'selected' => 'revdelete-selected-file',
+			'selected'=> 'revdelete-selected-file',
 		],
 		'filearchive' => [
 			'check-label' => 'revdelete-hide-image',
 			'success' => 'revdelete-success',
 			'failure' => 'revdelete-failure',
 			'text' => 'revdelete-text-file',
-			'selected' => 'revdelete-selected-file',
+			'selected'=> 'revdelete-selected-file',
 		],
 		'logging' => [
 			'check-label' => 'revdelete-hide-name',
@@ -106,7 +106,7 @@ class SpecialRevisionDelete extends UnlistedSpecialPage {
 	];
 
 	public function __construct() {
-		parent::__construct( 'Revisiondelete', 'deleterevision' );
+		parent::__construct( 'Revisiondelete', 'deletedhistory' );
 	}
 
 	public function doesWrites() {
@@ -210,19 +210,17 @@ class SpecialRevisionDelete extends UnlistedSpecialPage {
 			$this->showForm();
 		}
 
-		if ( $user->isAllowed( 'deletedhistory' ) ) {
-			$qc = $this->getLogQueryCond();
-			# Show relevant lines from the deletion log
-			$deleteLogPage = new LogPage( 'delete' );
-			$output->addHTML( "<h2>" . $deleteLogPage->getName()->escaped() . "</h2>\n" );
-			LogEventsList::showLogExtract(
-				$output,
-				'delete',
-				$this->targetObj,
-				'', /* user */
-				[ 'lim' => 25, 'conds' => $qc, 'useMaster' => $this->wasSaved ]
-			);
-		}
+		$qc = $this->getLogQueryCond();
+		# Show relevant lines from the deletion log
+		$deleteLogPage = new LogPage( 'delete' );
+		$output->addHTML( "<h2>" . $deleteLogPage->getName()->escaped() . "</h2>\n" );
+		LogEventsList::showLogExtract(
+			$output,
+			'delete',
+			$this->targetObj,
+			'', /* user */
+			[ 'lim' => 25, 'conds' => $qc, 'useMaster' => $this->wasSaved ]
+		);
 		# Show relevant lines from the suppression log
 		if ( $user->isAllowed( 'suppressionlog' ) ) {
 			$suppressLogPage = new LogPage( 'suppress' );
@@ -241,33 +239,32 @@ class SpecialRevisionDelete extends UnlistedSpecialPage {
 	 * Show some useful links in the subtitle
 	 */
 	protected function showConvenienceLinks() {
-		$linkRenderer = $this->getLinkRenderer();
 		# Give a link to the logs/hist for this page
 		if ( $this->targetObj ) {
 			// Also set header tabs to be for the target.
 			$this->getSkin()->setRelevantTitle( $this->targetObj );
 
 			$links = [];
-			$links[] = $linkRenderer->makeKnownLink(
+			$links[] = Linker::linkKnown(
 				SpecialPage::getTitleFor( 'Log' ),
-				$this->msg( 'viewpagelogs' )->text(),
+				$this->msg( 'viewpagelogs' )->escaped(),
 				[],
 				[ 'page' => $this->targetObj->getPrefixedText() ]
 			);
 			if ( !$this->targetObj->isSpecialPage() ) {
 				# Give a link to the page history
-				$links[] = $linkRenderer->makeKnownLink(
+				$links[] = Linker::linkKnown(
 					$this->targetObj,
-					$this->msg( 'pagehist' )->text(),
+					$this->msg( 'pagehist' )->escaped(),
 					[],
 					[ 'action' => 'history' ]
 				);
 				# Link to deleted edits
 				if ( $this->getUser()->isAllowed( 'undelete' ) ) {
 					$undelete = SpecialPage::getTitleFor( 'Undelete' );
-					$links[] = $linkRenderer->makeKnownLink(
+					$links[] = Linker::linkKnown(
 						$undelete,
-						$this->msg( 'deletedhist' )->text(),
+						$this->msg( 'deletedhist' )->escaped(),
 						[],
 						[ 'target' => $this->targetObj->getPrefixedDBkey() ]
 					);
@@ -388,8 +385,9 @@ class SpecialRevisionDelete extends UnlistedSpecialPage {
 		$numRevisions = 0;
 		// Live revisions...
 		$list = $this->getList();
-		// phpcs:ignore Generic.CodeAnalysis.ForLoopWithTestFunctionCall
+		// @codingStandardsIgnoreStart Generic.CodeAnalysis.ForLoopWithTestFunctionCall.NotAllowed
 		for ( $list->reset(); $list->current(); $list->next() ) {
+			// @codingStandardsIgnoreEnd
 			$item = $list->current();
 
 			if ( !$item->canView() ) {
@@ -418,11 +416,7 @@ class SpecialRevisionDelete extends UnlistedSpecialPage {
 
 		// Show form if the user can submit
 		if ( $this->mIsAllowed ) {
-			$out->addModules( [ 'mediawiki.special.revisionDelete' ] );
 			$out->addModuleStyles( 'mediawiki.special' );
-
-			$conf = $this->getConfig();
-			$oldCommentSchema = $conf->get( 'CommentTableSchemaMigrationStage' ) === MIGRATION_OLD;
 
 			$form = Xml::openElement( 'form', [ 'method' => 'post',
 					'action' => $this->getPageTitle()->getLocalURL( [ 'action' => 'submit' ] ),
@@ -446,14 +440,12 @@ class SpecialRevisionDelete extends UnlistedSpecialPage {
 						Xml::label( $this->msg( 'revdelete-otherreason' )->text(), 'wpReason' ) .
 					'</td>' .
 					'<td class="mw-input">' .
-						Xml::input( 'wpReason', 60, $this->otherReason, [
-							'id' => 'wpReason',
-							// HTML maxlength uses "UTF-16 code units", which means that characters outside BMP
-							// (e.g. emojis) count for two each. This limit is overridden in JS to instead count
-							// Unicode codepoints (or 255 UTF-8 bytes for old schema).
-							// "- 155" is to leave room for the 'wpRevDeleteReasonList' value.
-							'maxlength' => $oldCommentSchema ? 100 : CommentStore::COMMENT_CHARACTER_LIMIT - 155,
-						] ) .
+						Xml::input(
+							'wpReason',
+							60,
+							$this->otherReason,
+							[ 'id' => 'wpReason', 'maxlength' => 100 ]
+						) .
 					'</td>' .
 				"</tr><tr>\n" .
 					'<td></td>' .
@@ -471,9 +463,9 @@ class SpecialRevisionDelete extends UnlistedSpecialPage {
 				Xml::closeElement( 'form' ) . "\n";
 			// Show link to edit the dropdown reasons
 			if ( $this->getUser()->isAllowed( 'editinterface' ) ) {
-				$link = $this->getLinkRenderer()->makeKnownLink(
+				$link = Linker::linkKnown(
 					$this->msg( 'revdelete-reason-dropdown' )->inContentLanguage()->getTitle(),
-					$this->msg( 'revdelete-edit-reasonlist' )->text(),
+					$this->msg( 'revdelete-edit-reasonlist' )->escaped(),
 					[],
 					[ 'action' => 'edit' ]
 				);
@@ -641,10 +633,9 @@ class SpecialRevisionDelete extends UnlistedSpecialPage {
 	protected function failure( $status ) {
 		// Messages: revdelete-failure, logdelete-failure
 		$this->getOutput()->setPageTitle( $this->msg( 'actionfailed' ) );
-		$this->getOutput()->addWikiText(
-			Html::errorBox(
-				$status->getWikiText( $this->typeLabels['failure'] )
-			)
+		$this->getOutput()->addWikiText( '<div class="errorbox">' .
+			$status->getWikiText( $this->typeLabels['failure'] ) .
+			'</div>'
 		);
 		$this->showForm();
 	}

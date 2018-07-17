@@ -2,9 +2,6 @@
 
 namespace MediaWiki\Auth;
 
-use MediaWiki\MediaWikiServices;
-use Wikimedia\TestingAccessWrapper;
-
 /**
  * @group AuthManager
  * @group Database
@@ -31,7 +28,7 @@ class LocalPasswordPrimaryAuthenticationProviderTest extends \MediaWikiTestCase 
 		}
 		$config = new \MultiConfig( [
 			$this->config,
-			MediaWikiServices::getInstance()->getMainConfig()
+			\ConfigFactory::getDefaultInstance()->makeConfig( 'main' )
 		] );
 
 		if ( !$this->manager ) {
@@ -39,10 +36,11 @@ class LocalPasswordPrimaryAuthenticationProviderTest extends \MediaWikiTestCase 
 		}
 		$this->validity = \Status::newGood();
 
-		$provider = $this->getMockBuilder( LocalPasswordPrimaryAuthenticationProvider::class )
-			->setMethods( [ 'checkPasswordValidity' ] )
-			->setConstructorArgs( [ [ 'loginOnly' => $loginOnly ] ] )
-			->getMock();
+		$provider = $this->getMock(
+			LocalPasswordPrimaryAuthenticationProvider::class,
+			[ 'checkPasswordValidity' ],
+			[ [ 'loginOnly' => $loginOnly ] ]
+		);
 		$provider->expects( $this->any() )->method( 'checkPasswordValidity' )
 			->will( $this->returnCallback( function () {
 				return $this->validity;
@@ -55,10 +53,6 @@ class LocalPasswordPrimaryAuthenticationProviderTest extends \MediaWikiTestCase 
 	}
 
 	public function testBasics() {
-		$user = $this->getMutableTestUser()->getUser();
-		$userName = $user->getName();
-		$lowerInitialUserName = mb_strtolower( $userName[0] ) . substr( $userName, 1 );
-
 		$provider = new LocalPasswordPrimaryAuthenticationProvider();
 
 		$this->assertSame(
@@ -66,8 +60,8 @@ class LocalPasswordPrimaryAuthenticationProviderTest extends \MediaWikiTestCase 
 			$provider->accountCreationType()
 		);
 
-		$this->assertTrue( $provider->testUserExists( $userName ) );
-		$this->assertTrue( $provider->testUserExists( $lowerInitialUserName ) );
+		$this->assertTrue( $provider->testUserExists( 'UTSysop' ) );
+		$this->assertTrue( $provider->testUserExists( 'uTSysop' ) );
 		$this->assertFalse( $provider->testUserExists( 'DoesNotExist' ) );
 		$this->assertFalse( $provider->testUserExists( '<invalid>' ) );
 
@@ -78,7 +72,7 @@ class LocalPasswordPrimaryAuthenticationProviderTest extends \MediaWikiTestCase 
 			$provider->accountCreationType()
 		);
 
-		$this->assertTrue( $provider->testUserExists( $userName ) );
+		$this->assertTrue( $provider->testUserExists( 'UTSysop' ) );
 		$this->assertFalse( $provider->testUserExists( 'DoesNotExist' ) );
 
 		$req = new PasswordAuthenticationRequest;
@@ -88,9 +82,12 @@ class LocalPasswordPrimaryAuthenticationProviderTest extends \MediaWikiTestCase 
 	}
 
 	public function testTestUserCanAuthenticate() {
-		$user = $this->getMutableTestUser()->getUser();
-		$userName = $user->getName();
 		$dbw = wfGetDB( DB_MASTER );
+		$oldHash = $dbw->selectField( 'user', 'user_password', [ 'user_name' => 'UTSysop' ] );
+		$cb = new \ScopedCallback( function () use ( $dbw, $oldHash ) {
+			$dbw->update( 'user', [ 'user_password' => $oldHash ], [ 'user_name' => 'UTSysop' ] );
+		} );
+		$id = \User::idFromName( 'UTSysop' );
 
 		$provider = $this->getProvider();
 
@@ -98,24 +95,23 @@ class LocalPasswordPrimaryAuthenticationProviderTest extends \MediaWikiTestCase 
 
 		$this->assertFalse( $provider->testUserCanAuthenticate( 'DoesNotExist' ) );
 
-		$this->assertTrue( $provider->testUserCanAuthenticate( $userName ) );
-		$lowerInitialUserName = mb_strtolower( $userName[0] ) . substr( $userName, 1 );
-		$this->assertTrue( $provider->testUserCanAuthenticate( $lowerInitialUserName ) );
+		$this->assertTrue( $provider->testUserCanAuthenticate( 'UTSysop' ) );
+		$this->assertTrue( $provider->testUserCanAuthenticate( 'uTSysop' ) );
 
 		$dbw->update(
 			'user',
 			[ 'user_password' => \PasswordFactory::newInvalidPassword()->toString() ],
-			[ 'user_name' => $userName ]
+			[ 'user_name' => 'UTSysop' ]
 		);
-		$this->assertFalse( $provider->testUserCanAuthenticate( $userName ) );
+		$this->assertFalse( $provider->testUserCanAuthenticate( 'UTSysop' ) );
 
 		// Really old format
 		$dbw->update(
 			'user',
 			[ 'user_password' => '0123456789abcdef0123456789abcdef' ],
-			[ 'user_name' => $userName ]
+			[ 'user_name' => 'UTSysop' ]
 		);
-		$this->assertTrue( $provider->testUserCanAuthenticate( $userName ) );
+		$this->assertTrue( $provider->testUserCanAuthenticate( 'UTSysop' ) );
 	}
 
 	public function testSetPasswordResetFlag() {
@@ -132,26 +128,24 @@ class LocalPasswordPrimaryAuthenticationProviderTest extends \MediaWikiTestCase 
 		$provider->setConfig( $this->config );
 		$provider->setLogger( new \Psr\Log\NullLogger() );
 		$provider->setManager( $this->manager );
-		$providerPriv = TestingAccessWrapper::newFromObject( $provider );
+		$providerPriv = \TestingAccessWrapper::newFromObject( $provider );
 
-		$user = $this->getMutableTestUser()->getUser();
-		$userName = $user->getName();
 		$dbw = wfGetDB( DB_MASTER );
 		$row = $dbw->selectRow(
 			'user',
 			'*',
-			[ 'user_name' => $userName ],
+			[ 'user_name' => 'UTSysop' ],
 			__METHOD__
 		);
 
 		$this->manager->removeAuthenticationSessionData( null );
 		$row->user_password_expires = wfTimestamp( TS_MW, time() + 200 );
-		$providerPriv->setPasswordResetFlag( $userName, \Status::newGood(), $row );
+		$providerPriv->setPasswordResetFlag( 'UTSysop', \Status::newGood(), $row );
 		$this->assertNull( $this->manager->getAuthenticationSessionData( 'reset-pass' ) );
 
 		$this->manager->removeAuthenticationSessionData( null );
 		$row->user_password_expires = wfTimestamp( TS_MW, time() - 200 );
-		$providerPriv->setPasswordResetFlag( $userName, \Status::newGood(), $row );
+		$providerPriv->setPasswordResetFlag( 'UTSysop', \Status::newGood(), $row );
 		$ret = $this->manager->getAuthenticationSessionData( 'reset-pass' );
 		$this->assertNotNull( $ret );
 		$this->assertSame( 'resetpass-expired', $ret->msg->getKey() );
@@ -159,7 +153,7 @@ class LocalPasswordPrimaryAuthenticationProviderTest extends \MediaWikiTestCase 
 
 		$this->manager->removeAuthenticationSessionData( null );
 		$row->user_password_expires = wfTimestamp( TS_MW, time() - 1 );
-		$providerPriv->setPasswordResetFlag( $userName, \Status::newGood(), $row );
+		$providerPriv->setPasswordResetFlag( 'UTSysop', \Status::newGood(), $row );
 		$ret = $this->manager->getAuthenticationSessionData( 'reset-pass' );
 		$this->assertNotNull( $ret );
 		$this->assertSame( 'resetpass-expired-soft', $ret->msg->getKey() );
@@ -169,7 +163,7 @@ class LocalPasswordPrimaryAuthenticationProviderTest extends \MediaWikiTestCase 
 		$row->user_password_expires = null;
 		$status = \Status::newGood();
 		$status->error( 'testing' );
-		$providerPriv->setPasswordResetFlag( $userName, $status, $row );
+		$providerPriv->setPasswordResetFlag( 'UTSysop', $status, $row );
 		$ret = $this->manager->getAuthenticationSessionData( 'reset-pass' );
 		$this->assertNotNull( $ret );
 		$this->assertSame( 'resetpass-validity-soft', $ret->msg->getKey() );
@@ -177,11 +171,12 @@ class LocalPasswordPrimaryAuthenticationProviderTest extends \MediaWikiTestCase 
 	}
 
 	public function testAuthentication() {
-		$testUser = $this->getMutableTestUser();
-		$userName = $testUser->getUser()->getName();
-
 		$dbw = wfGetDB( DB_MASTER );
-		$id = \User::idFromName( $userName );
+		$oldHash = $dbw->selectField( 'user', 'user_password', [ 'user_name' => 'UTSysop' ] );
+		$cb = new \ScopedCallback( function () use ( $dbw, $oldHash ) {
+			$dbw->update( 'user', [ 'user_password' => $oldHash ], [ 'user_name' => 'UTSysop' ] );
+		} );
+		$id = \User::idFromName( 'UTSysop' );
 
 		$req = new PasswordAuthenticationRequest();
 		$req->action = AuthManager::ACTION_LOGIN;
@@ -221,17 +216,13 @@ class LocalPasswordPrimaryAuthenticationProviderTest extends \MediaWikiTestCase 
 		$req->password = 'DoesNotExist';
 		$ret = $provider->beginPrimaryAuthentication( $reqs );
 		$this->assertEquals(
-			AuthenticationResponse::FAIL,
-			$ret->status
-		);
-		$this->assertEquals(
-			'wrongpassword',
-			$ret->message->getKey()
+			AuthenticationResponse::newAbstain(),
+			$provider->beginPrimaryAuthentication( $reqs )
 		);
 
 		// Validation failure
-		$req->username = $userName;
-		$req->password = $testUser->getPassword();
+		$req->username = 'UTSysop';
+		$req->password = 'UTSysopPassword';
 		$this->validity = \Status::newFatal( 'arbitrary-failure' );
 		$ret = $provider->beginPrimaryAuthentication( $reqs );
 		$this->assertEquals(
@@ -247,7 +238,7 @@ class LocalPasswordPrimaryAuthenticationProviderTest extends \MediaWikiTestCase 
 		$this->manager->removeAuthenticationSessionData( null );
 		$this->validity = \Status::newGood();
 		$this->assertEquals(
-			AuthenticationResponse::newPass( $userName ),
+			AuthenticationResponse::newPass( 'UTSysop' ),
 			$provider->beginPrimaryAuthentication( $reqs )
 		);
 		$this->assertNull( $this->manager->getAuthenticationSessionData( 'reset-pass' ) );
@@ -255,19 +246,19 @@ class LocalPasswordPrimaryAuthenticationProviderTest extends \MediaWikiTestCase 
 		// Successful auth after normalizing name
 		$this->manager->removeAuthenticationSessionData( null );
 		$this->validity = \Status::newGood();
-		$req->username = mb_strtolower( $userName[0] ) . substr( $userName, 1 );
+		$req->username = 'uTSysop';
 		$this->assertEquals(
-			AuthenticationResponse::newPass( $userName ),
+			AuthenticationResponse::newPass( 'UTSysop' ),
 			$provider->beginPrimaryAuthentication( $reqs )
 		);
 		$this->assertNull( $this->manager->getAuthenticationSessionData( 'reset-pass' ) );
-		$req->username = $userName;
+		$req->username = 'UTSysop';
 
 		// Successful auth with reset
 		$this->manager->removeAuthenticationSessionData( null );
 		$this->validity->error( 'arbitrary-warning' );
 		$this->assertEquals(
-			AuthenticationResponse::newPass( $userName ),
+			AuthenticationResponse::newPass( 'UTSysop' ),
 			$provider->beginPrimaryAuthentication( $reqs )
 		);
 		$this->assertNotNull( $this->manager->getAuthenticationSessionData( 'reset-pass' ) );
@@ -287,7 +278,7 @@ class LocalPasswordPrimaryAuthenticationProviderTest extends \MediaWikiTestCase 
 
 		// Correct handling of legacy encodings
 		$password = ':B:salt:' . md5( 'salt-' . md5( "\xe1\xe9\xed\xf3\xfa" ) );
-		$dbw->update( 'user', [ 'user_password' => $password ], [ 'user_name' => $userName ] );
+		$dbw->update( 'user', [ 'user_password' => $password ], [ 'user_name' => 'UTSysop' ] );
 		$req->password = 'áéíóú';
 		$ret = $provider->beginPrimaryAuthentication( $reqs );
 		$this->assertEquals(
@@ -301,7 +292,7 @@ class LocalPasswordPrimaryAuthenticationProviderTest extends \MediaWikiTestCase 
 
 		$this->config->set( 'LegacyEncoding', true );
 		$this->assertEquals(
-			AuthenticationResponse::newPass( $userName ),
+			AuthenticationResponse::newPass( 'UTSysop' ),
 			$provider->beginPrimaryAuthentication( $reqs )
 		);
 
@@ -319,21 +310,22 @@ class LocalPasswordPrimaryAuthenticationProviderTest extends \MediaWikiTestCase 
 		// Correct handling of really old password hashes
 		$this->config->set( 'PasswordSalt', false );
 		$password = md5( 'FooBar' );
-		$dbw->update( 'user', [ 'user_password' => $password ], [ 'user_name' => $userName ] );
+		$dbw->update( 'user', [ 'user_password' => $password ], [ 'user_name' => 'UTSysop' ] );
 		$req->password = 'FooBar';
 		$this->assertEquals(
-			AuthenticationResponse::newPass( $userName ),
+			AuthenticationResponse::newPass( 'UTSysop' ),
 			$provider->beginPrimaryAuthentication( $reqs )
 		);
 
 		$this->config->set( 'PasswordSalt', true );
 		$password = md5( "$id-" . md5( 'FooBar' ) );
-		$dbw->update( 'user', [ 'user_password' => $password ], [ 'user_name' => $userName ] );
+		$dbw->update( 'user', [ 'user_password' => $password ], [ 'user_name' => 'UTSysop' ] );
 		$req->password = 'FooBar';
 		$this->assertEquals(
-			AuthenticationResponse::newPass( $userName ),
+			AuthenticationResponse::newPass( 'UTSysop' ),
 			$provider->beginPrimaryAuthentication( $reqs )
 		);
+
 	}
 
 	/**
@@ -352,7 +344,7 @@ class LocalPasswordPrimaryAuthenticationProviderTest extends \MediaWikiTestCase 
 		} elseif ( $type === PasswordDomainAuthenticationRequest::class ) {
 			$req = new $type( [] );
 		} else {
-			$req = $this->createMock( $type );
+			$req = $this->getMock( $type );
 		}
 		$req->action = AuthManager::ACTION_CHANGE;
 		$req->username = $user;
@@ -406,24 +398,29 @@ class LocalPasswordPrimaryAuthenticationProviderTest extends \MediaWikiTestCase 
 
 	/**
 	 * @dataProvider provideProviderChangeAuthenticationData
-	 * @param callable|bool $usernameTransform
+	 * @param string $user
 	 * @param string $type
 	 * @param bool $loginOnly
 	 * @param bool $changed
 	 */
-	public function testProviderChangeAuthenticationData(
-			$usernameTransform, $type, $loginOnly, $changed ) {
-		$testUser = $this->getMutableTestUser();
-		$user = $testUser->getUser()->getName();
-		if ( is_callable( $usernameTransform ) ) {
-			$user = call_user_func( $usernameTransform, $user );
-		}
+	public function testProviderChangeAuthenticationData( $user, $type, $loginOnly, $changed ) {
 		$cuser = ucfirst( $user );
-		$oldpass = $testUser->getPassword();
+		$oldpass = 'UTSysopPassword';
 		$newpass = 'NewPassword';
 
 		$dbw = wfGetDB( DB_MASTER );
+		$oldHash = $dbw->selectField( 'user', 'user_password', [ 'user_name' => $cuser ] );
 		$oldExpiry = $dbw->selectField( 'user', 'user_password_expires', [ 'user_name' => $cuser ] );
+		$cb = new \ScopedCallback( function () use ( $dbw, $cuser, $oldHash, $oldExpiry ) {
+			$dbw->update(
+				'user',
+				[
+					'user_password' => $oldHash,
+					'user_password_expires' => $oldExpiry,
+				],
+				[ 'user_name' => $cuser ]
+			);
+		} );
 
 		$this->mergeMwGlobalArrayValue( 'wgHooks', [
 			'ResetPasswordExpiration' => [ function ( $user, &$expires ) {
@@ -448,14 +445,14 @@ class LocalPasswordPrimaryAuthenticationProviderTest extends \MediaWikiTestCase 
 		if ( $type === PasswordAuthenticationRequest::class ) {
 			$changeReq = new $type();
 		} else {
-			$changeReq = $this->createMock( $type );
+			$changeReq = $this->getMock( $type );
 		}
 		$changeReq->action = AuthManager::ACTION_CHANGE;
 		$changeReq->username = $user;
 		$changeReq->password = $newpass;
 		$provider->providerChangeAuthenticationData( $changeReq );
 
-		if ( $loginOnly && $changed ) {
+		if ( $loginOnly ) {
 			$old = 'fail';
 			$new = 'fail';
 			$expectExpiry = null;
@@ -513,21 +510,18 @@ class LocalPasswordPrimaryAuthenticationProviderTest extends \MediaWikiTestCase 
 
 		$this->assertSame(
 			$expectExpiry,
-			wfTimestampOrNull(
-				TS_MW,
-				$dbw->selectField( 'user', 'user_password_expires', [ 'user_name' => $cuser ] )
-			)
+			$dbw->selectField( 'user', 'user_password_expires', [ 'user_name' => $cuser ] )
 		);
 	}
 
 	public static function provideProviderChangeAuthenticationData() {
 		return [
-			[ false, AuthenticationRequest::class, false, false ],
-			[ false, PasswordAuthenticationRequest::class, false, true ],
-			[ false, AuthenticationRequest::class, true, false ],
-			[ false, PasswordAuthenticationRequest::class, true, true ],
-			[ 'ucfirst', PasswordAuthenticationRequest::class, false, true ],
-			[ 'ucfirst', PasswordAuthenticationRequest::class, true, true ],
+			[ 'UTSysop', AuthenticationRequest::class, false, false ],
+			[ 'UTSysop', PasswordAuthenticationRequest::class, false, true ],
+			[ 'UTSysop', AuthenticationRequest::class, true, false ],
+			[ 'UTSysop', PasswordAuthenticationRequest::class, true, true ],
+			[ 'uTSysop', PasswordAuthenticationRequest::class, false, true ],
+			[ 'uTSysop', PasswordAuthenticationRequest::class, true, true ],
 		];
 	}
 
@@ -630,13 +624,17 @@ class LocalPasswordPrimaryAuthenticationProviderTest extends \MediaWikiTestCase 
 		$req->password = 'bar';
 
 		$expect = AuthenticationResponse::newPass( 'Foo' );
-		$expect->createRequest = clone $req;
+		$expect->createRequest = clone( $req );
 		$expect->createRequest->username = 'Foo';
 		$this->assertEquals( $expect, $provider->beginPrimaryAccountCreation( $user, $user, $reqs ) );
 
 		// We have to cheat a bit to avoid having to add a new user to
 		// the database to test the actual setting of the password works right
 		$dbw = wfGetDB( DB_MASTER );
+		$oldHash = $dbw->selectField( 'user', 'user_password', [ 'user_name' => $user ] );
+		$cb = new \ScopedCallback( function () use ( $dbw, $user, $oldHash ) {
+			$dbw->update( 'user', [ 'user_password' => $oldHash ], [ 'user_name' => $user ] );
+		} );
 
 		$user = \User::newFromName( 'UTSysop' );
 		$req->username = $user->getName();
@@ -653,6 +651,7 @@ class LocalPasswordPrimaryAuthenticationProviderTest extends \MediaWikiTestCase 
 		$this->assertNull( $provider->finishAccountCreation( $user, $user, $res2 ) );
 		$ret = $provider->beginPrimaryAuthentication( $reqs );
 		$this->assertEquals( AuthenticationResponse::PASS, $ret->status, 'new password is set' );
+
 	}
 
 }

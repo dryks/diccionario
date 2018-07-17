@@ -29,7 +29,8 @@ use Monolog\Formatter\NormalizerFormatter;
  * delegating the formatting to \MediaWiki\Logger\LegacyLogger.
  *
  * @since 1.25
- * @copyright © 2013 Wikimedia Foundation and contributors
+ * @author Bryan Davis <bd808@wikimedia.org>
+ * @copyright © 2013 Bryan Davis and Wikimedia Foundation.
  * @see \MediaWiki\Logger\LegacyLogger
  */
 class LegacyFormatter extends NormalizerFormatter {

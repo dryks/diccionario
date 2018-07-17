@@ -2,6 +2,8 @@
 /**
  * API for MediaWiki 1.17+
  *
+ * Created on May 14, 2010
+ *
  * Copyright © 2010 Sam Reed
  * Copyright © 2006 Yuri Astrakhan "<Firstname><Lastname>@gmail.com"
  *
@@ -49,14 +51,7 @@ class ApiQueryIWBacklinks extends ApiQueryGeneratorBase {
 		$params = $this->extractRequestParams();
 
 		if ( isset( $params['title'] ) && !isset( $params['prefix'] ) ) {
-			$this->dieWithError(
-				[
-					'apierror-invalidparammix-mustusewith',
-					$this->encodeParamName( 'title' ),
-					$this->encodeParamName( 'prefix' ),
-				],
-				'invalidparammix'
-			);
+			$this->dieUsageMsg( [ 'missingparam', 'prefix' ] );
 		}
 
 		if ( !is_null( $params['continue'] ) ) {
@@ -213,6 +208,6 @@ class ApiQueryIWBacklinks extends ApiQueryGeneratorBase {
 	}
 
 	public function getHelpUrls() {
-		return 'https://www.mediawiki.org/wiki/Special:MyLanguage/API:Iwbacklinks';
+		return 'https://www.mediawiki.org/wiki/API:Iwbacklinks';
 	}
 }

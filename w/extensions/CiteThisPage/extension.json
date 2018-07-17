@@ -6,11 +6,8 @@
 	],
 	"url": "https://www.mediawiki.org/wiki/Extension:CiteThisPage",
 	"descriptionmsg": "citethispage-desc",
-	"license-name": "GPL-2.0-or-later",
+	"license-name": "GPL-2.0+",
 	"type": "specialpage",
-	"requires": {
-		"MediaWiki": ">= 1.30.0"
-	},
 	"ExtensionMessagesFiles": {
 		"CiteThisPageAliases": "CiteThisPage.alias.php"
 	},
@@ -23,10 +20,13 @@
 		"SkinTemplateBuildNavUrlsNav_urlsAfterPermalink": [
 			"CiteThisPageHooks::onSkinTemplateBuildNavUrlsNav_urlsAfterPermalink"
 		],
-		"BaseTemplateToolbox": "CiteThisPageHooks::onBaseTemplateToolbox"
+		"SkinTemplateToolboxEnd": [
+			"CiteThisPageHooks::onSkinTemplateToolboxEnd"
+		]
 	},
 	"ResourceModules": {
 		"ext.citeThisPage": {
+			"position": "top",
 			"styles": "ext.citeThisPage.css"
 		}
 	},
@@ -38,15 +38,9 @@
 		"CiteThisPage": "SpecialCiteThisPage"
 	},
 	"AutoloadClasses": {
-		"SpecialCiteThisPage": "includes/SpecialCiteThisPage.php",
-		"CiteThisPageHooks": "includes/CiteThisPageHooks.php"
+		"SpecialCiteThisPage": "SpecialCiteThisPage.php",
+		"CiteThisPageOutput": "SpecialCiteThisPage.php",
+		"CiteThisPageHooks": "CiteThisPage.hooks.php"
 	},
-	"config": {
-		"CiteThisPageAdditionalNamespaces": {
-			"value": {},
-			"description": "An array of namespaces where the 'Cite this page' link is also visible, additionally to the content pages.",
-			"merge_strategy": "array_plus"
-		}
-	},
-	"manifest_version": 2
+	"manifest_version": 1
 }

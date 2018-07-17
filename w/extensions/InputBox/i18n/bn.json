@@ -2,8 +2,7 @@
 	"@metadata": {
 		"authors": [
 			"Bellayet",
-			"Zaheen",
-			"Bodhisattwa"
+			"Zaheen"
 		]
 	},
 	"inputbox-desc": "পূর্বসংজ্ঞায়িত এইচটিএমএল ফর্মের অন্তর্ভুক্তি অনুমোদন করুন",
@@ -12,8 +11,5 @@
 	"inputbox-tryexact": "ঠিক এই নামের নিবন্ধে যান",
 	"inputbox-searchfulltext": "সব বিষয়বস্তুতে খুঁজুন",
 	"inputbox-createarticle": "নিবন্ধ শুরু করো",
-	"inputbox-movearticle": "পাতা স্থানান্তর করুন",
-	"inputbox-postcomment": "নতুন অনুচ্ছেদ",
-	"inputbox-postcommenttitle": "নতুন অনুচ্ছেদ",
 	"inputbox-ns-main": "প্রধান"
 }

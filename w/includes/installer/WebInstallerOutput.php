@@ -115,10 +115,7 @@ class WebInstallerOutput {
 
 	public function output() {
 		$this->flush();
-
-		if ( !$this->redirectTarget ) {
-			$this->outputFooter();
-		}
+		$this->outputFooter();
 	}
 
 	/**
@@ -233,7 +230,7 @@ class WebInstallerOutput {
 	public function getHeadAttribs() {
 		return [
 			'dir' => $this->getDir(),
-			'lang' => LanguageCode::bcp47( $this->getLanguageCode() ),
+			'lang' => wfBCP47( $this->getLanguageCode() ),
 		];
 	}
 
@@ -267,7 +264,6 @@ class WebInstallerOutput {
 		}
 ?>
 <?php echo Html::htmlHeader( $this->getHeadAttribs() ); ?>
-
 <head>
 	<meta name="robots" content="noindex, nofollow" />
 	<meta http-equiv="Content-type" content="text/html; charset=utf-8" />
@@ -299,9 +295,9 @@ class WebInstallerOutput {
 
 <div id="mw-panel">
 	<div class="portal" id="p-logo">
-		<a style="background-image: url(images/installer-logo.png);"
-			href="https://www.mediawiki.org/"
-			title="Main Page"></a>
+	  <a style="background-image: url(images/installer-logo.png);"
+		href="https://www.mediawiki.org/"
+		title="Main Page"></a>
 	</div>
 <?php
 	$message = wfMessage( 'config-sidebar' )->plain();

@@ -20,8 +20,6 @@
  * @file
  */
 
-use MediaWiki\Logger\LegacyLogger;
-
 /**
  * New debugger system that outputs a toolbar on page view.
  *
@@ -78,15 +76,6 @@ class MWDebug {
 	}
 
 	/**
-	 * Disable the debugger.
-	 *
-	 * @since 1.28
-	 */
-	public static function deinit() {
-		self::$enabled = false;
-	}
-
-	/**
 	 * Add ResourceLoader modules to the OutputPage object if debugging is
 	 * enabled.
 	 *
@@ -95,7 +84,7 @@ class MWDebug {
 	 */
 	public static function addModules( OutputPage $out ) {
 		if ( self::$enabled ) {
-			$out->addModules( 'mediawiki.debug' );
+			$out->addModules( 'mediawiki.debug.init' );
 		}
 	}
 
@@ -147,6 +136,8 @@ class MWDebug {
 	 * @param string $log 'production' will always trigger a php error, 'auto'
 	 *    will trigger an error if $wgDevelopmentWarnings is true, and 'debug'
 	 *    will only write to the debug log(s).
+	 *
+	 * @return mixed
 	 */
 	public static function warning( $msg, $callerOffset = 1, $level = E_USER_NOTICE, $log = 'auto' ) {
 		global $wgDevelopmentWarnings;
@@ -334,7 +325,6 @@ class MWDebug {
 				if ( isset( $context['seconds_elapsed'] ) && isset( $context['memory_used'] ) ) {
 					$prefix .= "{$context['seconds_elapsed']} {$context['memory_used']}  ";
 				}
-				$str = LegacyLogger::interpolate( $str, $context );
 				$str = $prefix . $str;
 			}
 			self::$debug[] = rtrim( UtfNormal\Validator::cleanUp( $str ) );
@@ -348,11 +338,10 @@ class MWDebug {
 	 * @param string $sql
 	 * @param string $function
 	 * @param bool $isMaster
-	 * @param float $runTime Query run time
 	 * @return int ID number of the query to pass to queryTime or -1 if the
 	 *  debugger is disabled
 	 */
-	public static function query( $sql, $function, $isMaster, $runTime ) {
+	public static function query( $sql, $function, $isMaster ) {
 		if ( !self::$enabled ) {
 			return -1;
 		}
@@ -370,7 +359,7 @@ class MWDebug {
 				| [\xF0-\xF4](?![\x80-\xBF]{3}) # Invalid UTF-8 Sequence Start
 				| (?<=[\x0-\x7F\xF5-\xFF])[\x80-\xBF] # Invalid UTF-8 Sequence Middle
 				| (?<![\xC2-\xDF]|[\xE0-\xEF]|[\xE0-\xEF][\x80-\xBF]|[\xF0-\xF4]
-					| [\xF0-\xF4][\x80-\xBF]|[\xF0-\xF4][\x80-\xBF]{2})[\x80-\xBF] # Overlong Sequence
+				   |[\xF0-\xF4][\x80-\xBF]|[\xF0-\xF4][\x80-\xBF]{2})[\x80-\xBF] # Overlong Sequence
 				| (?<=[\xE0-\xEF])[\x80-\xBF](?![\x80-\xBF]) # Short 3 byte sequence
 				| (?<=[\xF0-\xF4])[\x80-\xBF](?![\x80-\xBF]{2}) # Short 4 byte sequence
 				| (?<=[\xF0-\xF4][\x80-\xBF])[\x80-\xBF](?![\x80-\xBF]) # Short 4 byte sequence (2)
@@ -386,10 +375,26 @@ class MWDebug {
 			'sql' => $sql,
 			'function' => $function,
 			'master' => (bool)$isMaster,
-			'time' => $runTime,
+			'time' => 0.0,
+			'_start' => microtime( true ),
 		];
 
 		return count( self::$query ) - 1;
+	}
+
+	/**
+	 * Calculates how long a query took.
+	 *
+	 * @since 1.19
+	 * @param int $id
+	 */
+	public static function queryTime( $id ) {
+		if ( $id === -1 || !self::$enabled ) {
+			return;
+		}
+
+		self::$query[$id]['time'] = microtime( true ) - self::$query[$id]['_start'];
+		unset( self::$query[$id]['_start'] );
 	}
 
 	/**
@@ -425,7 +430,7 @@ class MWDebug {
 		$html = '';
 
 		if ( self::$enabled ) {
-			self::log( 'MWDebug output complete' );
+			MWDebug::log( 'MWDebug output complete' );
 			$debugInfo = self::getDebugInfo( $context );
 
 			// Cannot use OutputPage::addJsConfigVars because those are already outputted
@@ -437,7 +442,7 @@ class MWDebug {
 
 		if ( $wgDebugComments ) {
 			$html .= "<!-- Debug output:\n" .
-				htmlspecialchars( implode( "\n", self::$debug ), ENT_NOQUOTES ) .
+				htmlspecialchars( implode( "\n", self::$debug ) ) .
 				"\n\n-->";
 		}
 
@@ -495,7 +500,7 @@ class MWDebug {
 			}
 		}
 
-		self::log( 'MWDebug output complete' );
+		MWDebug::log( 'MWDebug output complete' );
 		$debugInfo = self::getDebugInfo( $context );
 
 		ApiResult::setIndexedTagName( $debugInfo, 'debuginfo' );
@@ -517,7 +522,7 @@ class MWDebug {
 			return [];
 		}
 
-		global $wgVersion;
+		global $wgVersion, $wgRequestTime;
 		$request = $context->getRequest();
 
 		// HHVM's reported memory usage from memory_get_peak_usage()
@@ -526,21 +531,14 @@ class MWDebug {
 		// see: https://github.com/facebook/hhvm/issues/2257#issuecomment-39362246
 		$realMemoryUsage = wfIsHHVM();
 
-		$branch = GitInfo::currentBranch();
-		if ( GitInfo::isSHA1( $branch ) ) {
-			// If it's a detached HEAD, the SHA1 will already be
-			// included in the MW version, so don't show it.
-			$branch = false;
-		}
-
 		return [
 			'mwVersion' => $wgVersion,
 			'phpEngine' => wfIsHHVM() ? 'HHVM' : 'PHP',
 			'phpVersion' => wfIsHHVM() ? HHVM_VERSION : PHP_VERSION,
 			'gitRevision' => GitInfo::headSHA1(),
-			'gitBranch' => $branch,
+			'gitBranch' => GitInfo::currentBranch(),
 			'gitViewUrl' => GitInfo::headViewUrl(),
-			'time' => $request->getElapsedTime(),
+			'time' => microtime( true ) - $wgRequestTime,
 			'log' => self::$log,
 			'debugLog' => self::$debug,
 			'queries' => self::$query,

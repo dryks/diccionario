@@ -1,5 +1,9 @@
 <?php
 /**
+ *
+ *
+ * Created on Jul 3, 2007
+ *
  * Copyright © 2007 Roan Kattouw "<Firstname>.<Lastname>@gmail.com"
  *
  * This program is free software; you can redistribute it and/or modify
@@ -29,19 +33,19 @@ class ApiUndelete extends ApiBase {
 		$this->useTransactionalTimeLimit();
 
 		$params = $this->extractRequestParams();
-
 		$user = $this->getUser();
+
 		if ( $user->isBlocked() ) {
 			$this->dieBlocked( $user->getBlock() );
 		}
 
 		$titleObj = Title::newFromText( $params['title'] );
 		if ( !$titleObj || $titleObj->isExternal() ) {
-			$this->dieWithError( [ 'apierror-invalidtitle', wfEscapeWikiText( $params['title'] ) ] );
+			$this->dieUsageMsg( [ 'invalidtitle', $params['title'] ] );
 		}
 
 		if ( !$titleObj->userCan( 'undelete', $user, 'secure' ) ) {
-			$this->dieWithError( 'permdenied-undelete' );
+			$this->dieUsageMsg( 'permdenied-undelete' );
 		}
 
 		// Check if user can add tags
@@ -73,7 +77,7 @@ class ApiUndelete extends ApiBase {
 			$params['tags']
 		);
 		if ( !is_array( $retval ) ) {
-			$this->dieWithError( 'apierror-cantundelete' );
+			$this->dieUsageMsg( 'cannotundelete' );
 		}
 
 		if ( $retval[1] ) {
@@ -144,6 +148,6 @@ class ApiUndelete extends ApiBase {
 	}
 
 	public function getHelpUrls() {
-		return 'https://www.mediawiki.org/wiki/Special:MyLanguage/API:Undelete';
+		return 'https://www.mediawiki.org/wiki/API:Undelete';
 	}
 }

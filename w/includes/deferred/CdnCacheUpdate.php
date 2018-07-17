@@ -18,6 +18,7 @@
  * http://www.gnu.org/copyleft/gpl.html
  *
  * @file
+ * @ingroup Cache
  */
 
 use Wikimedia\Assert\Assert;
@@ -48,12 +49,11 @@ class CdnCacheUpdate implements DeferrableUpdate, MergeableUpdate {
 	/**
 	 * Create an update object from an array of Title objects, or a TitleArray object
 	 *
-	 * @param Traversable|Title[] $titles
+	 * @param Traversable|array $titles
 	 * @param string[] $urlArr
 	 * @return CdnCacheUpdate
 	 */
 	public static function newFromTitles( $titles, $urlArr = [] ) {
-		( new LinkBatch( $titles ) )->execute();
 		/** @var Title $title */
 		foreach ( $titles as $title ) {
 			$urlArr = array_merge( $urlArr, $title->getCdnUrls() );
@@ -65,7 +65,7 @@ class CdnCacheUpdate implements DeferrableUpdate, MergeableUpdate {
 	/**
 	 * @param Title $title
 	 * @return CdnCacheUpdate
-	 * @deprecated since 1.27
+	 * @deprecated 1.27
 	 */
 	public static function newSimplePurge( Title $title ) {
 		return new CdnCacheUpdate( $title->getCdnUrls() );
@@ -112,18 +112,12 @@ class CdnCacheUpdate implements DeferrableUpdate, MergeableUpdate {
 		// Reliably broadcast the purge to all edge nodes
 		$relayer = MediaWikiServices::getInstance()->getEventRelayerGroup()
 					->getRelayer( 'cdn-url-purges' );
-		$ts = microtime( true );
-		$relayer->notifyMulti(
+		$relayer->notify(
 			'cdn-url-purges',
-			array_map(
-				function ( $url ) use ( $ts ) {
-					return [
-						'url' => $url,
-						'timestamp' => $ts,
-					];
-				},
-				$urlArr
-			)
+			[
+				'urls' => array_values( $urlArr ), // JSON array
+				'timestamp' => microtime( true )
+			]
 		);
 
 		// Send lossy UDP broadcasting if enabled

@@ -21,6 +21,7 @@
  * @author Saiddzone
  * @author Thanlwin
  * @author Thitaung
+ * @author Umherirrender
  * @author Zawthet
  * @author ကိုရာဝီ
  */
@@ -56,3 +57,4 @@ $dateFormats = [
 	'my long date' => 'Y "ဇန်နဝါရီ" F"လ" j "ရက်"',
 	'my long both' => 'H:i"၊" Y "ဇန်နဝါရီ" F"လ" j "ရက်"',
 ];
+

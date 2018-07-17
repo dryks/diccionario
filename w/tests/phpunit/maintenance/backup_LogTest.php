@@ -1,13 +1,4 @@
 <?php
-
-namespace MediaWiki\Tests\Maintenance;
-
-use DumpBackup;
-use ManualLogEntry;
-use Title;
-use User;
-use WikiExporter;
-
 /**
  * Tests for log dumps of BackupDumper
  *
@@ -113,6 +104,7 @@ class BackupDumperLoggerTest extends DumpTestCase {
 	private function assertLogItem( $id, $user_name, $user_id, $comment, $type,
 		$subtype, $title, $parameters = []
 	) {
+
 		$this->assertNodeStart( "logitem" );
 		$this->skipWhitespace();
 

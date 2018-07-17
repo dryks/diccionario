@@ -19,11 +19,8 @@
  *
  * @file
  * @ingroup FileJournal
+ * @author Aaron Schulz
  */
-
-use MediaWiki\MediaWikiServices;
-use Wikimedia\Rdbms\IDatabase;
-use Wikimedia\Rdbms\DBError;
 
 /**
  * Version of FileJournal that logs to a DB table
@@ -51,10 +48,10 @@ class DBFileJournal extends FileJournal {
 	 * @see FileJournal::logChangeBatch()
 	 * @param array $entries
 	 * @param string $batchId
-	 * @return StatusValue
+	 * @return Status
 	 */
 	protected function doLogChangeBatch( array $entries, $batchId ) {
-		$status = StatusValue::newGood();
+		$status = Status::newGood();
 
 		try {
 			$dbw = $this->getMasterDB();
@@ -124,9 +121,9 @@ class DBFileJournal extends FileJournal {
 
 	/**
 	 * @see FileJournal::doGetChangeEntries()
-	 * @param int|null $start
+	 * @param int $start
 	 * @param int $limit
-	 * @return array[]
+	 * @return array
 	 */
 	protected function doGetChangeEntries( $start, $limit ) {
 		$dbw = $this->getMasterDB();
@@ -154,11 +151,11 @@ class DBFileJournal extends FileJournal {
 
 	/**
 	 * @see FileJournal::purgeOldLogs()
-	 * @return StatusValue
+	 * @return Status
 	 * @throws DBError
 	 */
 	protected function doPurgeOldLogs() {
-		$status = StatusValue::newGood();
+		$status = Status::newGood();
 		if ( $this->ttlDays <= 0 ) {
 			return $status; // nothing to do
 		}
@@ -183,7 +180,7 @@ class DBFileJournal extends FileJournal {
 	protected function getMasterDB() {
 		if ( !$this->dbw ) {
 			// Get a separate connection in autocommit mode
-			$lb = MediaWikiServices::getInstance()->getDBLoadBalancerFactory()->newMainLB();
+			$lb = wfGetLBFactory()->newMainLB();
 			$this->dbw = $lb->getConnection( DB_MASTER, [], $this->wiki );
 			$this->dbw->clearFlag( DBO_TRX );
 		}

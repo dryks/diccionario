@@ -1,6 +1,10 @@
 <?php
 
 /**
+ *
+ *
+ * Created on Dec 29, 2015
+ *
  * Copyright © 2015 Geoffrey Mon <geofbot@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -20,9 +24,6 @@
  *
  * @file
  */
-use MediaWiki\MediaWikiServices;
-use Wikimedia\Timestamp\TimestampException;
-use Wikimedia\Rdbms\IDatabase;
 
 /**
  * Handles the backend logic of merging the histories of two
@@ -32,7 +33,7 @@ use Wikimedia\Rdbms\IDatabase;
  */
 class MergeHistory {
 
-	/** @const int Maximum number of revisions that can be merged at once */
+	/** @const int Maximum number of revisions that can be merged at once (avoid too much slave lag) */
 	const REVISION_LIMIT = 5000;
 
 	/** @var Title Page from which history will be merged */
@@ -41,7 +42,7 @@ class MergeHistory {
 	/** @var Title Page to which history will be merged */
 	protected $dest;
 
-	/** @var IDatabase Database that we are using */
+	/** @var DatabaseBase Database that we are using */
 	protected $dbw;
 
 	/** @var MWTimestamp Maximum timestamp that we can use (oldest timestamp of dest) */
@@ -53,10 +54,11 @@ class MergeHistory {
 	/** @var MWTimestamp|bool Timestamp upto which history from the source will be merged */
 	protected $timestampLimit;
 
-	/** @var int Number of revisions merged (for Special:MergeHistory success message) */
+	/** @var integer Number of revisions merged (for Special:MergeHistory success message) */
 	protected $revisionsMerged;
 
 	/**
+	 * MergeHistory constructor.
 	 * @param Title $source Page from which history will be merged
 	 * @param Title $dest Page to which history will be merged
 	 * @param string|bool $timestamp Timestamp up to which history from the source will be merged
@@ -88,8 +90,7 @@ class MergeHistory {
 					'revision',
 					'MAX(rev_timestamp)',
 					[
-						'rev_timestamp <= ' .
-							$this->dbw->addQuotes( $this->dbw->timestamp( $mwTimestamp ) ),
+						'rev_timestamp <= ' . $this->dbw->timestamp( $mwTimestamp ),
 						'rev_page' => $this->source->getArticleID()
 					],
 					__METHOD__
@@ -117,8 +118,7 @@ class MergeHistory {
 				$this->timestampLimit = $lasttimestamp;
 			}
 
-			$this->timeWhere = "rev_timestamp <= " .
-				$this->dbw->addQuotes( $this->dbw->timestamp( $timeInsert ) );
+			$this->timeWhere = "rev_timestamp <= {$this->dbw->timestamp( $timeInsert )}";
 		} catch ( TimestampException $ex ) {
 			// The timestamp we got is screwed up and merge cannot continue
 			// This should be detected by $this->isValidMerge()
@@ -331,10 +331,6 @@ class MergeHistory {
 			$this->source->invalidateCache(); // update histories
 		}
 		$this->dest->invalidateCache(); // update histories
-
-		// Duplicate watchers of the old article to the new article on history merge
-		$store = MediaWikiServices::getInstance()->getWatchedItemStore();
-		$store->duplicateAllAssociatedEntries( $this->source, $this->dest );
 
 		// Update our logs
 		$logEntry = new ManualLogEntry( 'merge', 'merge' );

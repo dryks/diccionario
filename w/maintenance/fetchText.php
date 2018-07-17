@@ -24,8 +24,6 @@
 
 require_once __DIR__ . '/Maintenance.php';
 
-use Wikimedia\Rdbms\IDatabase;
-
 /**
  * Maintenance script used to fetch page text in a subprocess.
  *
@@ -51,7 +49,7 @@ class FetchText extends Maintenance {
 	 * note that the text string itself is *not* followed by newline
 	 */
 	public function execute() {
-		$db = $this->getDB( DB_REPLICA );
+		$db = $this->getDB( DB_SLAVE );
 		$stdin = $this->getStdin();
 		while ( !feof( $stdin ) ) {
 			$line = fgets( $stdin );
@@ -73,7 +71,7 @@ class FetchText extends Maintenance {
 
 	/**
 	 * May throw a database error if, say, the server dies during query.
-	 * @param IDatabase $db
+	 * @param DatabaseBase $db
 	 * @param int $id The old_id
 	 * @return string
 	 */
@@ -92,5 +90,5 @@ class FetchText extends Maintenance {
 	}
 }
 
-$maintClass = FetchText::class;
+$maintClass = "FetchText";
 require_once RUN_MAINTENANCE_IF_MAIN;

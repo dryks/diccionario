@@ -68,11 +68,13 @@ class FixExtLinksProtocolRelative extends LoggedUpdateMaintenance {
 			$db->insert( 'externallinks',
 				[
 					[
+						'el_id' => $db->nextSequenceValue( 'externallinks_el_id_seq' ),
 						'el_from' => $row->el_from,
 						'el_to' => $row->el_to,
 						'el_index' => "http:{$row->el_index}",
 					],
 					[
+						'el_id' => $db->nextSequenceValue( 'externallinks_el_id_seq' ),
 						'el_from' => $row->el_from,
 						'el_to' => $row->el_to,
 						'el_index' => "https:{$row->el_index}",
@@ -95,5 +97,5 @@ class FixExtLinksProtocolRelative extends LoggedUpdateMaintenance {
 	}
 }
 
-$maintClass = FixExtLinksProtocolRelative::class;
+$maintClass = "FixExtLinksProtocolRelative";
 require_once RUN_MAINTENANCE_IF_MAIN;

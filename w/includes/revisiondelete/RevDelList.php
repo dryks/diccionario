@@ -19,8 +19,6 @@
  * @ingroup RevisionDelete
  */
 
-use MediaWiki\MediaWikiServices;
-
 /**
  * Abstract base class for a list of deletable items. The list class
  * needs to be able to make a query from a set of identifiers to pull
@@ -83,13 +81,14 @@ abstract class RevDelList extends RevisionListBase {
 	public function areAnySuppressed() {
 		$bit = $this->getSuppressBit();
 
-		/** @var RevDelItem $item */
-		foreach ( $this as $item ) {
+		// @codingStandardsIgnoreStart Generic.CodeAnalysis.ForLoopWithTestFunctionCall.NotAllowed
+		for ( $this->reset(); $this->current(); $this->next() ) {
+			// @codingStandardsIgnoreEnd
+			$item = $this->current();
 			if ( $item->getBits() & $bit ) {
 				return true;
 			}
 		}
-
 		return false;
 	}
 
@@ -99,17 +98,12 @@ abstract class RevDelList extends RevisionListBase {
 	 *
 	 * @param array $params Associative array of parameters. Members are:
 	 *     value:         ExtractBitParams() bitfield array
-	 *     comment:       The log comment
+	 *     comment:       The log comment.
 	 *     perItemStatus: Set if you want per-item status reports
-	 *     tags:          The array of change tags to apply to the log entry
 	 * @return Status
 	 * @since 1.23 Added 'perItemStatus' param
 	 */
 	public function setVisibility( array $params ) {
-		global $wgActorTableSchemaMigrationStage;
-
-		$status = Status::newGood();
-
 		$bitPars = $params['value'];
 		$comment = $params['comment'];
 		$perItemStatus = isset( $params['perItemStatus'] ) ? $params['perItemStatus'] : false;
@@ -119,42 +113,23 @@ abstract class RevDelList extends RevisionListBase {
 		$dbw = wfGetDB( DB_MASTER );
 		$this->res = $this->doQuery( $dbw );
 
-		$status->merge( $this->acquireItemLocks() );
-		if ( !$status->isGood() ) {
-			return $status;
-		}
-
 		$dbw->startAtomic( __METHOD__ );
-		$dbw->onTransactionResolution(
-			function () {
-				// Release locks on commit or error
-				$this->releaseItemLocks();
-			},
-			__METHOD__
-		);
 
+		$status = Status::newGood();
 		$missing = array_flip( $this->ids );
 		$this->clearFileOps();
 		$idsForLog = [];
-		$authorIds = $authorIPs = $authorActors = [];
+		$authorIds = $authorIPs = [];
 
 		if ( $perItemStatus ) {
 			$status->itemStatuses = [];
 		}
 
-		// For multi-item deletions, set the old/new bitfields in log_params such that "hid X"
-		// shows in logs if field X was hidden from ANY item and likewise for "unhid Y". Note the
-		// form does not let the same field get hidden and unhidden in different items at once.
-		$virtualOldBits = 0;
-		$virtualNewBits = 0;
-		$logType = 'delete';
-
-		// Will be filled with id => [old, new bits] information and
-		// passed to doPostCommitUpdates().
-		$visibilityChangeMap = [];
-
-		/** @var RevDelItem $item */
-		foreach ( $this as $item ) {
+		// @codingStandardsIgnoreStart Generic.CodeAnalysis.ForLoopWithTestFunctionCall.NotAllowed
+		for ( $this->reset(); $this->current(); $this->next() ) {
+			// @codingStandardsIgnoreEnd
+			/** @var $item RevDelItem */
+			$item = $this->current();
 			unset( $missing[$item->getId()] );
 
 			if ( $perItemStatus ) {
@@ -169,8 +144,7 @@ abstract class RevDelList extends RevisionListBase {
 			$newBits = RevisionDeleter::extractBitfield( $bitPars, $oldBits );
 
 			if ( $oldBits == $newBits ) {
-				$itemStatus->warning(
-					'revdelete-no-change', $item->formatDate(), $item->formatTime() );
+				$itemStatus->warning( 'revdelete-no-change', $item->formatDate(), $item->formatTime() );
 				$status->failCount++;
 				continue;
 			} elseif ( $oldBits == 0 && $newBits != 0 ) {
@@ -183,21 +157,21 @@ abstract class RevDelList extends RevisionListBase {
 
 			if ( $item->isHideCurrentOp( $newBits ) ) {
 				// Cannot hide current version text
-				$itemStatus->error(
-					'revdelete-hide-current', $item->formatDate(), $item->formatTime() );
+				$itemStatus->error( 'revdelete-hide-current', $item->formatDate(), $item->formatTime() );
 				$status->failCount++;
 				continue;
-			} elseif ( !$item->canView() ) {
+			}
+			if ( !$item->canView() ) {
 				// Cannot access this revision
 				$msg = ( $opType == 'show' ) ?
 					'revdelete-show-no-access' : 'revdelete-modify-no-access';
 				$itemStatus->error( $msg, $item->formatDate(), $item->formatTime() );
 				$status->failCount++;
 				continue;
+			}
 			// Cannot just "hide from Sysops" without hiding any fields
-			} elseif ( $newBits == Revision::DELETED_RESTRICTED ) {
-				$itemStatus->warning(
-					'revdelete-only-restricted', $item->formatDate(), $item->formatTime() );
+			if ( $newBits == Revision::DELETED_RESTRICTED ) {
+				$itemStatus->warning( 'revdelete-only-restricted', $item->formatDate(), $item->formatTime() );
 				$status->failCount++;
 				continue;
 			}
@@ -207,37 +181,14 @@ abstract class RevDelList extends RevisionListBase {
 
 			if ( $ok ) {
 				$idsForLog[] = $item->getId();
-				// If any item field was suppressed or unsupressed
-				if ( ( $oldBits | $newBits ) & $this->getSuppressBit() ) {
-					$logType = 'suppress';
-				}
-				// Track which fields where (un)hidden for each item
-				$addedBits = ( $oldBits ^ $newBits ) & $newBits;
-				$removedBits = ( $oldBits ^ $newBits ) & $oldBits;
-				$virtualNewBits |= $addedBits;
-				$virtualOldBits |= $removedBits;
-
 				$status->successCount++;
-				if ( $wgActorTableSchemaMigrationStage <= MIGRATION_WRITE_BOTH ) {
-					if ( $item->getAuthorId() > 0 ) {
-						$authorIds[] = $item->getAuthorId();
-					} elseif ( IP::isIPAddress( $item->getAuthorName() ) ) {
-						$authorIPs[] = $item->getAuthorName();
-					}
+				if ( $item->getAuthorId() > 0 ) {
+					$authorIds[] = $item->getAuthorId();
+				} elseif ( IP::isIPAddress( $item->getAuthorName() ) ) {
+					$authorIPs[] = $item->getAuthorName();
 				}
-				if ( $wgActorTableSchemaMigrationStage >= MIGRATION_WRITE_BOTH ) {
-					$authorActors[] = $item->getAuthorActor();
-				}
-
-				// Save the old and new bits in $visibilityChangeMap for
-				// later use.
-				$visibilityChangeMap[$item->getId()] = [
-					'oldBits' => $oldBits,
-					'newBits' => $newBits,
-				];
 			} else {
-				$itemStatus->error(
-					'revdelete-concurrent-change', $item->formatDate(), $item->formatTime() );
+				$itemStatus->error( 'revdelete-concurrent-change', $item->formatDate(), $item->formatTime() );
 				$status->failCount++;
 			}
 		}
@@ -253,7 +204,7 @@ abstract class RevDelList extends RevisionListBase {
 		}
 
 		if ( $status->successCount == 0 ) {
-			$dbw->endAtomic( __METHOD__ );
+			$dbw->rollback( __METHOD__ );
 			return $status;
 		}
 
@@ -263,64 +214,31 @@ abstract class RevDelList extends RevisionListBase {
 		// Move files, if there are any
 		$status->merge( $this->doPreCommitUpdates() );
 		if ( !$status->isOK() ) {
-			// Fatal error, such as no configured archive directory or I/O failures
-			$lbFactory = MediaWikiServices::getInstance()->getDBLoadBalancerFactory();
-			$lbFactory->rollbackMasterChanges( __METHOD__ );
+			// Fatal error, such as no configured archive directory
+			$dbw->rollback( __METHOD__ );
 			return $status;
 		}
 
 		// Log it
-		$authorFields = [];
-		if ( $wgActorTableSchemaMigrationStage <= MIGRATION_WRITE_BOTH ) {
-			$authorFields['authorIds'] = $authorIds;
-			$authorFields['authorIPs'] = $authorIPs;
-		}
-		if ( $wgActorTableSchemaMigrationStage >= MIGRATION_WRITE_BOTH ) {
-			$authorFields['authorActors'] = $authorActors;
-		}
-		$this->updateLog(
-			$logType,
-			[
-				'title' => $this->title,
-				'count' => $successCount,
-				'newBits' => $virtualNewBits,
-				'oldBits' => $virtualOldBits,
-				'comment' => $comment,
-				'ids' => $idsForLog,
-				'tags' => isset( $params['tags'] ) ? $params['tags'] : [],
-			] + $authorFields
-		);
+		// @FIXME: $newBits/$oldBits set in for loop, makes IDE warnings too
+		$this->updateLog( [
+			'title' => $this->title,
+			'count' => $successCount,
+			'newBits' => $newBits,
+			'oldBits' => $oldBits,
+			'comment' => $comment,
+			'ids' => $idsForLog,
+			'authorIds' => $authorIds,
+			'authorIPs' => $authorIPs
+		] );
 
-		// Clear caches after commit
-		DeferredUpdates::addCallableUpdate(
-			function () use ( $visibilityChangeMap ) {
-				$this->doPostCommitUpdates( $visibilityChangeMap );
-			},
-			DeferredUpdates::PRESEND,
-			$dbw
-		);
+		// Clear caches
+		$that = $this;
+		$dbw->onTransactionIdle( function() use ( $that ) {
+			$that->doPostCommitUpdates();
+		} );
 
 		$dbw->endAtomic( __METHOD__ );
-
-		return $status;
-	}
-
-	final protected function acquireItemLocks() {
-		$status = Status::newGood();
-		/** @var RevDelItem $item */
-		foreach ( $this as $item ) {
-			$status->merge( $item->lock() );
-		}
-
-		return $status;
-	}
-
-	final protected function releaseItemLocks() {
-		$status = Status::newGood();
-		/** @var RevDelItem $item */
-		foreach ( $this as $item ) {
-			$status->merge( $item->unlock() );
-		}
 
 		return $status;
 	}
@@ -336,24 +254,27 @@ abstract class RevDelList extends RevisionListBase {
 
 	/**
 	 * Record a log entry on the action
-	 * @param string $logType One of (delete,suppress)
 	 * @param array $params Associative array of parameters:
 	 *     newBits:         The new value of the *_deleted bitfield
 	 *     oldBits:         The old value of the *_deleted bitfield.
 	 *     title:           The target title
 	 *     ids:             The ID list
 	 *     comment:         The log comment
-	 *     authorIds:       The array of the user IDs of the offenders
-	 *     authorIPs:       The array of the IP/anon user offenders
-	 *     authorActors:    The array of the actor IDs of the offenders
-	 *     tags:            The array of change tags to apply to the log entry
+	 *     authorsIds:      The array of the user IDs of the offenders
+	 *     authorsIPs:      The array of the IP/anon user offenders
 	 * @throws MWException
 	 */
-	private function updateLog( $logType, $params ) {
+	protected function updateLog( $params ) {
 		// Get the URL param's corresponding DB field
 		$field = RevisionDeleter::getRelationType( $this->getType() );
 		if ( !$field ) {
 			throw new MWException( "Bad log URL param type!" );
+		}
+		// Put things hidden from sysops in the suppression log
+		if ( ( $params['newBits'] | $params['oldBits'] ) & $this->getSuppressBit() ) {
+			$logType = 'suppress';
+		} else {
+			$logType = 'delete';
 		}
 		// Add params for affected page and ids
 		$logParams = $this->getLogParams( $params );
@@ -364,23 +285,11 @@ abstract class RevDelList extends RevisionListBase {
 		$logEntry->setParameters( $logParams );
 		$logEntry->setPerformer( $this->getUser() );
 		// Allow for easy searching of deletion log items for revision/log items
-		$relations = [
+		$logEntry->setRelations( [
 			$field => $params['ids'],
-		];
-		if ( isset( $params['authorIds'] ) ) {
-			$relations += [
-				'target_author_id' => $params['authorIds'],
-				'target_author_ip' => $params['authorIPs'],
-			];
-		}
-		if ( isset( $params['authorActors'] ) ) {
-			$relations += [
-				'target_author_actor' => $params['authorActors'],
-			];
-		}
-		$logEntry->setRelations( $relations );
-		// Apply change tags to the log entry
-		$logEntry->setTags( $params['tags'] );
+			'target_author_id' => $params['authorIds'],
+			'target_author_ip' => $params['authorIPs'],
+		] );
 		$logId = $logEntry->insert();
 		$logEntry->publish( $logId );
 	}
@@ -426,10 +335,9 @@ abstract class RevDelList extends RevisionListBase {
 	/**
 	 * A hook for setVisibility(): do any necessary updates post-commit.
 	 * STUB
-	 * @param array $visibilityChangeMap [id => ['oldBits' => $oldBits, 'newBits' => $newBits], ... ]
 	 * @return Status
 	 */
-	public function doPostCommitUpdates( array $visibilityChangeMap ) {
+	public function doPostCommitUpdates() {
 		return Status::newGood();
 	}
 

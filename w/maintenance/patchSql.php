@@ -45,13 +45,11 @@ class PatchSql extends Maintenance {
 
 	public function execute() {
 		$dbw = $this->getDB( DB_MASTER );
-		$updater = DatabaseUpdater::newForDB( $dbw, true, $this );
-
 		foreach ( $this->mArgs as $arg ) {
 			$files = [
 				$arg,
-				$updater->patchPath( $dbw, $arg ),
-				$updater->patchPath( $dbw, "patch-$arg.sql" ),
+				$dbw->patchPath( $arg ),
+				$dbw->patchPath( "patch-$arg.sql" ),
 			];
 			foreach ( $files as $file ) {
 				if ( file_exists( $file ) ) {
@@ -66,5 +64,5 @@ class PatchSql extends Maintenance {
 	}
 }
 
-$maintClass = PatchSql::class;
+$maintClass = "PatchSql";
 require_once RUN_MAINTENANCE_IF_MAIN;

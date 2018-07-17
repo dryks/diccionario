@@ -20,15 +20,14 @@
  * @file
  * @ingroup FileRepo
  * @ingroup FileBackend
+ * @author Aaron Schulz
  */
-
-use Wikimedia\Rdbms\DBConnRef;
 
 /**
  * @brief Proxy backend that manages file layout rewriting for FileRepo.
  *
  * LocalRepo may be configured to store files under their title names or by SHA-1.
- * This acts as a shim in the latter case, providing backwards compatability for
+ * This acts as a shim in the later case, providing backwards compatability for
  * most callers. All "public"/"deleted" zone files actually go in an "original"
  * container and are never changed.
  *
@@ -51,10 +50,8 @@ class FileBackendDBRepoWrapper extends FileBackend {
 	protected $dbs;
 
 	public function __construct( array $config ) {
-		/** @var FileBackend $backend */
-		$backend = $config['backend'];
-		$config['name'] = $backend->getName();
-		$config['wikiId'] = $backend->getWikiId();
+		$config['name'] = $config['backend']->getName();
+		$config['wikiId'] = $config['backend']->getWikiId();
 		parent::__construct( $config );
 		$this->backend = $config['backend'];
 		$this->repoName = $config['repoName'];
@@ -92,12 +89,12 @@ class FileBackendDBRepoWrapper extends FileBackend {
 	 * E.g. mwstore://local-backend/local-public/a/ab/<name>.jpg
 	 * => mwstore://local-backend/local-original/x/y/z/<sha1>.jpg
 	 *
-	 * @param string[] $paths
+	 * @param array $paths
 	 * @param bool $latest
-	 * @return string[] Translated paths in same order
+	 * @return array Translated paths in same order
 	 */
 	public function getBackendPaths( array $paths, $latest = true ) {
-		$db = $this->getDB( $latest ? DB_MASTER : DB_REPLICA );
+		$db = $this->getDB( $latest ? DB_MASTER : DB_SLAVE );
 
 		// @TODO: batching
 		$resolved = [];
@@ -259,7 +256,7 @@ class FileBackendDBRepoWrapper extends FileBackend {
 		return $this->translateSrcParams( __FUNCTION__, $params );
 	}
 
-	public function getScopedLocksForOps( array $ops, StatusValue $status ) {
+	public function getScopedLocksForOps( array $ops, Status $status ) {
 		return $this->backend->getScopedLocksForOps( $ops, $status );
 	}
 
@@ -282,7 +279,7 @@ class FileBackendDBRepoWrapper extends FileBackend {
 	/**
 	 * Get a connection to the repo file registry DB
 	 *
-	 * @param int $index
+	 * @param integer $index
 	 * @return DBConnRef
 	 */
 	protected function getDB( $index ) {
@@ -298,7 +295,6 @@ class FileBackendDBRepoWrapper extends FileBackend {
 	 *
 	 * @param string $function
 	 * @param array $params
-	 * @return mixed
 	 */
 	protected function translateSrcParams( $function, array $params ) {
 		$latest = !empty( $params['latest'] );
@@ -341,8 +337,8 @@ class FileBackendDBRepoWrapper extends FileBackend {
 	 *
 	 * This leaves destination paths alone since we don't want those to mutate
 	 *
-	 * @param array[] $ops
-	 * @return array[]
+	 * @param array $ops
+	 * @return array
 	 */
 	protected function mungeOpPaths( array $ops ) {
 		// Ops that use 'src' and do not mutate core file data there

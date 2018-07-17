@@ -35,8 +35,11 @@ class WatchAction extends FormAction {
 		return false;
 	}
 
+	/**
+	 * @return string HTML
+	 */
 	protected function getDescription() {
-		return '';
+		return $this->msg( 'addwatch' )->escaped();
 	}
 
 	public function onSubmit( $data ) {
@@ -54,31 +57,20 @@ class WatchAction extends FormAction {
 		parent::checkCanExecute( $user );
 	}
 
-	protected function usesOOUI() {
-		return true;
-	}
-
-	protected function getFormFields() {
-		return [
-			'intro' => [
-				'type' => 'info',
-				'vertical-label' => true,
-				'raw' => true,
-				'default' => $this->msg( 'confirm-watch-top' )->parse()
-			]
-		];
-	}
-
 	protected function alterForm( HTMLForm $form ) {
-		$form->setWrapperLegendMsg( 'addwatch' );
 		$form->setSubmitTextMsg( 'confirm-watch-button' );
 		$form->setTokenSalt( 'watch' );
 	}
 
-	public function onSuccess() {
-		$msgKey = $this->getTitle()->isTalkPage() ? 'addedwatchtext-talk' : 'addedwatchtext';
-		$this->getOutput()->addWikiMsg( $msgKey, $this->getTitle()->getPrefixedText() );
+	protected function preText() {
+		return $this->msg( 'confirm-watch-top' )->parse();
 	}
+
+	public function onSuccess() {
+		$this->getOutput()->addWikiMsg( 'addedwatchtext', $this->getTitle()->getPrefixedText() );
+	}
+
+	/* Static utility methods */
 
 	/**
 	 * Watch or unwatch a page

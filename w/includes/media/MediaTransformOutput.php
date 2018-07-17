@@ -47,13 +47,13 @@ abstract class MediaTransformOutput {
 	/** @var bool|string */
 	protected $page;
 
-	/** @var bool|string Filesystem path to the thumb */
+	/** @var bool|string Filesystem path to the thumb  */
 	protected $path;
 
 	/** @var bool|string Language code, false if not set */
 	protected $lang;
 
-	/** @var bool|string Permanent storage path */
+	/** @var bool|string Permanent storage path  */
 	protected $storagePath = false;
 
 	/**
@@ -421,10 +421,8 @@ class ThumbnailImage extends MediaTransformOutput {
 		}
 
 		// Additional densities for responsive images, if specified.
-		// If any of these urls is the same as src url, it'll be excluded.
-		$responsiveUrls = array_diff( $this->responsiveUrls, [ $this->url ] );
-		if ( !empty( $responsiveUrls ) ) {
-			$attribs['srcset'] = Html::srcSet( $responsiveUrls );
+		if ( !empty( $this->responsiveUrls ) ) {
+			$attribs['srcset'] = Html::srcSet( $this->responsiveUrls );
 		}
 
 		Hooks::run( 'ThumbnailBeforeProduceHTML', [ $this, &$attribs, &$linkAttribs ] );
@@ -439,12 +437,19 @@ class ThumbnailImage extends MediaTransformOutput {
  * @ingroup Media
  */
 class MediaTransformError extends MediaTransformOutput {
-	/** @var Message */
-	private $msg;
+	/** @var string HTML formatted version of the error */
+	private $htmlMsg;
+
+	/** @var string Plain text formatted version of the error */
+	private $textMsg;
 
 	function __construct( $msg, $width, $height /*, ... */ ) {
 		$args = array_slice( func_get_args(), 3 );
-		$this->msg = wfMessage( $msg )->params( $args );
+		$htmlArgs = array_map( 'htmlspecialchars', $args );
+		$htmlArgs = array_map( 'nl2br', $htmlArgs );
+
+		$this->htmlMsg = wfMessage( $msg )->rawParams( $htmlArgs )->escaped();
+		$this->textMsg = wfMessage( $msg )->rawParams( $htmlArgs )->text();
 		$this->width = intval( $width );
 		$this->height = intval( $height );
 		$this->url = false;
@@ -454,28 +459,20 @@ class MediaTransformError extends MediaTransformOutput {
 	function toHtml( $options = [] ) {
 		return "<div class=\"MediaTransformError\" style=\"" .
 			"width: {$this->width}px; height: {$this->height}px; display:inline-block;\">" .
-			$this->getHtmlMsg() .
+			$this->htmlMsg .
 			"</div>";
 	}
 
 	function toText() {
-		return $this->msg->text();
+		return $this->textMsg;
 	}
 
 	function getHtmlMsg() {
-		return $this->msg->escaped();
-	}
-
-	function getMsg() {
-		return $this->msg;
+		return $this->htmlMsg;
 	}
 
 	function isError() {
 		return true;
-	}
-
-	function getHttpStatusCode() {
-		return 500;
 	}
 }
 
@@ -489,12 +486,7 @@ class TransformParameterError extends MediaTransformError {
 		parent::__construct( 'thumbnail_error',
 			max( isset( $params['width'] ) ? $params['width'] : 0, 120 ),
 			max( isset( $params['height'] ) ? $params['height'] : 0, 120 ),
-			wfMessage( 'thumbnail_invalid_params' )
-		);
-	}
-
-	function getHttpStatusCode() {
-		return 400;
+			wfMessage( 'thumbnail_invalid_params' )->text() );
 	}
 }
 
@@ -507,18 +499,14 @@ class TransformParameterError extends MediaTransformError {
 class TransformTooBigImageAreaError extends MediaTransformError {
 	function __construct( $params, $maxImageArea ) {
 		$msg = wfMessage( 'thumbnail_toobigimagearea' );
-		$msg->rawParams(
-			$msg->getLanguage()->formatComputingNumbers( $maxImageArea, 1000, "size-$1pixel" )
-		);
 
 		parent::__construct( 'thumbnail_error',
 			max( isset( $params['width'] ) ? $params['width'] : 0, 120 ),
 			max( isset( $params['height'] ) ? $params['height'] : 0, 120 ),
-			$msg
-		);
-	}
-
-	function getHttpStatusCode() {
-		return 400;
+			$msg->rawParams(
+				$msg->getLanguage()->formatComputingNumbers(
+					$maxImageArea, 1000, "size-$1pixel" )
+				)->text()
+			);
 	}
 }

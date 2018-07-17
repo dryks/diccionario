@@ -1,8 +1,8 @@
 /*!
  * VisualEditor DataModel MWReferenceNode class.
  *
- * @copyright 2011-2018 VisualEditor Team's Cite sub-team and others; see AUTHORS.txt
- * @license MIT
+ * @copyright 2011-2016 Cite VisualEditor Team and others; see AUTHORS.txt
+ * @license The MIT License (MIT); see LICENSE.txt
  */
 
 /**
@@ -17,7 +17,7 @@
  */
 ve.dm.MWReferenceNode = function VeDmMWReferenceNode() {
 	// Parent constructor
-	ve.dm.MWReferenceNode.super.apply( this, arguments );
+	ve.dm.LeafNode.apply( this, arguments );
 
 	// Mixin constructors
 	ve.dm.FocusableNode.call( this );
@@ -102,9 +102,9 @@ ve.dm.MWReferenceNode.static.toDataElement = function ( domElements, converter )
 
 ve.dm.MWReferenceNode.static.toDomElements = function ( dataElement, doc, converter ) {
 	var itemNodeHtml, originalHtml, mwData, i, iLen, keyedNodes, setContents, contentsAlreadySet,
-		originalMw, listKeyParts, name, group, $link,
+		originalMw, listKeyParts, name,
 		isForClipboard = converter.isForClipboard(),
-		el = doc.createElement( 'sup' ),
+		el = doc.createElement( 'span' ),
 		itemNodeWrapper = doc.createElement( 'div' ),
 		originalHtmlWrapper = doc.createElement( 'div' ),
 		itemNode = converter.internalList.getItemNode( dataElement.attributes.listIndex ),
@@ -216,24 +216,14 @@ ve.dm.MWReferenceNode.static.toDomElements = function ( dataElement, doc, conver
 		el.setAttribute( 'data-mw', originalMw );
 
 		// Return the original DOM elements if possible
-		if ( dataElement.originalDomElementsHash !== undefined ) {
-			return ve.copyDomElements( converter.getStore().value( dataElement.originalDomElementsHash ), doc );
+		if ( dataElement.originalDomElements ) {
+			return ve.copyDomElements( dataElement.originalDomElements, doc );
 		}
 	} else {
 		el.setAttribute( 'data-mw', JSON.stringify( mwData ) );
-
 		// HTML for the external clipboard, it will be ignored by the converter
-		group = this.getGroup( dataElement );
-		$link = $( '<a>', doc ).css(
-			'counterReset', 'mw-Ref ' + this.getIndex( dataElement, converter.internalList )
-		);
-		if ( group ) {
-			$link.attr( 'data-mw-group', this.getGroup( dataElement ) );
-		}
-		$( el ).addClass( 'mw-ref' ).append(
-			$link.append(
-				$( '<span>', doc ).addClass( 'mw-reflink-text' ).text( this.getIndexLabel( dataElement, converter.internalList ) )
-			)
+		$( el ).append(
+			$( '<sup>', doc ).text( this.getIndexLabel( dataElement, converter.internalList ) )
 		);
 	}
 
@@ -272,16 +262,9 @@ ve.dm.MWReferenceNode.static.remapInternalListKeys = function ( dataElement, int
  * @return {number} Index
  */
 ve.dm.MWReferenceNode.static.getIndex = function ( dataElement, internalList ) {
-	var listIndex, listGroup, position,
-		overrideIndex = ve.getProp( dataElement, 'internal', 'overrideIndex' );
-
-	if ( overrideIndex ) {
-		return overrideIndex;
-	}
-
-	listIndex = dataElement.attributes.listIndex;
-	listGroup = dataElement.attributes.listGroup;
-	position = internalList.getIndexPosition( listGroup, listIndex );
+	var listIndex = dataElement.attributes.listIndex,
+		listGroup = dataElement.attributes.listGroup,
+		position = internalList.getIndexPosition( listGroup, listIndex );
 
 	return position + 1;
 };
@@ -321,25 +304,6 @@ ve.dm.MWReferenceNode.static.cloneElement = function () {
 	delete clone.attributes.mw;
 	delete clone.attributes.originalMw;
 	return clone;
-};
-
-/**
- * @inheritdoc
- */
-ve.dm.MWReferenceNode.static.describeChange = function ( key, change ) {
-	if ( key === 'refGroup' ) {
-		if ( change.from ) {
-			if ( change.to ) {
-				return ve.msg( 'cite-ve-changedesc-ref-group-both', change.from, change.to );
-			} else {
-				return ve.msg( 'cite-ve-changedesc-ref-group-from', change.from );
-			}
-		}
-		return ve.msg( 'cite-ve-changedesc-ref-group-to', change.to );
-	}
-	if ( key === 'refListItemId' ) {
-		return ve.msg( 'cite-ve-changedesc-reflist-item-id' );
-	}
 };
 
 /* Methods */
@@ -399,13 +363,9 @@ ve.dm.MWReferenceNode.prototype.onRoot = function () {
 
 /**
  * Handle the node being detached from the root
- *
- * @param {ve.dm.DocumentNode} oldRoot Old document root
  */
-ve.dm.MWReferenceNode.prototype.onUnroot = function ( oldRoot ) {
-	if ( this.getDocument().getDocumentNode() === oldRoot ) {
-		this.removeFromInternalList();
-	}
+ve.dm.MWReferenceNode.prototype.onUnroot = function () {
+	this.removeFromInternalList();
 };
 
 /**
@@ -429,10 +389,6 @@ ve.dm.MWReferenceNode.prototype.addToInternalList = function () {
  * Unregister the node from the internal list
  */
 ve.dm.MWReferenceNode.prototype.removeFromInternalList = function () {
-	if ( !this.registeredListGroup ) {
-		// Don't try to remove if we haven't been added in the first place.
-		return;
-	}
 	this.getDocument().getInternalList().removeNode(
 		this.registeredListGroup,
 		this.registeredListKey,

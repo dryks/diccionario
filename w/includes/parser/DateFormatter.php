@@ -27,19 +27,13 @@
  * @ingroup Parser
  */
 class DateFormatter {
-	private $mSource, $mTarget;
-	private $monthNames = '';
+	public $mSource, $mTarget;
+	public $monthNames = '', $rxDM, $rxMD, $rxDMY, $rxYDM, $rxMDY, $rxYMD;
 
-	private $regexes;
-	private $rules, $xMonths, $preferences;
+	public $regexes, $pDays, $pMonths, $pYears;
+	public $rules, $xMonths, $preferences;
 
-	private $lang, $mLinked;
-
-	/** @var string[] */
-	private $keys;
-
-	/** @var string[] */
-	private $targets;
+	protected $lang, $mLinked;
 
 	const ALL = -1;
 	const NONE = 0;
@@ -107,7 +101,7 @@ class DateFormatter {
 		$this->targets[self::ISO2] = '[[y-m-d]]';
 
 		# Rules
-		#            pref       source      target
+		#            pref    source 	  target
 		$this->rules[self::DMY][self::MD] = self::DM;
 		$this->rules[self::ALL][self::MD] = self::MD;
 		$this->rules[self::MDY][self::DM] = self::MD;
@@ -126,16 +120,13 @@ class DateFormatter {
 	/**
 	 * Get a DateFormatter object
 	 *
-	 * @param Language|null $lang In which language to format the date
-	 *     Defaults to the site content language
+	 * @param Language|string|null $lang In which language to format the date
+	 * 		Defaults to the site content language
 	 * @return DateFormatter
 	 */
 	public static function getInstance( $lang = null ) {
 		global $wgContLang, $wgMainCacheType;
 
-		if ( is_string( $lang ) ) {
-			wfDeprecated( __METHOD__ . ' with type string for $lang', '1.31' );
-		}
 		$lang = $lang ? wfGetLangObj( $lang ) : $wgContLang;
 		$cache = ObjectCache::getLocalServerInstance( $wgMainCacheType );
 
@@ -207,12 +198,10 @@ class DateFormatter {
 	}
 
 	/**
-	 * Regexp replacement callback
-	 *
 	 * @param array $matches
 	 * @return string
 	 */
-	private function replace( $matches ) {
+	public function replace( $matches ) {
 		# Extract information from $matches
 		$linked = true;
 		if ( isset( $this->mLinked ) ) {
@@ -228,17 +217,15 @@ class DateFormatter {
 			}
 		}
 
-		return $this->formatDate( $bits, $matches[0], $linked );
+		return $this->formatDate( $bits, $linked );
 	}
 
 	/**
 	 * @param array $bits
-	 * @param string $orig Original input string, to be returned
-	 *  on formatting failure.
 	 * @param bool $link
 	 * @return string
 	 */
-	private function formatDate( $bits, $orig, $link = true ) {
+	public function formatDate( $bits, $link = true ) {
 		$format = $this->targets[$this->mTarget];
 
 		if ( !$link ) {
@@ -313,9 +300,8 @@ class DateFormatter {
 			}
 		}
 		if ( $fail ) {
-			// This occurs when parsing a date with day or month outside the bounds
-			// of possibilities.
-			$text = $orig;
+			/** @todo FIXME: $matches doesn't exist here, what's expected? */
+			$text = $matches[0];
 		}
 
 		$isoBits = [];
@@ -337,7 +323,7 @@ class DateFormatter {
 	 * Return a regex that can be used to find month names in string
 	 * @return string regex to find the months with
 	 */
-	private function getMonthRegex() {
+	public function getMonthRegex() {
 		$names = [];
 		for ( $i = 1; $i <= 12; $i++ ) {
 			$names[] = $this->lang->getMonthName( $i );
@@ -351,7 +337,7 @@ class DateFormatter {
 	 * @param string $monthName Month name
 	 * @return string ISO month name
 	 */
-	private function makeIsoMonth( $monthName ) {
+	public function makeIsoMonth( $monthName ) {
 		$n = $this->xMonths[$this->lang->lc( $monthName )];
 		return sprintf( '%02d', $n );
 	}
@@ -361,7 +347,7 @@ class DateFormatter {
 	 * @param string $year Year name
 	 * @return string ISO year name
 	 */
-	private function makeIsoYear( $year ) {
+	public function makeIsoYear( $year ) {
 		# Assumes the year is in a nice format, as enforced by the regex
 		if ( substr( $year, -2 ) == 'BC' ) {
 			$num = intval( substr( $year, 0, -3 ) ) - 1;
@@ -380,7 +366,7 @@ class DateFormatter {
 	 * @return int|string int representing year number in case of AD dates, or string containing
 	 *   year number and 'BC' at the end otherwise.
 	 */
-	private function makeNormalYear( $iso ) {
+	public function makeNormalYear( $iso ) {
 		if ( $iso[0] == '-' ) {
 			$text = ( intval( substr( $iso, 1 ) ) + 1 ) . ' BC';
 		} else {

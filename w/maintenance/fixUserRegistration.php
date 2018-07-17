@@ -51,7 +51,7 @@ class FixUserRegistration extends Maintenance {
 				],
 				__METHOD__,
 				[
-					'LIMIT' => $this->getBatchSize(),
+					'LIMIT' => $this->mBatchSize,
 					'ORDER BY' => 'user_id',
 				]
 			);
@@ -59,15 +59,11 @@ class FixUserRegistration extends Maintenance {
 				$id = $row->user_id;
 				$lastId = $id;
 				// Get first edit time
-				$actorQuery = ActorMigration::newMigration()
-					->getWhere( $dbw, 'rev_user', User::newFromId( $id ) );
 				$timestamp = $dbw->selectField(
-					[ 'revision' ] + $actorQuery['tables'],
+					'revision',
 					'MIN(rev_timestamp)',
-					$actorQuery['conds'],
-					__METHOD__,
-					[],
-					$actorQuery['joins']
+					[ 'rev_user' => $id ],
+					__METHOD__
 				);
 				// Update
 				if ( $timestamp !== null ) {
@@ -84,12 +80,12 @@ class FixUserRegistration extends Maintenance {
 					$this->output( "Could not find registration for #$id NULL\n" );
 				}
 			}
-			$this->output( "Waiting for replica DBs..." );
+			$this->output( "Waiting for slaves..." );
 			wfWaitForSlaves();
 			$this->output( " done.\n" );
-		} while ( $res->numRows() >= $this->getBatchSize() );
+		} while ( $res->numRows() >= $this->mBatchSize );
 	}
 }
 
-$maintClass = FixUserRegistration::class;
+$maintClass = "FixUserRegistration";
 require_once RUN_MAINTENANCE_IF_MAIN;

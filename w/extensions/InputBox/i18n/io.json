@@ -1,11 +1,9 @@
 {
 	"@metadata": {
 		"authors": [
-			"Malafaya",
-			"Joao Xavier"
+			"Malafaya"
 		]
 	},
-	"inputbox-tryexact": "Probar simileso exakta",
 	"inputbox-searchfulltext": "Serchar tota texto",
 	"inputbox-createarticle": "Krear pagino"
 }

@@ -23,7 +23,6 @@
  * @file
  */
 
-use MediaWiki\MediaWikiServices;
 use MediaWiki\Session\Session;
 use MediaWiki\Session\SessionId;
 use MediaWiki\Session\SessionManager;
@@ -81,14 +80,9 @@ class WebRequest {
 	 */
 	protected $sessionId = null;
 
-	/** @var bool Whether this HTTP request is "safe" (even if it is an HTTP post) */
-	protected $markedAsSafe = false;
-
-	/**
-	 * @codeCoverageIgnore
-	 */
 	public function __construct() {
-		$this->requestTime = $_SERVER['REQUEST_TIME_FLOAT'];
+		$this->requestTime = isset( $_SERVER['REQUEST_TIME_FLOAT'] )
+			? $_SERVER['REQUEST_TIME_FLOAT'] : microtime( true );
 
 		// POST overrides GET data
 		// We don't use $_REQUEST here to avoid interference from cookies...
@@ -112,7 +106,7 @@ class WebRequest {
 	 */
 	public static function getPathInfo( $want = 'all' ) {
 		global $wgUsePathInfo;
-		// PATH_INFO is mangled due to https://bugs.php.net/bug.php?id=31892
+		// PATH_INFO is mangled due to http://bugs.php.net/bug.php?id=31892
 		// And also by Apache 2.x, double slashes are converted to single slashes.
 		// So we will use REQUEST_URI if possible.
 		$matches = [];
@@ -122,9 +116,9 @@ class WebRequest {
 			if ( !preg_match( '!^https?://!', $url ) ) {
 				$url = 'http://unused' . $url;
 			}
-			Wikimedia\suppressWarnings();
+			MediaWiki\suppressWarnings();
 			$a = parse_url( $url );
-			Wikimedia\restoreWarnings();
+			MediaWiki\restoreWarnings();
 			if ( $a ) {
 				$path = isset( $a['path'] ) ? $a['path'] : '';
 
@@ -141,7 +135,7 @@ class WebRequest {
 				$router->add( "$wgScript/$1" );
 
 				if ( isset( $_SERVER['SCRIPT_NAME'] )
-					&& preg_match( '/\.php/', $_SERVER['SCRIPT_NAME'] )
+					&& preg_match( '/\.php5?/', $_SERVER['SCRIPT_NAME'] )
 				) {
 					# Check for SCRIPT_NAME, we handle index.php explicitly
 					# But we do have some other .php files such as img_auth.php
@@ -174,7 +168,7 @@ class WebRequest {
 		} elseif ( $wgUsePathInfo ) {
 			if ( isset( $_SERVER['ORIG_PATH_INFO'] ) && $_SERVER['ORIG_PATH_INFO'] != '' ) {
 				// Mangled PATH_INFO
-				// https://bugs.php.net/bug.php?id=31892
+				// http://bugs.php.net/bug.php?id=31892
 				// Also reported when ini_get('cgi.fix_pathinfo')==false
 				$matches['title'] = substr( $_SERVER['ORIG_PATH_INFO'], 1 );
 
@@ -215,7 +209,7 @@ class WebRequest {
 
 			$host = $parts[0];
 			if ( $wgAssumeProxiesUseDefaultProtocolPorts && isset( $_SERVER['HTTP_X_FORWARDED_PROTO'] ) ) {
-				// T72021: Assume that upstream proxy is running on the default
+				// Bug 70021: Assume that upstream proxy is running on the default
 				// port based on the protocol. We have no reliable way to determine
 				// the actual port in use upstream.
 				$port = $stdPort;
@@ -237,7 +231,7 @@ class WebRequest {
 	 * This is for use prior to Setup.php, when no WebRequest object is available.
 	 * At other times, use the non-static function getProtocol().
 	 *
-	 * @return string
+	 * @return array
 	 */
 	public static function detectProtocol() {
 		if ( ( !empty( $_SERVER['HTTPS'] ) && $_SERVER['HTTPS'] !== 'off' ) ||
@@ -269,8 +263,6 @@ class WebRequest {
 	 * @since 1.27
 	 */
 	public static function getRequestId() {
-		// This method is called from various error handlers and should be kept simple.
-
 		if ( !self::$reqId ) {
 			self::$reqId = isset( $_SERVER['UNIQUE_ID'] )
 				? $_SERVER['UNIQUE_ID'] : wfRandomString( 24 );
@@ -309,7 +301,7 @@ class WebRequest {
 	 * available variant URLs.
 	 */
 	public function interpolateTitle() {
-		// T18019: title interpolation on API queries is useless and sometimes harmful
+		// bug 16019: title interpolation on API queries is useless and sometimes harmful
 		if ( defined( 'MW_API' ) ) {
 			return;
 		}
@@ -326,7 +318,7 @@ class WebRequest {
 	 *
 	 * @param string $path The URL path given from the client
 	 * @param array $bases One or more URLs, optionally with $1 at the end
-	 * @param string|bool $key If provided, the matching key in $bases will be
+	 * @param string $key If provided, the matching key in $bases will be
 	 *    passed on as the value of this URL parameter
 	 * @return array Array of URL variables to interpolate; empty if no match
 	 */
@@ -356,7 +348,7 @@ class WebRequest {
 	 * @return array|string Cleaned-up version of the given
 	 * @private
 	 */
-	public function normalizeUnicode( $data ) {
+	function normalizeUnicode( $data ) {
 		if ( is_array( $data ) ) {
 			foreach ( $data as $key => $val ) {
 				$data[$key] = $this->normalizeUnicode( $val );
@@ -380,7 +372,7 @@ class WebRequest {
 	 */
 	private function getGPCVal( $arr, $name, $default ) {
 		# PHP is so nice to not touch input data, except sometimes:
-		# https://secure.php.net/variables.external#language.variables.external.dot-in-names
+		# http://us2.php.net/variables.external#language.variables.external.dot-in-names
 		# Work around PHP *feature* to avoid *bugs* elsewhere.
 		$name = strtr( $name, '.', '_' );
 		if ( isset( $arr[$name] ) ) {
@@ -400,40 +392,14 @@ class WebRequest {
 	}
 
 	/**
-	 * Fetch a scalar from the input without normalization, or return $default
-	 * if it's not set.
-	 *
-	 * Unlike self::getVal(), this does not perform any normalization on the
-	 * input value.
-	 *
-	 * @since 1.28
-	 * @param string $name
-	 * @param string|null $default
-	 * @return string|null
-	 */
-	public function getRawVal( $name, $default = null ) {
-		$name = strtr( $name, '.', '_' ); // See comment in self::getGPCVal()
-		if ( isset( $this->data[$name] ) && !is_array( $this->data[$name] ) ) {
-			$val = $this->data[$name];
-		} else {
-			$val = $default;
-		}
-		if ( is_null( $val ) ) {
-			return $val;
-		} else {
-			return (string)$val;
-		}
-	}
-
-	/**
 	 * Fetch a scalar from the input or return $default if it's not set.
 	 * Returns a string. Arrays are discarded. Useful for
 	 * non-freeform text inputs (e.g. predefined internal text keys
 	 * selected by a drop-down menu). For freeform input, see getText().
 	 *
 	 * @param string $name
-	 * @param string|null $default Optional default (or null)
-	 * @return string|null
+	 * @param string $default Optional default (or null)
+	 * @return string
 	 */
 	public function getVal( $name, $default = null ) {
 		$val = $this->getGPCVal( $this->data, $name, $default );
@@ -483,7 +449,7 @@ class WebRequest {
 	 *
 	 * @param string $name
 	 * @param array $default Optional default (or null)
-	 * @return array|null
+	 * @return array
 	 */
 	public function getArray( $name, $default = null ) {
 		$val = $this->getGPCVal( $this->data, $name, $default );
@@ -522,7 +488,7 @@ class WebRequest {
 	 * @return int
 	 */
 	public function getInt( $name, $default = 0 ) {
-		return intval( $this->getRawVal( $name, $default ) );
+		return intval( $this->getVal( $name, $default ) );
 	}
 
 	/**
@@ -534,7 +500,7 @@ class WebRequest {
 	 * @return int|null
 	 */
 	public function getIntOrNull( $name ) {
-		$val = $this->getRawVal( $name );
+		$val = $this->getVal( $name );
 		return is_numeric( $val )
 			? intval( $val )
 			: null;
@@ -551,7 +517,7 @@ class WebRequest {
 	 * @return float
 	 */
 	public function getFloat( $name, $default = 0.0 ) {
-		return floatval( $this->getRawVal( $name, $default ) );
+		return floatval( $this->getVal( $name, $default ) );
 	}
 
 	/**
@@ -564,7 +530,7 @@ class WebRequest {
 	 * @return bool
 	 */
 	public function getBool( $name, $default = false ) {
-		return (bool)$this->getRawVal( $name, $default );
+		return (bool)$this->getVal( $name, $default );
 	}
 
 	/**
@@ -577,8 +543,7 @@ class WebRequest {
 	 * @return bool
 	 */
 	public function getFuzzyBool( $name, $default = false ) {
-		return $this->getBool( $name, $default )
-			&& strcasecmp( $this->getRawVal( $name ), 'false' ) !== 0;
+		return $this->getBool( $name, $default ) && strcasecmp( $this->getVal( $name ), 'false' ) !== 0;
 	}
 
 	/**
@@ -592,22 +557,26 @@ class WebRequest {
 	public function getCheck( $name ) {
 		# Checkboxes and buttons are only present when clicked
 		# Presence connotes truth, absence false
-		return $this->getRawVal( $name, null ) !== null;
+		return $this->getVal( $name, null ) !== null;
 	}
 
 	/**
 	 * Fetch a text string from the given array or return $default if it's not
-	 * set. Carriage returns are stripped from the text. This should generally
-	 * be used for form "<textarea>" and "<input>" fields, and for
-	 * user-supplied freeform text input.
+	 * set. Carriage returns are stripped from the text, and with some language
+	 * modules there is an input transliteration applied. This should generally
+	 * be used for form "<textarea>" and "<input>" fields. Used for
+	 * user-supplied freeform text input (for which input transformations may
+	 * be required - e.g.  Esperanto x-coding).
 	 *
 	 * @param string $name
 	 * @param string $default Optional
 	 * @return string
 	 */
 	public function getText( $name, $default = '' ) {
+		global $wgContLang;
 		$val = $this->getVal( $name, $default );
-		return str_replace( "\r\n", "\n", $val );
+		return str_replace( "\r\n", "\n",
+			$wgContLang->recodeInput( $val ) );
 	}
 
 	/**
@@ -647,7 +616,6 @@ class WebRequest {
 	 * Get the values passed in the query string.
 	 * No transformation is performed on the values.
 	 *
-	 * @codeCoverageIgnore
 	 * @return array
 	 */
 	public function getQueryValues() {
@@ -658,7 +626,6 @@ class WebRequest {
 	 * Return the contents of the Query with no decoding. Use when you need to
 	 * know exactly what was sent, e.g. for an OAuth signature over the elements.
 	 *
-	 * @codeCoverageIgnore
 	 * @return string
 	 */
 	public function getRawQueryString() {
@@ -717,9 +684,6 @@ class WebRequest {
 
 	/**
 	 * Return the session for this request
-	 *
-	 * This might unpersist an existing session if it was invalid.
-	 *
 	 * @since 1.27
 	 * @note For performance, keep the session locally if you will be making
 	 *  much use of it instead of calling this method repeatedly.
@@ -759,6 +723,22 @@ class WebRequest {
 	}
 
 	/**
+	 * Returns true if the request has a persistent session.
+	 * This does not necessarily mean that the user is logged in!
+	 *
+	 * @deprecated since 1.27, use
+	 *  \MediaWiki\Session\SessionManager::singleton()->getPersistedSessionId()
+	 *  instead.
+	 * @return bool
+	 */
+	public function checkSessionCookie() {
+		global $wgInitialSessionId;
+		wfDeprecated( __METHOD__, '1.27' );
+		return $wgInitialSessionId !== null &&
+			$this->getSession()->getId() === (string)$wgInitialSessionId;
+	}
+
+	/**
 	 * Get a cookie from the $_COOKIE jar
 	 *
 	 * @param string $key The name of the cookie
@@ -782,8 +762,6 @@ class WebRequest {
 	 * @return string
 	 */
 	public static function getGlobalRequestURL() {
-		// This method is called on fatal errors; it should not depend on anything complex.
-
 		if ( isset( $_SERVER['REQUEST_URI'] ) && strlen( $_SERVER['REQUEST_URI'] ) ) {
 			$base = $_SERVER['REQUEST_URI'];
 		} elseif ( isset( $_SERVER['HTTP_X_ORIGINAL_URL'] )
@@ -959,7 +937,7 @@ class WebRequest {
 	public function response() {
 		/* Lazy initialization of response object for this request */
 		if ( !is_object( $this->response ) ) {
-			$class = ( $this instanceof FauxRequest ) ? FauxResponse::class : WebResponse::class;
+			$class = ( $this instanceof FauxRequest ) ? 'FauxResponse' : 'WebResponse';
 			$this->response = new $class();
 		}
 		return $this->response;
@@ -1044,7 +1022,7 @@ class WebRequest {
 	 * @param mixed $data
 	 */
 	public function setSessionData( $key, $data ) {
-		$this->getSession()->set( $key, $data );
+		return $this->getSession()->set( $key, $data );
 	}
 
 	/**
@@ -1086,7 +1064,6 @@ class WebRequest {
 		header( 'Content-Type: text/html' );
 		$encUrl = htmlspecialchars( $url );
 		echo <<<HTML
-<!DOCTYPE html>
 <html>
 <head>
 <title>Security redirect</title>
@@ -1211,8 +1188,7 @@ HTML;
 		# Append XFF
 		$forwardedFor = $this->getHeader( 'X-Forwarded-For' );
 		if ( $forwardedFor !== false ) {
-			$proxyLookup = MediaWikiServices::getInstance()->getProxyLookup();
-			$isConfigured = $proxyLookup->isConfiguredProxy( $ip );
+			$isConfigured = IP::isConfiguredProxy( $ip );
 			$ipchain = array_map( 'trim', explode( ',', $forwardedFor ) );
 			$ipchain = array_reverse( $ipchain );
 			array_unshift( $ipchain, $ip );
@@ -1225,14 +1201,14 @@ HTML;
 			foreach ( $ipchain as $i => $curIP ) {
 				$curIP = IP::sanitizeIP( IP::canonicalize( $curIP ) );
 				if ( !$curIP || !isset( $ipchain[$i + 1] ) || $ipchain[$i + 1] === 'unknown'
-					|| !$proxyLookup->isTrustedProxy( $curIP )
+					|| !IP::isTrustedProxy( $curIP )
 				) {
 					break; // IP is not valid/trusted or does not point to anything
 				}
 				if (
 					IP::isPublic( $ipchain[$i + 1] ) ||
 					$wgUsePrivateIPs ||
-					$proxyLookup->isConfiguredProxy( $curIP ) // T50919; treat IP as sane
+					IP::isConfiguredProxy( $curIP ) // bug 48919; treat IP as sane
 				) {
 					// Follow the next IP according to the proxy
 					$nextIP = IP::canonicalize( $ipchain[$i + 1] );
@@ -1268,65 +1244,5 @@ HTML;
 	 */
 	public function setIP( $ip ) {
 		$this->ip = $ip;
-	}
-
-	/**
-	 * Check if this request uses a "safe" HTTP method
-	 *
-	 * Safe methods are verbs (e.g. GET/HEAD/OPTIONS) used for obtaining content. Such requests
-	 * are not expected to mutate content, especially in ways attributable to the client. Verbs
-	 * like POST and PUT are typical of non-safe requests which often change content.
-	 *
-	 * @return bool
-	 * @see https://tools.ietf.org/html/rfc7231#section-4.2.1
-	 * @see https://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html
-	 * @since 1.28
-	 */
-	public function hasSafeMethod() {
-		if ( !isset( $_SERVER['REQUEST_METHOD'] ) ) {
-			return false; // CLI mode
-		}
-
-		return in_array( $_SERVER['REQUEST_METHOD'], [ 'GET', 'HEAD', 'OPTIONS', 'TRACE' ] );
-	}
-
-	/**
-	 * Whether this request should be identified as being "safe"
-	 *
-	 * This means that the client is not requesting any state changes and that database writes
-	 * are not inherently required. Ideally, no visible updates would happen at all. If they
-	 * must, then they should not be publically attributed to the end user.
-	 *
-	 * In more detail:
-	 *   - Cache populations and refreshes MAY occur.
-	 *   - Private user session updates and private server logging MAY occur.
-	 *   - Updates to private viewing activity data MAY occur via DeferredUpdates.
-	 *   - Other updates SHOULD NOT occur (e.g. modifying content assets).
-	 *
-	 * @return bool
-	 * @see https://tools.ietf.org/html/rfc7231#section-4.2.1
-	 * @see https://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html
-	 * @since 1.28
-	 */
-	public function isSafeRequest() {
-		if ( $this->markedAsSafe && $this->wasPosted() ) {
-			return true; // marked as a "safe" POST
-		}
-
-		return $this->hasSafeMethod();
-	}
-
-	/**
-	 * Mark this request as identified as being nullipotent even if it is a POST request
-	 *
-	 * POST requests are often used due to the need for a client payload, even if the request
-	 * is otherwise equivalent to a "safe method" request.
-	 *
-	 * @see https://tools.ietf.org/html/rfc7231#section-4.2.1
-	 * @see https://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html
-	 * @since 1.28
-	 */
-	public function markAsSafeRequest() {
-		$this->markedAsSafe = true;
 	}
 }

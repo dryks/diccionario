@@ -77,7 +77,6 @@ class ProtectLogFormatter extends LogFormatter {
 	}
 
 	public function getActionLinks() {
-		$linkRenderer = $this->getLinkRenderer();
 		$subtype = $this->entry->getSubtype();
 		if ( $this->entry->isDeleted( LogPage::DELETED_ACTION ) // Action is hidden
 			|| $subtype === 'move_prot' // the move log entry has the right action link
@@ -88,8 +87,8 @@ class ProtectLogFormatter extends LogFormatter {
 		// Show history link for all changes after the protection
 		$title = $this->entry->getTarget();
 		$links = [
-			$linkRenderer->makeLink( $title,
-				$this->msg( 'hist' )->text(),
+			Linker::link( $title,
+				$this->msg( 'hist' )->escaped(),
 				[],
 				[
 					'action' => 'history',
@@ -100,9 +99,9 @@ class ProtectLogFormatter extends LogFormatter {
 
 		// Show change protection link
 		if ( $this->context->getUser()->isAllowed( 'protect' ) ) {
-			$links[] = $linkRenderer->makeKnownLink(
+			$links[] = Linker::linkKnown(
 				$title,
-				$this->msg( 'protect_change' )->text(),
+				$this->msg( 'protect_change' )->escaped(),
 				[],
 				[ 'action' => 'protect' ]
 			);

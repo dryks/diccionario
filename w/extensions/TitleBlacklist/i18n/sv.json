@@ -5,8 +5,7 @@
 			"Boivie",
 			"Lejonel",
 			"M.M.S.",
-			"Lokal Profil",
-			"WikiPhoenix"
+			"Lokal Profil"
 		]
 	},
 	"action-titleblacklistlog": "visa svartlistningsloggen för titlar",
@@ -26,8 +25,7 @@
 	"right-tboverride": "Åsidosätt svartlistan med titlar och användarnamn",
 	"right-tboverride-account": "Kör över svartlistan för användarnamn",
 	"right-titleblacklistlog": "Visa svartlistningslogg för titlar",
-	"apihelp-titleblacklist-description": "Validera en sidtitel, filnamn eller användarnamn mot TitleBlacklist.",
-	"apihelp-titleblacklist-summary": "Validera en sidtitel, filnamn eller användare mot TitleBlacklist.",
+	"apihelp-titleblacklist-description": "Validera en artikeltitel, filnamn, eller användarnamn mot TitleBlacklist.",
 	"apihelp-titleblacklist-param-title": "Strängen som ska valideras mot svartlistan.",
 	"apihelp-titleblacklist-param-action": "Åtgärden som ska kontrolleras.",
 	"apihelp-titleblacklist-param-nooverride": "Försök inte att åsidosätta svartlistan för titlar.",

@@ -18,9 +18,7 @@
  * http://www.gnu.org/copyleft/gpl.html
  */
 
-use MediaWiki\MediaWikiServices;
 use MediaWiki\Session\BotPasswordSessionProvider;
-use Wikimedia\Rdbms\IMaintainableDatabase;
 
 /**
  * Utility class for bot passwords
@@ -69,16 +67,15 @@ class BotPassword implements IDBAccessObject {
 
 	/**
 	 * Get a database connection for the bot passwords database
-	 * @param int $db Index of the connection to get, e.g. DB_MASTER or DB_REPLICA.
-	 * @return IMaintainableDatabase
+	 * @param int $db Index of the connection to get, e.g. DB_MASTER or DB_SLAVE.
+	 * @return DatabaseBase
 	 */
 	public static function getDB( $db ) {
 		global $wgBotPasswordsCluster, $wgBotPasswordsDatabase;
 
-		$lbFactory = MediaWikiServices::getInstance()->getDBLoadBalancerFactory();
 		$lb = $wgBotPasswordsCluster
-			? $lbFactory->getExternalLB( $wgBotPasswordsCluster )
-			: $lbFactory->getMainLB( $wgBotPasswordsDatabase );
+			? wfGetLBFactory()->getExternalLB( $wgBotPasswordsCluster )
+			: wfGetLB( $wgBotPasswordsDatabase );
 		return $lb->getConnectionRef( $db, [], $wgBotPasswordsDatabase );
 	}
 
@@ -413,7 +410,7 @@ class BotPassword implements IDBAccessObject {
 	 * @return array|false
 	 */
 	public static function canonicalizeLoginData( $username, $password ) {
-		$sep = self::getSeparator();
+		$sep = BotPassword::getSeparator();
 		// the strlen check helps minimize the password information obtainable from timing
 		if ( strlen( $password ) >= 32 && strpos( $username, $sep ) !== false ) {
 			// the separator is not valid in new usernames but might appear in legacy ones

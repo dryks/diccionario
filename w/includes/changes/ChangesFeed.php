@@ -20,8 +20,6 @@
  * @file
  */
 
-use Wikimedia\Rdbms\ResultWrapper;
-
 /**
  * Feed to Special:RecentChanges and Special:RecentChangesLiked
  *
@@ -31,6 +29,8 @@ class ChangesFeed {
 	public $format, $type, $titleMsg, $descMsg;
 
 	/**
+	 * Constructor
+	 *
 	 * @param string $format Feed's format (either 'rss' or 'atom')
 	 * @param string $type Type of feed (for cache keys)
 	 */
@@ -82,11 +82,10 @@ class ChangesFeed {
 			return null;
 		}
 
-		$cache = ObjectCache::getMainWANInstance();
 		$optionsHash = md5( serialize( $opts->getAllValues() ) ) . $wgRenderHashAppend;
-		$timekey = $cache->makeKey(
+		$timekey = wfMemcKey(
 			$this->type, $this->format, $wgLang->getCode(), $optionsHash, 'timestamp' );
-		$key = $cache->makeKey( $this->type, $this->format, $wgLang->getCode(), $optionsHash );
+		$key = wfMemcKey( $this->type, $this->format, $wgLang->getCode(), $optionsHash );
 
 		FeedUtils::checkPurge( $timekey, $key );
 
@@ -153,7 +152,7 @@ class ChangesFeed {
 			if ( $feedAge < $wgFeedCacheTimeout || $feedLastmodUnix > $lastmodUnix ) {
 				wfDebug( "RC: loading feed from cache ($key; $feedLastmod; $lastmod)...\n" );
 				if ( $feedLastmodUnix < $lastmodUnix ) {
-					$wgOut->setLastModified( $feedLastmod ); // T23916
+					$wgOut->setLastModified( $feedLastmod ); // bug 21916
 				}
 				return $cache->get( $key );
 			} else {
@@ -165,8 +164,8 @@ class ChangesFeed {
 
 	/**
 	 * Generate the feed items given a row from the database, printing the feed.
-	 * @param object $rows IDatabase resource with recentchanges rows
-	 * @param ChannelFeed &$feed
+	 * @param object $rows DatabaseBase resource with recentchanges rows
+	 * @param ChannelFeed $feed
 	 */
 	public static function generateFeed( $rows, &$feed ) {
 		$items = self::buildItems( $rows );
@@ -179,7 +178,7 @@ class ChangesFeed {
 
 	/**
 	 * Generate the feed items given a row from the database.
-	 * @param object $rows IDatabase resource with recentchanges rows
+	 * @param object $rows DatabaseBase resource with recentchanges rows
 	 * @return array
 	 */
 	public static function buildItems( $rows ) {

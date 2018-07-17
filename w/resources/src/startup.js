@@ -1,50 +1,41 @@
 /**
- * This file is where we decide whether to initialise the Grade A run-time.
+ * Code in this file MUST work on even the most ancient of browsers!
  *
- * - Beware: This file MUST parse without errors on even the most ancient of browsers!
- * - Beware: Do not call mwNow before the isCompatible() check.
+ * This file is where we decide whether to initialise the modern run-time.
  */
+/*jshint unused: false, evil: true */
+/*globals mw, RLQ: true, NORLQ: true, $VARS, $CODE, performance */
 
-/* global mw, mwPerformance, mwNow, isCompatible, $VARS, $CODE */
+var mediaWikiLoadStart = ( new Date() ).getTime(),
 
-window.mwPerformance = ( window.performance && performance.mark ) ? performance : {
-	mark: function () {}
-};
-// Define now() here to ensure valid comparison with mediaWikiLoadEnd (T153819).
-window.mwNow = ( function () {
-	var perf = window.performance,
-		navStart = perf && perf.timing && perf.timing.navigationStart;
-	return navStart && typeof perf.now === 'function' ?
-		function () { return navStart + perf.now(); } :
-		function () { return Date.now(); };
-}() );
+	mwPerformance = ( window.performance && performance.mark ) ? performance : {
+		mark: function () {}
+	};
+
+mwPerformance.mark( 'mwLoadStart' );
 
 /**
  * See <https://www.mediawiki.org/wiki/Compatibility#Browsers>
  *
  * Capabilities required for modern run-time:
- * - ECMAScript 5
  * - DOM Level 4 & Selectors API Level 1
  * - HTML5 & Web Storage
  * - DOM Level 2 Events
  *
  * Browsers we support in our modern run-time (Grade A):
- * - Chrome 13+
- * - IE 11+
- * - Firefox 4+
- * - Safari 5+
- * - Opera 15+
- * - Mobile Safari 6.0+ (iOS 6+)
- * - Android 4.1+
+ * - Chrome
+ * - IE 9+
+ * - Firefox 3.5+
+ * - Safari 4+
+ * - Opera 10.5+
+ * - Mobile Safari (iOS 1+)
+ * - Android 2.0+
  *
  * Browsers we support in our no-javascript run-time (Grade C):
- * - Chrome 1+
  * - IE 6+
  * - Firefox 3+
  * - Safari 3+
- * - Opera 15+
- * - Mobile Safari 5.0+ (iOS 4+)
- * - Android 2.0+
+ * - Opera 10+
  * - WebOS < 1.5
  * - PlayStation
  * - Symbian-based browsers
@@ -53,51 +44,40 @@ window.mwNow = ( function () {
  * - Nokia's Ovi Browser
  * - MeeGo's browser
  * - Google Glass
- * - UC Mini (speed mode on)
  *
  * Other browsers that pass the check are considered Grade X.
- *
- * @param {string} [str] User agent, defaults to navigator.userAgent
- * @return {boolean} User agent is compatible with MediaWiki JS
  */
-window.isCompatible = function ( str ) {
+function isCompatible( str ) {
 	var ua = str || navigator.userAgent;
 	return !!(
-		// https://caniuse.com/#feat=es5
-		// https://caniuse.com/#feat=use-strict
-		// https://caniuse.com/#feat=json / https://phabricator.wikimedia.org/T141344#2784065
-		( function () {
-			'use strict';
-			return !this && !!Function.prototype.bind && !!window.JSON;
-		}() ) &&
+		// http://caniuse.com/#feat=queryselector
+		'querySelector' in document
 
-		// https://caniuse.com/#feat=queryselector
-		'querySelector' in document &&
-
-		// https://caniuse.com/#feat=namevalue-storage
+		// http://caniuse.com/#feat=namevalue-storage
 		// https://developer.blackberry.com/html5/apis/v1_0/localstorage.html
 		// https://blog.whatwg.org/this-week-in-html-5-episode-30
-		'localStorage' in window &&
+		&& 'localStorage' in window
 
-		// https://caniuse.com/#feat=addeventlistener
-		'addEventListener' in window &&
+		// http://caniuse.com/#feat=addeventlistener
+		&& 'addEventListener' in window
 
 		// Hardcoded exceptions for browsers that pass the requirement but we don't want to
 		// support in the modern run-time.
-		// Note: Please extend the regex instead of adding new ones
-		!(
-			ua.match( /MSIE 10|webOS\/1\.[0-4]|SymbianOS|Series60|NetFront|Opera Mini|S40OviBrowser|MeeGo|Android.+Glass|^Mozilla\/5\.0 .+ Gecko\/$|googleweblight/ ) ||
-			ua.match( /PlayStation/i )
+		&& !(
+			ua.match( /webOS\/1\.[0-4]/ ) ||
+			ua.match( /PlayStation/i ) ||
+			ua.match( /SymbianOS|Series60|NetFront|Opera Mini|S40OviBrowser|MeeGo/ ) ||
+			( ua.match( /Glass/ ) && ua.match( /Android/ ) )
 		)
 	);
-};
+}
 
 // Conditional script injection
 ( function () {
 	var NORLQ, script;
 	if ( !isCompatible() ) {
 		// Undo class swapping in case of an unsupported browser.
-		// See ResourceLoaderClientHtml::getDocumentAttributes().
+		// See OutputPage::getHeadScripts().
 		document.documentElement.className = document.documentElement.className
 			.replace( /(^|\s)client-js(\s|$)/, '$1client-nojs$2' );
 
@@ -132,7 +112,6 @@ window.isCompatible = function ( str ) {
 
 		// Must be after mw.config.set because these callbacks may use mw.loader which
 		// needs to have values 'skin', 'debug' etc. from mw.config.
-		// eslint-disable-next-line vars-on-top
 		var RLQ = window.RLQ || [];
 		while ( RLQ.length ) {
 			RLQ.shift()();
@@ -150,17 +129,16 @@ window.isCompatible = function ( str ) {
 		};
 	}
 
-	window.mediaWikiLoadStart = mwNow();
-	mwPerformance.mark( 'mwLoadStart' );
-
 	script = document.createElement( 'script' );
 	script.src = $VARS.baseModulesUri;
-	script.onload = function () {
-		// Clean up
-		script.onload = null;
-		script = null;
-		// Callback
-		startUp();
+	script.onload = script.onreadystatechange = function () {
+		if ( !script.readyState || /loaded|complete/.test( script.readyState ) ) {
+			// Clean up
+			script.onload = script.onreadystatechange = null;
+			script = null;
+			// Callback
+			startUp();
+		}
 	};
-	document.head.appendChild( script );
+	document.getElementsByTagName( 'head' )[ 0 ].appendChild( script );
 }() );

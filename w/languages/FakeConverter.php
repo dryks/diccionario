@@ -22,12 +22,7 @@
  */
 
 /**
- * A fake language variant converter. Languages which do not implement variant
- * conversion, for example, English, should return a FakeConverter rather than a
- * LanguageConverter when asked for their converter. The fake converter just
- * returns text unchanged, i.e. it doesn't do any conversion.
- *
- * See https://www.mediawiki.org/wiki/Writing_systems#LanguageConverter.
+ * A fake language converter
  *
  * @ingroup Language
  */
@@ -69,9 +64,6 @@ class FakeConverter {
 		return $this->mLang->getFormattedNsText( $ns );
 	}
 
-	/**
-	 * @return string[]
-	 */
 	function getVariants() {
 		return [ $this->mLang->getCode() ];
 	}
@@ -124,13 +116,5 @@ class FakeConverter {
 	}
 
 	public function updateConversionTable( Title $title ) {
-	}
-
-	/**
-	 * Used by test suites which need to reset the converter state.
-	 *
-	 * @private
-	 */
-	private function reloadTables() {
 	}
 }

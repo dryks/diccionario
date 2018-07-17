@@ -30,7 +30,7 @@ class PNGHandler extends BitmapHandler {
 	const BROKEN_FILE = '0';
 
 	/**
-	 * @param File|FSFile $image
+	 * @param File $image
 	 * @param string $filename
 	 * @return string
 	 */
@@ -112,14 +112,15 @@ class PNGHandler extends BitmapHandler {
 	}
 
 	function isMetadataValid( $image, $metadata ) {
+
 		if ( $metadata === self::BROKEN_FILE ) {
 			// Do not repetitivly regenerate metadata on broken file.
 			return self::METADATA_GOOD;
 		}
 
-		Wikimedia\suppressWarnings();
+		MediaWiki\suppressWarnings();
 		$data = unserialize( $metadata );
-		Wikimedia\restoreWarnings();
+		MediaWiki\restoreWarnings();
 
 		if ( !$data || !is_array( $data ) ) {
 			wfDebug( __METHOD__ . " invalid png metadata\n" );
@@ -146,9 +147,9 @@ class PNGHandler extends BitmapHandler {
 		global $wgLang;
 		$original = parent::getLongDesc( $image );
 
-		Wikimedia\suppressWarnings();
+		MediaWiki\suppressWarnings();
 		$metadata = unserialize( $image->getMetadata() );
-		Wikimedia\restoreWarnings();
+		MediaWiki\restoreWarnings();
 
 		if ( !$metadata || $metadata['frameCount'] <= 0 ) {
 			return $original;
@@ -184,9 +185,9 @@ class PNGHandler extends BitmapHandler {
 	 */
 	public function getLength( $file ) {
 		$serMeta = $file->getMetadata();
-		Wikimedia\suppressWarnings();
+		MediaWiki\suppressWarnings();
 		$metadata = unserialize( $serMeta );
-		Wikimedia\restoreWarnings();
+		MediaWiki\restoreWarnings();
 
 		if ( !$metadata || !isset( $metadata['duration'] ) || !$metadata['duration'] ) {
 			return 0.0;

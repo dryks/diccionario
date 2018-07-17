@@ -44,7 +44,7 @@ class DumpLinks extends Maintenance {
 	}
 
 	public function execute() {
-		$dbr = $this->getDB( DB_REPLICA );
+		$dbr = $this->getDB( DB_SLAVE );
 		$result = $dbr->select( [ 'pagelinks', 'page' ],
 			[
 				'page_id',
@@ -75,5 +75,5 @@ class DumpLinks extends Maintenance {
 	}
 }
 
-$maintClass = DumpLinks::class;
+$maintClass = "DumpLinks";
 require_once RUN_MAINTENANCE_IF_MAIN;

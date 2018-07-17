@@ -15,14 +15,13 @@
 
 .config-block-label {
 	display: block;
-	margin-bottom: 0.2em;
+	margin-bottom: .2em;
 }
 
-.config-block-label label,
-.config-label {
+.config-block-label label, .config-label {
 	font-weight: bold;
-	padding-right: 0.5em;
-	padding-top: 0.2em;
+	padding-right: .5em;
+	padding-top: .2em;
 }
 
 .config-block-elements {
@@ -85,7 +84,7 @@
 	display: list-item;
 	line-height: 1.5em;
 	/* @embed */
-	list-style-image: url( images/bullet.gif );
+	list-style-image: url(images/bullet.gif);
 	list-style-type: square;
 }
 
@@ -115,7 +114,7 @@
 }
 
 .error {
-	color: #f00;
+	color: red;
 	background-color: #fff;
 	font-weight: bold;
 	left: 1em;
@@ -132,13 +131,13 @@
 .btn-install {
 	font-weight: bold;
 	font-size: 110%;
-	padding: 0.2em 0.3em;
+	padding: .2em .3em;
 }
 
 .success-message {
 	font-weight: bold;
 	font-size: 110%;
-	color: #008000;
+	color: green;
 }
 
 .success-box {
@@ -152,8 +151,8 @@
 }
 
 .config-plainlink a {
-	background: none !important; /* stylelint-disable-line declaration-no-important */
-	padding: 0 !important; /* stylelint-disable-line declaration-no-important */
+	background: none !important;
+	padding: 0 !important;
 }
 
 .config-download-link {
@@ -162,7 +161,7 @@
 }
 
 .config-download-link a {
-	background: url( images/download-32.png ) no-repeat center left;
+	background: url(images/download-32.png) no-repeat center left;
 	padding-left: 40px; /* 32 px for the image (above), plus some breathing room */
 	height: 32px; /* provide enough vertical room for the image */
 	display: inline-block; /* allow the height property (above) to work */
@@ -174,11 +173,6 @@
 	min-width: 20em;
 }
 
-/* Hide empty live-log textarea */
-#config-live-log textarea:empty {
-	display: none;
-}
-
 /* tooltip styles */
 .config-help-field-hint {
 	display: none;
@@ -186,18 +180,18 @@
 	margin-bottom: -8px;
 	padding: 0 0 0 15px;
 	/* @embed */
-	background-image: url( images/help-question.gif );
+	background-image: url(images/help-question.gif);
 	background-position: left center;
 	background-repeat: no-repeat;
 	cursor: pointer;
-	font-size: 0.8em;
+	font-size: .8em;
 	text-decoration: underline;
 	color: #0645ad;
 }
 
 .config-help-field-hint:hover {
 	/* @embed */
-	background-image: url( images/help-question-hover.gif );
+	background-image: url(images/help-question-hover.gif);
 }
 
 .config-help-field-data {

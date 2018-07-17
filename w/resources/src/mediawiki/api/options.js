@@ -26,7 +26,7 @@
 		 * Any warnings returned by the API, including warnings about invalid option names or values,
 		 * are ignored. However, do not rely on this behavior.
 		 *
-		 * If necessary, the options will be saved using several sequential API requests. Only one promise
+		 * If necessary, the options will be saved using several parallel API requests. Only one promise
 		 * is always returned that will be resolved when all requests complete.
 		 *
 		 * @param {Object} options Options as a `{ name: value, … }` object
@@ -35,19 +35,15 @@
 		saveOptions: function ( options ) {
 			var name, value, bundleable,
 				grouped = [],
-				promise = $.Deferred().resolve();
+				deferreds = [];
 
 			for ( name in options ) {
 				value = options[ name ] === null ? null : String( options[ name ] );
 
 				// Can we bundle this option, or does it need a separate request?
-				if ( this.defaults.useUS ) {
-					bundleable = name.indexOf( '=' ) === -1;
-				} else {
-					bundleable =
-						( value === null || value.indexOf( '|' ) === -1 ) &&
-						( name.indexOf( '|' ) === -1 && name.indexOf( '=' ) === -1 );
-				}
+				bundleable =
+					( value === null || value.indexOf( '|' ) === -1 ) &&
+					( name.indexOf( '|' ) === -1 && name.indexOf( '=' ) === -1 );
 
 				if ( bundleable ) {
 					if ( value !== null ) {
@@ -58,38 +54,32 @@
 					}
 				} else {
 					if ( value !== null ) {
-						promise = promise.then( function ( name, value ) {
-							return this.postWithToken( 'csrf', {
-								formatversion: 2,
-								action: 'options',
-								optionname: name,
-								optionvalue: value
-							} );
-						}.bind( this, name, value ) );
+						deferreds.push( this.postWithToken( 'csrf', {
+							formatversion: 2,
+							action: 'options',
+							optionname: name,
+							optionvalue: value
+						} ) );
 					} else {
 						// Omitting value resets the option
-						promise = promise.then( function ( name ) {
-							return this.postWithToken( 'csrf', {
-								formatversion: 2,
-								action: 'options',
-								optionname: name
-							} );
-						}.bind( this, name ) );
+						deferreds.push( this.postWithToken( 'csrf', {
+							formatversion: 2,
+							action: 'options',
+							optionname: name
+						} ) );
 					}
 				}
 			}
 
 			if ( grouped.length ) {
-				promise = promise.then( function () {
-					return this.postWithToken( 'csrf', {
-						formatversion: 2,
-						action: 'options',
-						change: grouped
-					} );
-				}.bind( this ) );
+				deferreds.push( this.postWithToken( 'csrf', {
+					formatversion: 2,
+					action: 'options',
+					change: grouped
+				} ) );
 			}
 
-			return promise;
+			return $.when.apply( $, deferreds );
 		}
 
 	} );

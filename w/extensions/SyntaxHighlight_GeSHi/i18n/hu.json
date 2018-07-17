@@ -2,8 +2,7 @@
 	"@metadata": {
 		"authors": [
 			"Dani",
-			"Tacsipacsi",
-			"Urbalazs"
+			"Tacsipacsi"
 		]
 	},
 	"syntaxhighlight-desc": "Lehetőséget nyújt szintaxiskiemelésre a <code>&lt;syntaxhighlight&gt;</code> tag-gel, a [http://pygments.org/ Pygments - Python kódkiemelő] használatával",
@@ -12,7 +11,6 @@
 	"syntaxhighlight-visualeditor-mwsyntaxhighlightinspector-code": "Kód",
 	"syntaxhighlight-visualeditor-mwsyntaxhighlightinspector-language": "Nyelv",
 	"syntaxhighlight-visualeditor-mwsyntaxhighlightinspector-showlines": "Mutassa a sorszámozást",
-	"syntaxhighlight-visualeditor-mwsyntaxhighlightinspector-startingline": "Kezdő sor száma",
 	"syntaxhighlight-visualeditor-mwsyntaxhighlightinspector-title": "Kódblokk",
 	"syntaxhighlight-error-pygments-invocation-failure": "A Pygments meghívása sikertelen",
 	"syntaxhighlight-error-unknown-language": "Ismeretlen „$1” nyelv",

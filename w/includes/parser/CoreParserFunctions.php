@@ -20,7 +20,6 @@
  * @file
  * @ingroup Parser
  */
-use MediaWiki\MediaWikiServices;
 
 /**
  * Various core parser functions, registered in Parser::firstCallInit()
@@ -157,7 +156,7 @@ class CoreParserFunctions {
 	}
 
 	/**
-	 * urlencodes a string according to one of three patterns: (T24474)
+	 * urlencodes a string according to one of three patterns: (bug 22474)
 	 *
 	 * By default (for HTTP "query" strings), spaces are encoded as '+'.
 	 * Or to encode a value for the HTTP "path", spaces are encoded as '%20'.
@@ -174,6 +173,7 @@ class CoreParserFunctions {
 			$magicWords = new MagicWordArray( [ 'url_path', 'url_query', 'url_wiki' ] );
 		}
 		switch ( $magicWords->matchStartToEnd( $arg ) ) {
+
 			// Encode as though it's a wiki page, '_' for ' '.
 			case 'url_wiki':
 				$func = 'wfUrlencode';
@@ -275,7 +275,7 @@ class CoreParserFunctions {
 		}
 		if ( !is_null( $title ) ) {
 			# Convert NS_MEDIA -> NS_FILE
-			if ( $title->inNamespace( NS_MEDIA ) ) {
+			if ( $title->getNamespace() == NS_MEDIA ) {
 				$title = Title::makeTitle( NS_FILE, $title->getDBkey() );
 			}
 			if ( !is_null( $arg ) ) {
@@ -337,20 +337,19 @@ class CoreParserFunctions {
 		// default
 		$gender = User::getDefaultOption( 'gender' );
 
-		// allow prefix and normalize (e.g. "&#42;foo" -> "*foo" ).
-		$title = Title::newFromText( $username, NS_USER );
+		// allow prefix.
+		$title = Title::newFromText( $username );
 
-		if ( $title && $title->inNamespace( NS_USER ) ) {
+		if ( $title && $title->getNamespace() == NS_USER ) {
 			$username = $title->getText();
 		}
 
 		// check parameter, or use the ParserOptions if in interface message
 		$user = User::newFromName( $username );
-		$genderCache = MediaWikiServices::getInstance()->getGenderCache();
 		if ( $user ) {
-			$gender = $genderCache->getGenderOf( $user, __METHOD__ );
+			$gender = GenderCache::singleton()->getGenderOf( $user, __METHOD__ );
 		} elseif ( $username === '' && $parser->getOptions()->getInterfaceMessage() ) {
-			$gender = $genderCache->getGenderOf( $parser->getOptions()->getUser(), __METHOD__ );
+			$gender = GenderCache::singleton()->getGenderOf( $parser->getOptions()->getUser(), __METHOD__ );
 		}
 		$ret = $parser->getFunctionLang()->gender( $gender, $forms );
 		return $ret;
@@ -457,19 +456,10 @@ class CoreParserFunctions {
 						$converter->markNoConversion( wfEscapeWikiText( $text ) )
 					)->inContentLanguage()->text() .
 					'</span>';
-			} else {
-				return '';
 			}
-		} else {
-			$converter = $parser->getConverterLanguage()->getConverter();
-			$parser->getOutput()->addWarning(
-				wfMessage( 'restricted-displaytitle',
-					// Message should be parsed, but this param should only be escaped.
-					$converter->markNoConversion( wfEscapeWikiText( $text ) )
-				)->text()
-			);
-			$parser->addTrackingCategory( 'restricted-displaytitle-ignored' );
 		}
+
+		return '';
 	}
 
 	/**
@@ -488,66 +478,40 @@ class CoreParserFunctions {
 		return $mwObject->matchStartToEnd( $value );
 	}
 
-	/**
-	 * Formats a number according to a language.
-	 *
-	 * @param int|float $num
-	 * @param string $raw
-	 * @param Language|StubUserLang $language
-	 * @return string
-	 */
-	public static function formatRaw( $num, $raw, $language ) {
+	public static function formatRaw( $num, $raw ) {
 		if ( self::matchAgainstMagicword( 'rawsuffix', $raw ) ) {
 			return $num;
 		} else {
-			return $language->formatNum( $num );
+			global $wgContLang;
+			return $wgContLang->formatNum( $num );
 		}
 	}
-
 	public static function numberofpages( $parser, $raw = null ) {
-		return self::formatRaw( SiteStats::pages(), $raw, $parser->getFunctionLang() );
+		return self::formatRaw( SiteStats::pages(), $raw );
 	}
-
 	public static function numberofusers( $parser, $raw = null ) {
-		return self::formatRaw( SiteStats::users(), $raw, $parser->getFunctionLang() );
+		return self::formatRaw( SiteStats::users(), $raw );
 	}
 	public static function numberofactiveusers( $parser, $raw = null ) {
-		return self::formatRaw( SiteStats::activeUsers(), $raw, $parser->getFunctionLang() );
+		return self::formatRaw( SiteStats::activeUsers(), $raw );
 	}
-
 	public static function numberofarticles( $parser, $raw = null ) {
-		return self::formatRaw( SiteStats::articles(), $raw, $parser->getFunctionLang() );
+		return self::formatRaw( SiteStats::articles(), $raw );
 	}
-
 	public static function numberoffiles( $parser, $raw = null ) {
-		return self::formatRaw( SiteStats::images(), $raw, $parser->getFunctionLang() );
+		return self::formatRaw( SiteStats::images(), $raw );
 	}
-
 	public static function numberofadmins( $parser, $raw = null ) {
-		return self::formatRaw(
-			SiteStats::numberingroup( 'sysop' ),
-			$raw,
-			$parser->getFunctionLang()
-		);
+		return self::formatRaw( SiteStats::numberingroup( 'sysop' ), $raw );
 	}
-
 	public static function numberofedits( $parser, $raw = null ) {
-		return self::formatRaw( SiteStats::edits(), $raw, $parser->getFunctionLang() );
+		return self::formatRaw( SiteStats::edits(), $raw );
 	}
-
 	public static function pagesinnamespace( $parser, $namespace = 0, $raw = null ) {
-		return self::formatRaw(
-			SiteStats::pagesInNs( intval( $namespace ) ),
-			$raw,
-			$parser->getFunctionLang()
-		);
+		return self::formatRaw( SiteStats::pagesInNs( intval( $namespace ) ), $raw );
 	}
 	public static function numberingroup( $parser, $name = '', $raw = null ) {
-		return self::formatRaw(
-			SiteStats::numberingroup( strtolower( $name ) ),
-			$raw,
-			$parser->getFunctionLang()
-		);
+		return self::formatRaw( SiteStats::numberingroup( strtolower( $name ) ), $raw );
 	}
 
 	/**
@@ -582,14 +546,14 @@ class CoreParserFunctions {
 	}
 	public static function talkspace( $parser, $title = null ) {
 		$t = Title::newFromText( $title );
-		if ( is_null( $t ) || !$t->canHaveTalkPage() ) {
+		if ( is_null( $t ) || !$t->canTalk() ) {
 			return '';
 		}
 		return str_replace( '_', ' ', $t->getTalkNsText() );
 	}
 	public static function talkspacee( $parser, $title = null ) {
 		$t = Title::newFromText( $title );
-		if ( is_null( $t ) || !$t->canHaveTalkPage() ) {
+		if ( is_null( $t ) || !$t->canTalk() ) {
 			return '';
 		}
 		return wfUrlencode( $t->getTalkNsText() );
@@ -632,14 +596,14 @@ class CoreParserFunctions {
 	}
 	public static function fullpagename( $parser, $title = null ) {
 		$t = Title::newFromText( $title );
-		if ( is_null( $t ) || !$t->canHaveTalkPage() ) {
+		if ( is_null( $t ) || !$t->canTalk() ) {
 			return '';
 		}
 		return wfEscapeWikiText( $t->getPrefixedText() );
 	}
 	public static function fullpagenamee( $parser, $title = null ) {
 		$t = Title::newFromText( $title );
-		if ( is_null( $t ) || !$t->canHaveTalkPage() ) {
+		if ( is_null( $t ) || !$t->canTalk() ) {
 			return '';
 		}
 		return wfEscapeWikiText( $t->getPrefixedURL() );
@@ -688,14 +652,14 @@ class CoreParserFunctions {
 	}
 	public static function talkpagename( $parser, $title = null ) {
 		$t = Title::newFromText( $title );
-		if ( is_null( $t ) || !$t->canHaveTalkPage() ) {
+		if ( is_null( $t ) || !$t->canTalk() ) {
 			return '';
 		}
 		return wfEscapeWikiText( $t->getTalkPage()->getPrefixedText() );
 	}
 	public static function talkpagenamee( $parser, $title = null ) {
 		$t = Title::newFromText( $title );
-		if ( is_null( $t ) || !$t->canHaveTalkPage() ) {
+		if ( is_null( $t ) || !$t->canTalk() ) {
 			return '';
 		}
 		return wfEscapeWikiText( $t->getTalkPage()->getPrefixedURL() );
@@ -754,7 +718,7 @@ class CoreParserFunctions {
 
 		$title = Title::makeTitleSafe( NS_CATEGORY, $name );
 		if ( !$title ) { # invalid title
-			return self::formatRaw( 0, $raw, $parser->getFunctionLang() );
+			return self::formatRaw( 0, $raw );
 		}
 		$wgContLang->findVariantLink( $name, $title, true );
 
@@ -780,7 +744,7 @@ class CoreParserFunctions {
 		}
 
 		$count = $cache[$name][$type];
-		return self::formatRaw( $count, $raw, $parser->getFunctionLang() );
+		return self::formatRaw( $count, $raw );
 	}
 
 	/**
@@ -796,17 +760,13 @@ class CoreParserFunctions {
 		$title = Title::newFromText( $page );
 
 		if ( !is_object( $title ) ) {
-			return self::formatRaw( 0, $raw, $parser->getFunctionLang() );
+			return self::formatRaw( 0, $raw );
 		}
 
 		// fetch revision from cache/database and return the value
 		$rev = self::getCachedRevisionObject( $parser, $title );
 		$length = $rev ? $rev->getSize() : 0;
-		if ( $length === null ) {
-			// We've had bugs where rev_len was not being recorded for empty pages, see T135414
-			$length = 0;
-		}
-		return self::formatRaw( $length, $raw, $parser->getFunctionLang() );
+		return self::formatRaw( $length, $raw );
 	}
 
 	/**
@@ -830,7 +790,7 @@ class CoreParserFunctions {
 			$restrictions = $titleObject->getRestrictions( strtolower( $type ) );
 			# Title::getRestrictions returns an array, its possible it may have
 			# multiple values in the future
-			return implode( ',', $restrictions );
+			return implode( $restrictions, ',' );
 		}
 		return '';
 	}
@@ -875,14 +835,14 @@ class CoreParserFunctions {
 		$code = strtolower( $code );
 		$inLanguage = strtolower( $inLanguage );
 		$lang = Language::fetchLanguageName( $code, $inLanguage );
-		return $lang !== '' ? $lang : LanguageCode::bcp47( $code );
+		return $lang !== '' ? $lang : wfBCP47( $code );
 	}
 
 	/**
 	 * Unicode-safe str_pad with the restriction that $length is forced to be <= 500
 	 * @param Parser $parser
 	 * @param string $string
-	 * @param string $length
+	 * @param int $length
 	 * @param string $padding
 	 * @param int $direction
 	 * @return string
@@ -897,12 +857,7 @@ class CoreParserFunctions {
 		}
 
 		# The remaining length to add counts down to 0 as padding is added
-		$length = min( (int)$length, 500 ) - mb_strlen( $string );
-		if ( $length <= 0 ) {
-			// Nothing to add
-			return $string;
-		}
-
+		$length = min( $length, 500 ) - mb_strlen( $string );
 		# $finalPadding is just $padding repeated enough times so that
 		# mb_strlen( $string ) + mb_strlen( $finalPadding ) == $length
 		$finalPadding = '';
@@ -935,8 +890,7 @@ class CoreParserFunctions {
 	 */
 	public static function anchorencode( $parser, $text ) {
 		$text = $parser->killMarkers( $text );
-		$section = (string)substr( $parser->guessSectionNameFromWikiText( $text ), 1 );
-		return Sanitizer::safeEncodeAttribute( $section );
+		return (string)substr( $parser->guessSectionNameFromWikiText( $text ), 1 );
 	}
 
 	public static function special( $parser, $text ) {
@@ -1010,10 +964,10 @@ class CoreParserFunctions {
 		if ( $argA == 'nowiki' ) {
 			// {{filepath: | option [| size] }}
 			$isNowiki = true;
-			$parsedWidthParam = Parser::parseWidthParam( $argB );
+			$parsedWidthParam = $parser->parseWidthParam( $argB );
 		} else {
 			// {{filepath: [| size [|option]] }}
-			$parsedWidthParam = Parser::parseWidthParam( $argA );
+			$parsedWidthParam = $parser->parseWidthParam( $argA );
 			$isNowiki = ( $argB == 'nowiki' );
 		}
 
@@ -1344,7 +1298,7 @@ class CoreParserFunctions {
 			foreach ( $sources[0] as $sourceTitle ) {
 				$names[] = $sourceTitle->getPrefixedText();
 			}
-			return implode( '|', $names );
+			return implode( $names, '|' );
 		}
 		return '';
 	}

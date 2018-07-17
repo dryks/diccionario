@@ -1,5 +1,9 @@
 <?php
 /**
+ *
+ *
+ * Created on Oct 19, 2006
+ *
  * Copyright © 2006 Yuri Astrakhan "<Firstname><Lastname>@gmail.com"
  *
  * This program is free software; you can redistribute it and/or modify
@@ -32,8 +36,6 @@ class ApiQueryRecentChanges extends ApiQueryGeneratorBase {
 		parent::__construct( $query, $moduleName, 'rc' );
 	}
 
-	private $commentStore;
-
 	private $fld_comment = false, $fld_parsedcomment = false, $fld_user = false, $fld_userid = false,
 		$fld_flags = false, $fld_timestamp = false, $fld_title = false, $fld_ids = false,
 		$fld_sizes = false, $fld_redirect = false, $fld_patrolled = false, $fld_loginfo = false,
@@ -46,7 +48,7 @@ class ApiQueryRecentChanges extends ApiQueryGeneratorBase {
 	 * The prototype for a token function is func($pageid, $title, $rc)
 	 * it should return a token or false (permission denied)
 	 * @deprecated since 1.24
-	 * @return array [ tokenname => function ]
+	 * @return array Array(tokenname => function)
 	 */
 	protected function getTokenFunctions() {
 		// Don't call the hooks twice
@@ -61,7 +63,7 @@ class ApiQueryRecentChanges extends ApiQueryGeneratorBase {
 		}
 
 		$this->tokenFunctions = [
-			'patrol' => [ self::class, 'getPatrolToken' ]
+			'patrol' => [ 'ApiQueryRecentChanges', 'getPatrolToken' ]
 		];
 		Hooks::run( 'APIQueryRecentChangesTokens', [ &$this->tokenFunctions ] );
 
@@ -145,9 +147,10 @@ class ApiQueryRecentChanges extends ApiQueryGeneratorBase {
 
 		/* Build our basic query. Namely, something along the lines of:
 		 * SELECT * FROM recentchanges WHERE rc_timestamp > $start
-		 *   AND rc_timestamp < $end AND rc_namespace = $namespace
+		 * 		AND rc_timestamp < $end AND rc_namespace = $namespace
 		 */
 		$this->addTables( 'recentchanges' );
+		$index = [ 'recentchanges' => 'rc_timestamp' ]; // May change
 		$this->addTimestampWhereRange( 'rc_timestamp', $params['dir'], $params['start'], $params['end'] );
 
 		if ( !is_null( $params['continue'] ) ) {
@@ -192,22 +195,20 @@ class ApiQueryRecentChanges extends ApiQueryGeneratorBase {
 				|| ( isset( $show['patrolled'] ) && isset( $show['!patrolled'] ) )
 				|| ( isset( $show['patrolled'] ) && isset( $show['unpatrolled'] ) )
 				|| ( isset( $show['!patrolled'] ) && isset( $show['unpatrolled'] ) )
-				|| ( isset( $show['autopatrolled'] ) && isset( $show['!autopatrolled'] ) )
-				|| ( isset( $show['autopatrolled'] ) && isset( $show['unpatrolled'] ) )
-				|| ( isset( $show['autopatrolled'] ) && isset( $show['!patrolled'] ) )
 			) {
-				$this->dieWithError( 'apierror-show' );
+				$this->dieUsageMsg( 'show' );
 			}
 
 			// Check permissions
 			if ( isset( $show['patrolled'] )
 				|| isset( $show['!patrolled'] )
 				|| isset( $show['unpatrolled'] )
-				|| isset( $show['autopatrolled'] )
-				|| isset( $show['!autopatrolled'] )
 			) {
 				if ( !$user->useRCPatrol() && !$user->useNPPatrol() ) {
-					$this->dieWithError( 'apierror-permissiondenied-patrolflag', 'permissiondenied' );
+					$this->dieUsage(
+						'You need patrol or patrolmarks permission to request the patrolled flag',
+						'permissiondenied'
+					);
 				}
 			}
 
@@ -216,18 +217,8 @@ class ApiQueryRecentChanges extends ApiQueryGeneratorBase {
 			$this->addWhereIf( 'rc_minor != 0', isset( $show['minor'] ) );
 			$this->addWhereIf( 'rc_bot = 0', isset( $show['!bot'] ) );
 			$this->addWhereIf( 'rc_bot != 0', isset( $show['bot'] ) );
-			if ( isset( $show['anon'] ) || isset( $show['!anon'] ) ) {
-				$actorMigration = ActorMigration::newMigration();
-				$actorQuery = $actorMigration->getJoin( 'rc_user' );
-				$this->addTables( $actorQuery['tables'] );
-				$this->addJoinConds( $actorQuery['joins'] );
-				$this->addWhereIf(
-					$actorMigration->isAnon( $actorQuery['fields']['rc_user'] ), isset( $show['anon'] )
-				);
-				$this->addWhereIf(
-					$actorMigration->isNotAnon( $actorQuery['fields']['rc_user'] ), isset( $show['!anon'] )
-				);
-			}
+			$this->addWhereIf( 'rc_user = 0', isset( $show['anon'] ) );
+			$this->addWhereIf( 'rc_user != 0', isset( $show['!anon'] ) );
 			$this->addWhereIf( 'rc_patrolled = 0', isset( $show['!patrolled'] ) );
 			$this->addWhereIf( 'rc_patrolled != 0', isset( $show['patrolled'] ) );
 			$this->addWhereIf( 'page_is_redirect = 1', isset( $show['redirect'] ) );
@@ -235,21 +226,12 @@ class ApiQueryRecentChanges extends ApiQueryGeneratorBase {
 			if ( isset( $show['unpatrolled'] ) ) {
 				// See ChangesList::isUnpatrolled
 				if ( $user->useRCPatrol() ) {
-					$this->addWhere( 'rc_patrolled = ' . RecentChange::PRC_UNPATROLLED );
+					$this->addWhere( 'rc_patrolled = 0' );
 				} elseif ( $user->useNPPatrol() ) {
-					$this->addWhere( 'rc_patrolled = ' . RecentChange::PRC_UNPATROLLED );
+					$this->addWhere( 'rc_patrolled = 0' );
 					$this->addWhereFld( 'rc_type', RC_NEW );
 				}
 			}
-
-			$this->addWhereIf(
-				'rc_patrolled != ' . RecentChange::PRC_AUTOPATROLLED,
-				isset( $show['!autopatrolled'] )
-			);
-			$this->addWhereIf(
-				'rc_patrolled = ' . RecentChange::PRC_AUTOPATROLLED,
-				isset( $show['autopatrolled'] )
-			);
 
 			// Don't throw log entries out the window here
 			$this->addWhereIf(
@@ -258,24 +240,20 @@ class ApiQueryRecentChanges extends ApiQueryGeneratorBase {
 			);
 		}
 
-		$this->requireMaxOneParameter( $params, 'user', 'excludeuser' );
+		if ( !is_null( $params['user'] ) && !is_null( $params['excludeuser'] ) ) {
+			$this->dieUsage( 'user and excludeuser cannot be used together', 'user-excludeuser' );
+		}
 
 		if ( !is_null( $params['user'] ) ) {
-			// Don't query by user ID here, it might be able to use the rc_user_text index.
-			$actorQuery = ActorMigration::newMigration()
-				->getWhere( $this->getDB(), 'rc_user', User::newFromName( $params['user'], false ), false );
-			$this->addTables( $actorQuery['tables'] );
-			$this->addJoinConds( $actorQuery['joins'] );
-			$this->addWhere( $actorQuery['conds'] );
+			$this->addWhereFld( 'rc_user_text', $params['user'] );
+			$index['recentchanges'] = 'rc_user_text';
 		}
 
 		if ( !is_null( $params['excludeuser'] ) ) {
-			// Here there's no chance to use the rc_user_text index, so allow ID to be used.
-			$actorQuery = ActorMigration::newMigration()
-				->getWhere( $this->getDB(), 'rc_user', User::newFromName( $params['excludeuser'], false ) );
-			$this->addTables( $actorQuery['tables'] );
-			$this->addJoinConds( $actorQuery['joins'] );
-			$this->addWhere( 'NOT(' . $actorQuery['conds'] . ')' );
+			// We don't use the rc_user_text index here because
+			// * it would require us to sort by rc_user_text before rc_timestamp
+			// * the != condition doesn't throw out too many rows anyway
+			$this->addWhere( 'rc_user_text != ' . $this->getDB()->addQuotes( $params['excludeuser'] ) );
 		}
 
 		/* Add the fields we're concerned with to our query. */
@@ -298,17 +276,17 @@ class ApiQueryRecentChanges extends ApiQueryGeneratorBase {
 			$this->initProperties( $prop );
 
 			if ( $this->fld_patrolled && !$user->useRCPatrol() && !$user->useNPPatrol() ) {
-				$this->dieWithError( 'apierror-permissiondenied-patrolflag', 'permissiondenied' );
+				$this->dieUsage(
+					'You need patrol or patrolmarks permission to request the patrolled flag',
+					'permissiondenied'
+				);
 			}
 
 			/* Add fields to our query if they are specified as a needed parameter. */
 			$this->addFieldsIf( [ 'rc_this_oldid', 'rc_last_oldid' ], $this->fld_ids );
-			if ( $this->fld_user || $this->fld_userid ) {
-				$actorQuery = ActorMigration::newMigration()->getJoin( 'rc_user' );
-				$this->addTables( $actorQuery['tables'] );
-				$this->addFields( $actorQuery['fields'] );
-				$this->addJoinConds( $actorQuery['joins'] );
-			}
+			$this->addFieldsIf( 'rc_comment', $this->fld_comment || $this->fld_parsedcomment );
+			$this->addFieldsIf( 'rc_user', $this->fld_user || $this->fld_userid );
+			$this->addFieldsIf( 'rc_user_text', $this->fld_user );
 			$this->addFieldsIf( [ 'rc_minor', 'rc_type', 'rc_bot' ], $this->fld_flags );
 			$this->addFieldsIf( [ 'rc_old_len', 'rc_new_len' ], $this->fld_sizes );
 			$this->addFieldsIf( [ 'rc_patrolled', 'rc_log_type' ], $this->fld_patrolled );
@@ -352,7 +330,7 @@ class ApiQueryRecentChanges extends ApiQueryGeneratorBase {
 			$this->addWhereFld( 'ct_tag', $params['tag'] );
 		}
 
-		// Paranoia: avoid brute force searches (T19342)
+		// Paranoia: avoid brute force searches (bug 17342)
 		if ( !is_null( $params['user'] ) || !is_null( $params['excludeuser'] ) ) {
 			if ( !$user->isAllowed( 'deletedhistory' ) ) {
 				$bitmask = Revision::DELETED_USER;
@@ -383,21 +361,12 @@ class ApiQueryRecentChanges extends ApiQueryGeneratorBase {
 		}
 
 		$this->token = $params['token'];
-
-		if ( $this->fld_comment || $this->fld_parsedcomment || $this->token ) {
-			$this->commentStore = CommentStore::getStore();
-			$commentQuery = $this->commentStore->getJoin( 'rc_comment' );
-			$this->addTables( $commentQuery['tables'] );
-			$this->addFields( $commentQuery['fields'] );
-			$this->addJoinConds( $commentQuery['joins'] );
-		}
-
 		$this->addOption( 'LIMIT', $params['limit'] + 1 );
+		$this->addOption( 'USE INDEX', $index );
 
-		$hookData = [];
 		$count = 0;
 		/* Perform the actual query. */
-		$res = $this->select( __METHOD__, [], $hookData );
+		$res = $this->select( __METHOD__ );
 
 		$revids = [];
 		$titles = [];
@@ -406,13 +375,6 @@ class ApiQueryRecentChanges extends ApiQueryGeneratorBase {
 
 		/* Iterate through the rows, adding data extracted from them to our query result. */
 		foreach ( $res as $row ) {
-			if ( $count === 0 && $resultPageSet !== null ) {
-				// Set the non-continue since the list of recentchanges is
-				// prone to having entries added at the start frequently.
-				$this->getContinuationManager()->addGeneratorNonContinueParam(
-					$this, 'continue', "$row->rc_timestamp|$row->rc_id"
-				);
-			}
 			if ( ++$count > $params['limit'] ) {
 				// We've reached the one extra which shows that there are
 				// additional pages to be had. Stop here...
@@ -425,8 +387,7 @@ class ApiQueryRecentChanges extends ApiQueryGeneratorBase {
 				$vals = $this->extractRowInfo( $row );
 
 				/* Add that row's data to our final output. */
-				$fit = $this->processRow( $row, $vals, $hookData ) &&
-					$result->addValue( [ 'query', $this->getModuleName() ], null, $vals );
+				$fit = $result->addValue( [ 'query', $this->getModuleName() ], null, $vals );
 				if ( !$fit ) {
 					$this->setContinueEnumParameter( 'continue', "$row->rc_timestamp|$row->rc_id" );
 					break;
@@ -541,13 +502,12 @@ class ApiQueryRecentChanges extends ApiQueryGeneratorBase {
 				$anyHidden = true;
 			}
 			if ( Revision::userCanBitfield( $row->rc_deleted, Revision::DELETED_COMMENT, $user ) ) {
-				$comment = $this->commentStore->getComment( 'rc_comment', $row )->text;
-				if ( $this->fld_comment ) {
-					$vals['comment'] = $comment;
+				if ( $this->fld_comment && isset( $row->rc_comment ) ) {
+					$vals['comment'] = $row->rc_comment;
 				}
 
-				if ( $this->fld_parsedcomment ) {
-					$vals['parsedcomment'] = Linker::formatComment( $comment, $title );
+				if ( $this->fld_parsedcomment && isset( $row->rc_comment ) ) {
+					$vals['parsedcomment'] = Linker::formatComment( $row->rc_comment, $title );
 				}
 			}
 		}
@@ -558,9 +518,8 @@ class ApiQueryRecentChanges extends ApiQueryGeneratorBase {
 
 		/* Add the patrolled flag */
 		if ( $this->fld_patrolled ) {
-			$vals['patrolled'] = $row->rc_patrolled != RecentChange::PRC_UNPATROLLED;
+			$vals['patrolled'] = $row->rc_patrolled == 1;
 			$vals['unpatrolled'] = ChangesList::isUnpatrolled( $row, $user );
-			$vals['autopatrolled'] = $row->rc_patrolled == RecentChange::PRC_AUTOPATROLLED;
 		}
 
 		if ( $this->fld_loginfo && $row->rc_type == RC_LOG ) {
@@ -606,7 +565,7 @@ class ApiQueryRecentChanges extends ApiQueryGeneratorBase {
 				$val = call_user_func( $tokenFunctions[$t], $row->rc_cur_id,
 					$title, RecentChange::newFromRow( $row ) );
 				if ( $val === false ) {
-					$this->addWarning( [ 'apiwarn-tokennotallowed', $t ] );
+					$this->setWarning( "Action '$t' is not allowed for the current user" );
 				} else {
 					$vals[$t . 'token'] = $val;
 				}
@@ -660,8 +619,7 @@ class ApiQueryRecentChanges extends ApiQueryGeneratorBase {
 			],
 			'namespace' => [
 				ApiBase::PARAM_ISMULTI => true,
-				ApiBase::PARAM_TYPE => 'namespace',
-				ApiBase::PARAM_EXTRA_NAMESPACES => [ NS_MEDIA, NS_SPECIAL ],
+				ApiBase::PARAM_TYPE => 'namespace'
 			],
 			'user' => [
 				ApiBase::PARAM_TYPE => 'user'
@@ -709,9 +667,7 @@ class ApiQueryRecentChanges extends ApiQueryGeneratorBase {
 					'!redirect',
 					'patrolled',
 					'!patrolled',
-					'unpatrolled',
-					'autopatrolled',
-					'!autopatrolled',
+					'unpatrolled'
 				]
 			],
 			'limit' => [
@@ -744,6 +700,6 @@ class ApiQueryRecentChanges extends ApiQueryGeneratorBase {
 	}
 
 	public function getHelpUrls() {
-		return 'https://www.mediawiki.org/wiki/Special:MyLanguage/API:Recentchanges';
+		return 'https://www.mediawiki.org/wiki/API:Recentchanges';
 	}
 }

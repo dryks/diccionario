@@ -59,8 +59,8 @@ class Xml {
 	 * Given an array of ('attributename' => 'value'), it generates the code
 	 * to set the XML attributes : attributename="value".
 	 * The values are passed to Sanitizer::encodeAttribute.
-	 * Returns null or empty string if no attributes given.
-	 * @param array|null $attribs Array of attributes for an XML element
+	 * Return null if no attributes given.
+	 * @param array $attribs Array of attributes for an XML element
 	 * @throws MWException
 	 * @return null|string
 	 */
@@ -160,9 +160,8 @@ class Xml {
 	}
 
 	/**
-	 * @param int|string $year Use '' or 0 to start with no year preselected.
-	 * @param int|string $month A month in the 1..12 range. Use '', 0 or -1 to start with no month
-	 *  preselected.
+	 * @param int $year
+	 * @param int $month
 	 * @return string Formatted HTML
 	 */
 	public static function dateMenu( $year, $month ) {
@@ -226,7 +225,7 @@ class Xml {
 		$selected = isset( $languages[$selected] ) ? $selected : $wgLanguageCode;
 		$options = "\n";
 		foreach ( $languages as $code => $name ) {
-			$options .= self::option( "$code - $name", $code, $code == $selected ) . "\n";
+			$options .= Xml::option( "$code - $name", $code, $code == $selected ) . "\n";
 		}
 
 		$attrs = [ 'id' => 'wpUserLanguage', 'name' => 'wpUserLanguage' ];
@@ -236,9 +235,10 @@ class Xml {
 			$msg = wfMessage( 'yourlanguage' );
 		}
 		return [
-			self::label( $msg->text(), $attrs['id'] ),
-			self::tags( 'select', $attrs, $options )
+			Xml::label( $msg->text(), $attrs['id'] ),
+			Xml::tags( 'select', $attrs, $options )
 		];
+
 	}
 
 	/**
@@ -401,7 +401,7 @@ class Xml {
 		$value = false, $attribs = []
 	) {
 		return [
-			self::label( $label, $id, $attribs ),
+			Xml::label( $label, $id, $attribs ),
 			self::input( $name, $size, $value, [ 'id' => $id ] + $attribs )
 		];
 	}
@@ -452,7 +452,7 @@ class Xml {
 
 	/**
 	 * Convenience function to build an HTML submit button
-	 * When $wgUseMediaWikiUIEverywhere is true it will default to a progressive button
+	 * When $wgUseMediaWikiUIEverywhere is true it will default to a constructive button
 	 * @param string $value Label text for the button
 	 * @param array $attribs Optional custom attributes
 	 * @return string HTML
@@ -467,7 +467,7 @@ class Xml {
 		// some submit forms
 		// might need to be mw-ui-destructive (e.g. delete a page)
 		if ( $wgUseMediaWikiUIEverywhere ) {
-			$baseAttrs['class'] = 'mw-ui-button mw-ui-progressive';
+			$baseAttrs['class'] = 'mw-ui-button mw-ui-constructive';
 		}
 		// Any custom attributes will take precendence of anything in baseAttrs e.g. override the class
 		$attribs = $attribs + $baseAttrs;
@@ -494,8 +494,7 @@ class Xml {
 	}
 
 	/**
-	 * Build a drop-down box from a textual list. This is a wrapper
-	 * for Xml::listDropDownOptions() plus the XmlSelect class.
+	 * Build a drop-down box from a textual list.
 	 *
 	 * @param string $name Name and id for the drop-down
 	 * @param string $list Correctly formatted text (newline delimited) to be
@@ -509,91 +508,60 @@ class Xml {
 	public static function listDropDown( $name = '', $list = '', $other = '',
 		$selected = '', $class = '', $tabindex = null
 	) {
-		$options = self::listDropDownOptions( $list, [ 'other' => $other ] );
-
-		$xmlSelect = new XmlSelect( $name, $name, $selected );
-		$xmlSelect->addOptions( $options );
-
-		if ( $class ) {
-			$xmlSelect->setAttribute( 'class', $class );
-		}
-		if ( $tabindex ) {
-			$xmlSelect->setAttribute( 'tabindex', $tabindex );
-		}
-
-		return $xmlSelect->getHTML();
-	}
-
-	/**
-	 * Build options for a drop-down box from a textual list.
-	 *
-	 * The result of this function can be passed to XmlSelect::addOptions()
-	 * (to render a plain `<select>` dropdown box) or to Xml::listDropDownOptionsOoui()
-	 * and then OOUI\DropdownInputWidget() (to render a pretty one).
-	 *
-	 * @param string $list Correctly formatted text (newline delimited) to be
-	 *   used to generate the options.
-	 * @param array $params Extra parameters:
-	 *   - string $params['other'] If set, add an option with this as text and a value of 'other'
-	 * @return array Array keys are textual labels, values are internal values
-	 */
-	public static function listDropDownOptions( $list, $params = [] ) {
-		$options = [];
-
-		if ( isset( $params['other'] ) ) {
-			$options[ $params['other'] ] = 'other';
-		}
-
 		$optgroup = false;
+
+		$options = self::option( $other, 'other', $selected === 'other' );
+
 		foreach ( explode( "\n", $list ) as $option ) {
 			$value = trim( $option );
 			if ( $value == '' ) {
 				continue;
 			} elseif ( substr( $value, 0, 1 ) == '*' && substr( $value, 1, 1 ) != '*' ) {
-				# A new group is starting...
+				// A new group is starting ...
 				$value = trim( substr( $value, 1 ) );
-				$optgroup = $value;
+				if ( $optgroup ) {
+					$options .= self::closeElement( 'optgroup' );
+				}
+				$options .= self::openElement( 'optgroup', [ 'label' => $value ] );
+				$optgroup = true;
 			} elseif ( substr( $value, 0, 2 ) == '**' ) {
-				# groupmember
-				$opt = trim( substr( $value, 2 ) );
-				if ( $optgroup === false ) {
-					$options[$opt] = $opt;
-				} else {
-					$options[$optgroup][$opt] = $opt;
-				}
+				// groupmember
+				$value = trim( substr( $value, 2 ) );
+				$options .= self::option( $value, $value, $selected === $value );
 			} else {
-				# groupless reason list
+				// groupless reason list
+				if ( $optgroup ) {
+					$options .= self::closeElement( 'optgroup' );
+				}
+				$options .= self::option( $value, $value, $selected === $value );
 				$optgroup = false;
-				$options[$option] = $option;
 			}
 		}
 
-		return $options;
-	}
-
-	/**
-	 * Convert options for a drop-down box into a format accepted by OOUI\DropdownInputWidget etc.
-	 *
-	 * TODO Find a better home for this function.
-	 *
-	 * @param array $options Options, as returned e.g. by Xml::listDropDownOptions()
-	 * @return array
-	 */
-	public static function listDropDownOptionsOoui( $options ) {
-		$optionsOoui = [];
-
-		foreach ( $options as $text => $value ) {
-			if ( is_array( $value ) ) {
-				$optionsOoui[] = [ 'optgroup' => (string)$text ];
-				foreach ( $value as $text2 => $value2 ) {
-					$optionsOoui[] = [ 'data' => (string)$value2, 'label' => (string)$text2 ];
-				}
-			} else {
-				$optionsOoui[] = [ 'data' => (string)$value, 'label' => (string)$text ];
-			}
+		if ( $optgroup ) {
+			$options .= self::closeElement( 'optgroup' );
 		}
 
-		return $optionsOoui;
+		$attribs = [];
+
+		if ( $name ) {
+			$attribs['id'] = $name;
+			$attribs['name'] = $name;
+		}
+
+		if ( $class ) {
+			$attribs['class'] = $class;
+		}
+
+		if ( $tabindex ) {
+			$attribs['tabindex'] = $tabindex;
+		}
+
+		return Xml::openElement( 'select', $attribs )
+			. "\n"
+			. $options
+			. "\n"
+			. Xml::closeElement( 'select' );
 	}
 
 	/**
@@ -608,15 +576,15 @@ class Xml {
 	 * @return string
 	 */
 	public static function fieldset( $legend = false, $content = false, $attribs = [] ) {
-		$s = self::openElement( 'fieldset', $attribs ) . "\n";
+		$s = Xml::openElement( 'fieldset', $attribs ) . "\n";
 
 		if ( $legend ) {
-			$s .= self::element( 'legend', null, $legend ) . "\n";
+			$s .= Xml::element( 'legend', null, $legend ) . "\n";
 		}
 
 		if ( $content !== false ) {
 			$s .= $content . "\n";
-			$s .= self::closeElement( 'fieldset' ) . "\n";
+			$s .= Xml::closeElement( 'fieldset' ) . "\n";
 		}
 
 		return $s;
@@ -644,6 +612,42 @@ class Xml {
 						] + $attribs
 					),
 					$content, false );
+	}
+
+	/**
+	 * Returns an escaped string suitable for inclusion in a string literal
+	 * for JavaScript source code.
+	 * Illegal control characters are assumed not to be present.
+	 *
+	 * @deprecated since 1.21; use Xml::encodeJsVar() or Xml::encodeJsCall() instead
+	 * @param string $string String to escape
+	 * @return string
+	 */
+	public static function escapeJsString( $string ) {
+		// See ECMA 262 section 7.8.4 for string literal format
+		$pairs = [
+			"\\" => "\\\\",
+			"\"" => "\\\"",
+			'\'' => '\\\'',
+			"\n" => "\\n",
+			"\r" => "\\r",
+
+			# To avoid closing the element or CDATA section
+			"<" => "\\x3c",
+			">" => "\\x3e",
+
+			# To avoid any complaints about bad entity refs
+			"&" => "\\x26",
+
+			# Work around https://bugzilla.mozilla.org/show_bug.cgi?id=274152
+			# Encode certain Unicode formatting chars so affected
+			# versions of Gecko don't misinterpret our strings;
+			# this is a common problem with Farsi text.
+			"\xe2\x80\x8c" => "\\u200c", // ZERO WIDTH NON-JOINER
+			"\xe2\x80\x8d" => "\\u200d", // ZERO WIDTH JOINER
+		];
+
+		return strtr( $string, $pairs );
 	}
 
 	/**
@@ -677,7 +681,7 @@ class Xml {
 	 */
 	public static function encodeJsCall( $name, $args, $pretty = false ) {
 		foreach ( $args as &$arg ) {
-			$arg = self::encodeJsVar( $arg, $pretty );
+			$arg = Xml::encodeJsVar( $arg, $pretty );
 			if ( $arg === false ) {
 				return false;
 			}
@@ -735,7 +739,7 @@ class Xml {
 			$text .
 			'</html>';
 
-		return self::isWellFormed( $html );
+		return Xml::isWellFormed( $html );
 	}
 
 	/**
@@ -769,25 +773,25 @@ class Xml {
 
 		foreach ( $fields as $labelmsg => $input ) {
 			$id = "mw-$labelmsg";
-			$form .= self::openElement( 'tr', [ 'id' => $id ] );
+			$form .= Xml::openElement( 'tr', [ 'id' => $id ] );
 
 			// TODO use a <label> here for accessibility purposes - will need
 			// to either not use a table to build the form, or find the ID of
 			// the input somehow.
 
-			$form .= self::tags( 'td', [ 'class' => 'mw-label' ], wfMessage( $labelmsg )->parse() );
-			$form .= self::openElement( 'td', [ 'class' => 'mw-input' ] )
-				. $input . self::closeElement( 'td' );
-			$form .= self::closeElement( 'tr' );
+			$form .= Xml::tags( 'td', [ 'class' => 'mw-label' ], wfMessage( $labelmsg )->parse() );
+			$form .= Xml::openElement( 'td', [ 'class' => 'mw-input' ] )
+				. $input . Xml::closeElement( 'td' );
+			$form .= Xml::closeElement( 'tr' );
 		}
 
 		if ( $submitLabel ) {
-			$form .= self::openElement( 'tr' );
-			$form .= self::tags( 'td', [], '' );
-			$form .= self::openElement( 'td', [ 'class' => 'mw-submit' ] )
-				. self::submitButton( wfMessage( $submitLabel )->text(), $submitAttribs )
-				. self::closeElement( 'td' );
-			$form .= self::closeElement( 'tr' );
+			$form .= Xml::openElement( 'tr' );
+			$form .= Xml::tags( 'td', [], '' );
+			$form .= Xml::openElement( 'td', [ 'class' => 'mw-submit' ] )
+				. Xml::submitButton( wfMessage( $submitLabel )->text(), $submitAttribs )
+				. Xml::closeElement( 'td' );
+			$form .= Xml::closeElement( 'tr' );
 		}
 
 		$form .= "</tbody></table>";
@@ -803,10 +807,10 @@ class Xml {
 	 * @return string
 	 */
 	public static function buildTable( $rows, $attribs = [], $headers = null ) {
-		$s = self::openElement( 'table', $attribs );
+		$s = Xml::openElement( 'table', $attribs );
 
 		if ( is_array( $headers ) ) {
-			$s .= self::openElement( 'thead', $attribs );
+			$s .= Xml::openElement( 'thead', $attribs );
 
 			foreach ( $headers as $id => $header ) {
 				$attribs = [];
@@ -815,9 +819,9 @@ class Xml {
 					$attribs['id'] = $id;
 				}
 
-				$s .= self::element( 'th', $attribs, $header );
+				$s .= Xml::element( 'th', $attribs, $header );
 			}
-			$s .= self::closeElement( 'thead' );
+			$s .= Xml::closeElement( 'thead' );
 		}
 
 		foreach ( $rows as $id => $row ) {
@@ -827,10 +831,10 @@ class Xml {
 				$attribs['id'] = $id;
 			}
 
-			$s .= self::buildTableRow( $attribs, $row );
+			$s .= Xml::buildTableRow( $attribs, $row );
 		}
 
-		$s .= self::closeElement( 'table' );
+		$s .= Xml::closeElement( 'table' );
 
 		return $s;
 	}
@@ -842,7 +846,7 @@ class Xml {
 	 * @return string
 	 */
 	public static function buildTableRow( $attribs, $cells ) {
-		$s = self::openElement( 'tr', $attribs );
+		$s = Xml::openElement( 'tr', $attribs );
 
 		foreach ( $cells as $id => $cell ) {
 			$attribs = [];
@@ -851,11 +855,36 @@ class Xml {
 				$attribs['id'] = $id;
 			}
 
-			$s .= self::element( 'td', $attribs, $cell );
+			$s .= Xml::element( 'td', $attribs, $cell );
 		}
 
-		$s .= self::closeElement( 'tr' );
+		$s .= Xml::closeElement( 'tr' );
 
 		return $s;
+	}
+}
+
+/**
+ * A wrapper class which causes Xml::encodeJsVar() and Xml::encodeJsCall() to
+ * interpret a given string as being a JavaScript expression, instead of string
+ * data.
+ *
+ * Example:
+ *
+ *    Xml::encodeJsVar( new XmlJsCode( 'a + b' ) );
+ *
+ * Returns "a + b".
+ *
+ * @note As of 1.21, XmlJsCode objects cannot be nested inside objects or arrays. The sole
+ *       exception is the $args argument to Xml::encodeJsCall() because Xml::encodeJsVar() is
+ *       called for each individual element in that array.
+ *
+ * @since 1.17
+ */
+class XmlJsCode {
+	public $value;
+
+	function __construct( $value ) {
+		$this->value = $value;
 	}
 }

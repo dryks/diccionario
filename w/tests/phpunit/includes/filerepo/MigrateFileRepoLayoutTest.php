@@ -1,8 +1,5 @@
 <?php
 
-/**
- * @covers MigrateFileRepoLayout
- */
 class MigrateFileRepoLayoutTest extends MediaWikiTestCase {
 	protected $tmpPrefix;
 	protected $migratorMock;
@@ -28,7 +25,7 @@ class MigrateFileRepoLayoutTest extends MediaWikiTestCase {
 			]
 		] );
 
-		$dbMock = $this->getMockBuilder( Wikimedia\Rdbms\DatabaseMysqli::class )
+		$dbMock = $this->getMockBuilder( 'DatabaseMysql' )
 			->disableOriginalConstructor()
 			->getMock();
 
@@ -44,28 +41,25 @@ class MigrateFileRepoLayoutTest extends MediaWikiTestCase {
 				new FakeResultWrapper( [] ) // filearchive
 			) );
 
-		$repoMock = $this->getMockBuilder( LocalRepo::class )
-			->setMethods( [ 'getMasterDB' ] )
-			->setConstructorArgs( [ [
-					'name' => 'migratefilerepolayouttest',
-					'backend' => $backend
-				] ] )
-			->getMock();
+		$repoMock = $this->getMock( 'LocalRepo',
+			[ 'getMasterDB' ],
+			[ [
+				'name' => 'migratefilerepolayouttest',
+				'backend' => $backend
+			] ] );
 
 		$repoMock
 			->expects( $this->any() )
 			->method( 'getMasterDB' )
 			->will( $this->returnValue( $dbMock ) );
 
-		$this->migratorMock = $this->getMockBuilder( MigrateFileRepoLayout::class )
-			->setMethods( [ 'getRepo' ] )->getMock();
+		$this->migratorMock = $this->getMock( 'MigrateFileRepoLayout', [ 'getRepo' ] );
 		$this->migratorMock
 			->expects( $this->any() )
 			->method( 'getRepo' )
 			->will( $this->returnValue( $repoMock ) );
 
-		$this->tmpFilepath = TempFSFile::factory(
-			'migratefilelayout-test-', 'png', wfTempDir() )->getPath();
+		$this->tmpFilepath = TempFSFile::factory( 'migratefilelayout-test-', 'png' )->getPath();
 
 		file_put_contents( $this->tmpFilepath, $this->text );
 

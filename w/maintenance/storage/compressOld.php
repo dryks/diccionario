@@ -51,11 +51,13 @@ require_once __DIR__ . '/../Maintenance.php';
 class CompressOld extends Maintenance {
 	/**
 	 * Option to load each revision individually.
+	 *
 	 */
 	const LS_INDIVIDUAL = 0;
 
 	/**
 	 * Option to load revisions in chunks.
+	 *
 	 */
 	const LS_CHUNKED = 1;
 
@@ -103,8 +105,8 @@ class CompressOld extends Maintenance {
 	public function execute() {
 		global $wgDBname;
 		if ( !function_exists( "gzdeflate" ) ) {
-			$this->fatalError( "You must enable zlib support in PHP to compress old revisions!\n" .
-				"Please see http://www.php.net/manual/en/ref.zlib.php\n" );
+			$this->error( "You must enable zlib support in PHP to compress old revisions!\n" .
+				"Please see http://www.php.net/manual/en/ref.zlib.php\n", true );
 		}
 
 		$type = $this->getOption( 'type', 'concat' );
@@ -235,7 +237,7 @@ class CompressOld extends Maintenance {
 	) {
 		$loadStyle = self::LS_CHUNKED;
 
-		$dbr = $this->getDB( DB_REPLICA );
+		$dbr = $this->getDB( DB_SLAVE );
 		$dbw = $this->getDB( DB_MASTER );
 
 		# Set up external storage
@@ -361,9 +363,10 @@ class CompressOld extends Maintenance {
 				$usedChunk = false;
 				$primaryOldid = $revs[$i]->rev_text_id;
 
+				// @codingStandardsIgnoreStart Ignore avoid function calls in a FOR loop test part warning
 				# Get the text of each revision and add it to the object
-				// phpcs:ignore Generic.CodeAnalysis.ForLoopWithTestFunctionCall
 				for ( $j = 0; $j < $thisChunkSize && $chunk->isHappy(); $j++ ) {
+					// @codingStandardsIgnoreEnd
 					$oldid = $revs[$i + $j]->rev_text_id;
 
 					# Get text
@@ -381,7 +384,7 @@ class CompressOld extends Maintenance {
 
 					if ( $text === false ) {
 						$this->error( "\nError, unable to get text in old_id $oldid" );
-						# $dbw->delete( 'old', [ 'old_id' => $oldid ] );
+						# $dbw->delete( 'old', array( 'old_id' => $oldid ) );
 					}
 
 					if ( $extdb == "" && $j == 0 ) {
@@ -462,6 +465,7 @@ class CompressOld extends Maintenance {
 				$this->output( "/" );
 				$this->commitTransaction( $dbw, __METHOD__ );
 				$i += $thisChunkSize;
+				wfWaitForSlaves();
 			}
 			$this->output( "\n" );
 		}
@@ -470,5 +474,5 @@ class CompressOld extends Maintenance {
 	}
 }
 
-$maintClass = CompressOld::class;
+$maintClass = 'CompressOld';
 require_once RUN_MAINTENANCE_IF_MAIN;

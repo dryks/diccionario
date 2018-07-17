@@ -42,18 +42,13 @@ $specialPageAliases = [
 	'Allmessages'               => [ 'كل_الرسايل' ],
 	'AllMyUploads'              => [ 'كل_مرفوعاتى', 'كل_فايلاتى' ],
 	'Allpages'                  => [ 'كل_الصفح' ],
-	'ApiHelp'                   => [ 'مساعده_Api' ],
-	'ApiSandbox'                => [ 'ملعب_Api' ],
 	'Ancientpages'              => [ 'صفح_قديمه' ],
 	'Badtitle'                  => [ 'عنوان_وحش' ],
 	'Blankpage'                 => [ 'صفحه_فارضيه' ],
 	'Block'                     => [ 'بلوك', 'بلوك_IP', 'بلوك_يوزر' ],
 	'Booksources'               => [ 'مصادر_كتاب' ],
-	'BotPasswords'              => [ 'باسووردات_البوت' ],
 	'BrokenRedirects'           => [ 'تحويلات_مكسوره' ],
 	'Categories'                => [ 'تصانيف' ],
-	'ChangeContentModel'        => [ 'تغيير_موديل_المحتوى' ],
-	'ChangeCredentials'         => [ 'تغيير_الكريدينشيال' ],
 	'ChangeEmail'               => [ 'تغيير_الميل' ],
 	'ChangePassword'            => [ 'تغيير_الپاسوورد', 'ظبط_الپاسوورد' ],
 	'ComparePages'              => [ 'مقارنه_الصفحات' ],
@@ -64,7 +59,6 @@ $specialPageAliases = [
 	'DeletedContributions'      => [ 'مساهمات_ممسوحه' ],
 	'Diff'                      => [ 'فرق' ],
 	'DoubleRedirects'           => [ 'تحويلات_دوبل' ],
-	'EditTags'                  => [ 'تغيير_التاجز' ],
 	'EditWatchlist'             => [ 'تغيير_قايمه_المراقبه' ],
 	'Emailuser'                 => [ 'ابعت_ايميل_لليوزر' ],
 	'ExpandTemplates'           => [ 'فرد-القوالب' ],
@@ -77,20 +71,16 @@ $specialPageAliases = [
 	'JavaScriptTest'            => [ 'تجربه_جافا_سكريبت' ],
 	'BlockList'                 => [ 'ليستة_البلوك', 'بيّن_البلوك', 'ليستة_بلوك_IP' ],
 	'LinkSearch'                => [ 'تدوير_اللينكات' ],
-	'LinkAccounts'              => [ 'توصيل_الحسابات' ],
 	'Listadmins'                => [ 'عرض_الاداريين' ],
 	'Listbots'                  => [ 'عرض_البوتات' ],
 	'Listfiles'                 => [ 'عرض_الفايلات', 'ليستة_الفايلات', 'ليستة_الصور' ],
 	'Listgrouprights'           => [ 'عرض_حقوق_الجروپات' ],
-	'Listgrants'                => [ 'عرض_المنح' ],
 	'Listredirects'             => [ 'عرض_التحويلات' ],
-	'ListDuplicatedFiles'       => [ 'عرض_الفايلات_المتكرره' ],
 	'Listusers'                 => [ 'عرض_اليوزرات', 'ليستة_اليوزرات' ],
 	'Lockdb'                    => [ 'قفل_قب' ],
 	'Log'                       => [ 'سجل', 'سجلات' ],
 	'Lonelypages'               => [ 'صفح_وحدانيه', 'صفح_يتيمه' ],
 	'Longpages'                 => [ 'صفح_طويله' ],
-	'MediaStatistics'           => [ 'احصائيات_الميديا' ],
 	'MergeHistory'              => [ 'دمج_التاريخ' ],
 	'MIMEsearch'                => [ 'تدوير_MIME' ],
 	'Mostcategories'            => [ 'اكتر_تصانيف' ],
@@ -123,7 +113,6 @@ $specialPageAliases = [
 	'Recentchanges'             => [ 'اخر_تعديلات' ],
 	'Recentchangeslinked'       => [ 'اجدد_التغييرات_اللى_معمول_ليها_لينك', 'تغييرات_مرتبطه' ],
 	'Redirect'                  => [ 'تحويل' ],
-	'RemoveCredentials'         => [ 'مسح_الكريدينشيال' ],
 	'ResetTokens'               => [ 'ضبط_المفاتيح' ],
 	'Revisiondelete'            => [ 'مسح_نسخه' ],
 	'RunJobs'                   => [ 'تشغيل_الوظايف' ],
@@ -139,7 +128,6 @@ $specialPageAliases = [
 	'Uncategorizedpages'        => [ 'صفح_مش_متصنفه' ],
 	'Uncategorizedtemplates'    => [ 'قوالب_مش_متصنفه' ],
 	'Undelete'                  => [ 'استرجاع' ],
-	'UnlinkAccounts'            => [ 'فك_الحسابات' ],
 	'Unlockdb'                  => [ 'فتح_قب' ],
 	'Unusedcategories'          => [ 'تصانيف_مش_مستعمله' ],
 	'Unusedimages'              => [ 'فايلات_مش_مستعمله', 'صور_مش_مستعمله' ],
@@ -329,7 +317,7 @@ $magicWords = [
 	'pagesincategory_files'     => [ '0', 'فايلات', 'ملفات', 'files' ],
 ];
 
-// (T18469) Override Eastern Arabic numberals, use Western
+// (bug 16469) Override Eastern Arabic numberals, use Western
 $digitTransformTable = [
 	'0' => '0',
 	'1' => '1',
@@ -341,9 +329,7 @@ $digitTransformTable = [
 	'7' => '7',
 	'8' => '8',
 	'9' => '9',
-];
-
-$separatorTransformTable = [
 	'.' => '.',
 	',' => ',',
 ];
+

@@ -1,5 +1,9 @@
 <?php
 /**
+ *
+ *
+ * Created on May 12, 2007
+ *
  * Copyright © 2006 Yuri Astrakhan "<Firstname><Lastname>@gmail.com"
  *
  * This program is free software; you can redistribute it and/or modify
@@ -30,7 +34,7 @@ class ApiQueryLinks extends ApiQueryGeneratorBase {
 	const LINKS = 'links';
 	const TEMPLATES = 'templates';
 
-	private $table, $prefix, $titlesParam, $helpUrl;
+	private $table, $prefix, $helpUrl;
 
 	public function __construct( ApiQuery $query, $moduleName ) {
 		switch ( $moduleName ) {
@@ -38,13 +42,13 @@ class ApiQueryLinks extends ApiQueryGeneratorBase {
 				$this->table = 'pagelinks';
 				$this->prefix = 'pl';
 				$this->titlesParam = 'titles';
-				$this->helpUrl = 'https://www.mediawiki.org/wiki/Special:MyLanguage/API:Links';
+				$this->helpUrl = 'https://www.mediawiki.org/wiki/API:Links';
 				break;
 			case self::TEMPLATES:
 				$this->table = 'templatelinks';
 				$this->prefix = 'tl';
 				$this->titlesParam = 'templates';
-				$this->helpUrl = 'https://www.mediawiki.org/wiki/Special:MyLanguage/API:Templates';
+				$this->helpUrl = 'https://www.mediawiki.org/wiki/API:Templates';
 				break;
 			default:
 				ApiBase::dieDebug( __METHOD__, 'Unknown module name' );
@@ -83,34 +87,22 @@ class ApiQueryLinks extends ApiQueryGeneratorBase {
 
 		$this->addTables( $this->table );
 		$this->addWhereFld( $this->prefix . '_from', array_keys( $this->getPageSet()->getGoodTitles() ) );
+		$this->addWhereFld( $this->prefix . '_namespace', $params['namespace'] );
 
-		$multiNS = true;
-		$multiTitle = true;
-		if ( $params[$this->titlesParam] ) {
-			// Filter the titles in PHP so our ORDER BY bug avoidance below works right.
-			$filterNS = $params['namespace'] ? array_flip( $params['namespace'] ) : false;
-
+		if ( !is_null( $params[$this->titlesParam] ) ) {
 			$lb = new LinkBatch;
 			foreach ( $params[$this->titlesParam] as $t ) {
 				$title = Title::newFromText( $t );
 				if ( !$title ) {
-					$this->addWarning( [ 'apiwarn-invalidtitle', wfEscapeWikiText( $t ) ] );
-				} elseif ( !$filterNS || isset( $filterNS[$title->getNamespace()] ) ) {
+					$this->setWarning( "\"$t\" is not a valid title" );
+				} else {
 					$lb->addObj( $title );
 				}
 			}
 			$cond = $lb->constructSet( $this->prefix, $this->getDB() );
 			if ( $cond ) {
 				$this->addWhere( $cond );
-				$multiNS = count( $lb->data ) !== 1;
-				$multiTitle = count( call_user_func_array( 'array_merge', $lb->data ) ) !== 1;
-			} else {
-				// No titles so no results
-				return;
 			}
-		} elseif ( $params['namespace'] ) {
-			$this->addWhereFld( $this->prefix . '_namespace', $params['namespace'] );
-			$multiNS = $params['namespace'] === null || count( $params['namespace'] ) !== 1;
 		}
 
 		if ( !is_null( $params['continue'] ) ) {
@@ -139,15 +131,13 @@ class ApiQueryLinks extends ApiQueryGeneratorBase {
 		if ( count( $this->getPageSet()->getGoodTitles() ) != 1 ) {
 			$order[] = $this->prefix . '_from' . $sort;
 		}
-		if ( $multiNS ) {
+		if ( count( $params['namespace'] ) != 1 ) {
 			$order[] = $this->prefix . '_namespace' . $sort;
 		}
-		if ( $multiTitle ) {
-			$order[] = $this->prefix . '_title' . $sort;
-		}
-		if ( $order ) {
-			$this->addOption( 'ORDER BY', $order );
-		}
+
+		$order[] = $this->prefix . '_title' . $sort;
+		$this->addOption( 'ORDER BY', $order );
+		$this->addOption( 'USE INDEX', $this->prefix . '_from' );
 		$this->addOption( 'LIMIT', $params['limit'] + 1 );
 
 		$res = $this->select( __METHOD__ );
@@ -192,8 +182,7 @@ class ApiQueryLinks extends ApiQueryGeneratorBase {
 		return [
 			'namespace' => [
 				ApiBase::PARAM_TYPE => 'namespace',
-				ApiBase::PARAM_ISMULTI => true,
-				ApiBase::PARAM_EXTRA_NAMESPACES => [ NS_MEDIA, NS_SPECIAL ],
+				ApiBase::PARAM_ISMULTI => true
 			],
 			'limit' => [
 				ApiBase::PARAM_DFLT => 10,

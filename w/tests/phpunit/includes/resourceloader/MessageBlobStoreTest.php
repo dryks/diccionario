@@ -1,20 +1,16 @@
 <?php
 
-use Wikimedia\TestingAccessWrapper;
-
 /**
  * @group Cache
  * @covers MessageBlobStore
  */
-class MessageBlobStoreTest extends PHPUnit\Framework\TestCase {
-
-	use MediaWikiCoversValidator;
+class MessageBlobStoreTest extends PHPUnit_Framework_TestCase {
 
 	protected function setUp() {
 		parent::setUp();
 		// MediaWiki tests defaults $wgMainWANCache to CACHE_NONE.
 		// Use hash instead so that caching is observed
-		$this->wanCache = $this->getMockBuilder( WANObjectCache::class )
+		$this->wanCache = $this->getMockBuilder( 'WANObjectCache' )
 			->setConstructorArgs( [ [
 				'cache' => new HashBagOStuff(),
 				'pool' => 'test',
@@ -32,7 +28,7 @@ class MessageBlobStoreTest extends PHPUnit\Framework\TestCase {
 	}
 
 	protected function makeBlobStore( $methods = null, $rl = null ) {
-		$blobStore = $this->getMockBuilder( MessageBlobStore::class )
+		$blobStore = $this->getMockBuilder( 'MessageBlobStore' )
 			->setConstructorArgs( [ $rl ] )
 			->setMethods( $methods )
 			->getMock();
@@ -46,46 +42,6 @@ class MessageBlobStoreTest extends PHPUnit\Framework\TestCase {
 		$module = new ResourceLoaderTestModule( [ 'messages' => $messages ] );
 		$module->setName( 'test.blobstore' );
 		return $module;
-	}
-
-	/** @covers MessageBlobStore::setLogger */
-	public function testSetLogger() {
-		$blobStore = $this->makeBlobStore();
-		$this->assertSame( null, $blobStore->setLogger( new Psr\Log\NullLogger() ) );
-	}
-
-	/** @covers MessageBlobStore::getResourceLoader */
-	public function testGetResourceLoader() {
-		// Call protected method
-		$blobStore = TestingAccessWrapper::newFromObject( $this->makeBlobStore() );
-		$this->assertInstanceOf(
-			ResourceLoader::class,
-			$blobStore->getResourceLoader()
-		);
-	}
-
-	/** @covers MessageBlobStore::fetchMessage */
-	public function testFetchMessage() {
-		$module = $this->makeModule( [ 'mainpage' ] );
-		$rl = new ResourceLoader();
-		$rl->register( $module->getName(), $module );
-
-		$blobStore = $this->makeBlobStore( null, $rl );
-		$blob = $blobStore->getBlob( $module, 'en' );
-
-		$this->assertEquals( '{"mainpage":"Main Page"}', $blob, 'Generated blob' );
-	}
-
-	/** @covers MessageBlobStore::fetchMessage */
-	public function testFetchMessageFail() {
-		$module = $this->makeModule( [ 'i-dont-exist' ] );
-		$rl = new ResourceLoader();
-		$rl->register( $module->getName(), $module );
-
-		$blobStore = $this->makeBlobStore( null, $rl );
-		$blob = $blobStore->getBlob( $module, 'en' );
-
-		$this->assertEquals( '{"i-dont-exist":"\u29fci-dont-exist\u29fd"}', $blob, 'Generated blob' );
 	}
 
 	public function testGetBlob() {
@@ -103,11 +59,6 @@ class MessageBlobStoreTest extends PHPUnit\Framework\TestCase {
 		$this->assertEquals( '{"foo":"Example"}', $blob, 'Generated blob' );
 	}
 
-	/**
-	 * Seems to fail sometimes (T176097).
-	 *
-	 * @group Broken
-	 */
 	public function testGetBlobCached() {
 		$module = $this->makeModule( [ 'example' ] );
 		$rl = new ResourceLoader();

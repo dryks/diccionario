@@ -36,14 +36,14 @@ class DumpRev extends Maintenance {
 	}
 
 	public function execute() {
-		$dbr = $this->getDB( DB_REPLICA );
+		$dbr = $this->getDB( DB_SLAVE );
 		$row = $dbr->selectRow(
 			[ 'text', 'revision' ],
 			[ 'old_flags', 'old_text' ],
 			[ 'old_id=rev_text_id', 'rev_id' => $this->getArg() ]
 		);
 		if ( !$row ) {
-			$this->fatalError( "Row not found" );
+			$this->error( "Row not found", true );
 		}
 
 		$flags = explode( ',', $row->old_flags );
@@ -84,5 +84,5 @@ class DumpRev extends Maintenance {
 	}
 }
 
-$maintClass = DumpRev::class;
+$maintClass = "DumpRev";
 require_once RUN_MAINTENANCE_IF_MAIN;

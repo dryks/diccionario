@@ -21,7 +21,7 @@
  */
 
 /**
- * File backend accessible external objects.
+ * File backend accessable external objects.
  *
  * In this system, each store "location" maps to the name of a file backend.
  * The file backends must be defined in $wgFileBackends and must be global
@@ -35,8 +35,6 @@ class ExternalStoreMwstore extends ExternalStoreMedium {
 	 * The URL returned is of the form of the form mwstore://backend/container/wiki/id
 	 *
 	 * @see ExternalStoreMedium::fetchFromURL()
-	 * @param string $url
-	 * @return bool
 	 */
 	public function fetchFromURL( $url ) {
 		$be = FileBackendGroup::singleton()->backendFromPath( $url );
@@ -73,6 +71,9 @@ class ExternalStoreMwstore extends ExternalStoreMedium {
 		return $blobs;
 	}
 
+	/**
+	 * @see ExternalStoreMedium::store()
+	 */
 	public function store( $backend, $data ) {
 		$be = FileBackendGroup::singleton()->get( $backend );
 		if ( $be instanceof FileBackend ) {
@@ -95,11 +96,5 @@ class ExternalStoreMwstore extends ExternalStoreMedium {
 		}
 
 		return false;
-	}
-
-	public function isReadOnly( $backend ) {
-		$be = FileBackendGroup::singleton()->get( $backend );
-
-		return $be ? $be->isReadOnly() : false;
 	}
 }

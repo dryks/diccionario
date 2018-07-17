@@ -25,8 +25,6 @@
  * @ingroup Maintenance
  */
 
-use MediaWiki\MediaWikiServices;
-
 require_once __DIR__ . '/cleanupTable.inc';
 
 /**
@@ -80,7 +78,7 @@ class TitleCleanup extends TableCleanup {
 	protected function fileExists( $name ) {
 		// XXX: Doesn't actually check for file existence, just presence of image record.
 		// This is reasonable, since cleanupImages.php only iterates over the image table.
-		$dbr = $this->getDB( DB_REPLICA );
+		$dbr = $this->getDB( DB_SLAVE );
 		$row = $dbr->selectRow( 'image', [ 'img_name' ], [ 'img_name' => $name ], __METHOD__ );
 
 		return $row !== false;
@@ -132,36 +130,27 @@ class TitleCleanup extends TableCleanup {
 	 * @param object $row
 	 * @param Title $title
 	 */
-	protected function moveInconsistentPage( $row, Title $title ) {
-		if ( $title->exists( Title::GAID_FOR_UPDATE )
-			|| $title->getInterwiki()
-			|| !$title->canExist()
-		) {
-			$titleImpossible = $title->getInterwiki() || !$title->canExist();
-			if ( $titleImpossible ) {
+	protected function moveInconsistentPage( $row, $title ) {
+		if ( $title->exists() || $title->getInterwiki() || !$title->canExist() ) {
+			if ( $title->getInterwiki() || !$title->canExist() ) {
 				$prior = $title->getPrefixedDBkey();
 			} else {
 				$prior = $title->getDBkey();
 			}
 
-			# Old cleanupTitles could move articles there. See T25147.
+			# Old cleanupTitles could move articles there. See bug 23147.
 			$ns = $row->page_namespace;
 			if ( $ns < 0 ) {
 				$ns = 0;
 			}
 
 			# Namespace which no longer exists. Put the page in the main namespace
-			# since we don't have any idea of the old namespace name. See T70501.
+			# since we don't have any idea of the old namespace name. See bug 68501.
 			if ( !MWNamespace::exists( $ns ) ) {
 				$ns = 0;
 			}
 
-			if ( !$titleImpossible && !$title->exists() ) {
-				// Looks like the current title, after cleaning it up, is valid and available
-				$clean = $prior;
-			} else {
-				$clean = 'Broken/' . $prior;
-			}
+			$clean = 'Broken/' . $prior;
 			$verified = Title::makeTitleSafe( $ns, $clean );
 			if ( !$verified || $verified->exists() ) {
 				$blah = "Broken/id:" . $row->page_id;
@@ -171,7 +160,7 @@ class TitleCleanup extends TableCleanup {
 			$title = $verified;
 		}
 		if ( is_null( $title ) ) {
-			$this->fatalError( "Something awry; empty title." );
+			$this->error( "Something awry; empty title.", true );
 		}
 		$ns = $title->getNamespace();
 		$dest = $title->getDBkey();
@@ -190,10 +179,10 @@ class TitleCleanup extends TableCleanup {
 				],
 				[ 'page_id' => $row->page_id ],
 				__METHOD__ );
-			MediaWikiServices::getInstance()->getLinkCache()->clear();
+			LinkCache::singleton()->clear();
 		}
 	}
 }
 
-$maintClass = TitleCleanup::class;
+$maintClass = "TitleCleanup";
 require_once RUN_MAINTENANCE_IF_MAIN;

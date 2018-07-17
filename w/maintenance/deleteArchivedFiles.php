@@ -21,6 +21,7 @@
  *
  * @file
  * @ingroup Maintenance
+ * @author Aaron Schulz
  */
 
 require_once __DIR__ . '/Maintenance.php';
@@ -53,7 +54,7 @@ class DeleteArchivedFiles extends Maintenance {
 		$this->output( "Searching for and deleting archived files...\n" );
 		$res = $dbw->select(
 			'filearchive',
-			[ 'fa_id', 'fa_storage_group', 'fa_storage_key', 'fa_sha1', 'fa_name' ],
+			[ 'fa_id', 'fa_storage_group', 'fa_storage_key', 'fa_sha1' ],
 			'',
 			__METHOD__
 		);
@@ -66,19 +67,9 @@ class DeleteArchivedFiles extends Maintenance {
 				continue;
 			}
 
-			/** @var LocalFile $file */
-			$file = $repo->newFile( $row->fa_name );
-			try {
-				$file->lock();
-			} catch ( LocalFileLockError $e ) {
-				$this->error( "Could not acquire lock on '{$row->fa_name}', skipping\n" );
-				continue;
-			}
-
 			$group = $row->fa_storage_group;
 			$id = $row->fa_id;
-			$path = $repo->getZonePath( 'deleted' ) .
-				'/' . $repo->getDeletedHashPath( $key ) . $key;
+			$path = $repo->getZonePath( 'deleted' ) . '/' . $repo->getDeletedHashPath( $key ) . $key;
 			if ( isset( $row->fa_sha1 ) ) {
 				$sha1 = $row->fa_sha1;
 			} else {
@@ -105,7 +96,6 @@ class DeleteArchivedFiles extends Maintenance {
 				$this->output( "Notice - file '$key' is still in use\n" );
 			} elseif ( !$repo->quickPurge( $path ) ) {
 				$this->output( "Unable to remove file $path, skipping\n" );
-				$file->unlock();
 				continue; // don't delete even with --force
 			} else {
 				$needForce = false;
@@ -115,14 +105,12 @@ class DeleteArchivedFiles extends Maintenance {
 				if ( $this->hasOption( 'force' ) ) {
 					$this->output( "Got --force, deleting DB entry\n" );
 				} else {
-					$file->unlock();
 					continue;
 				}
 			}
 
 			$count++;
 			$dbw->delete( 'filearchive', [ 'fa_id' => $id ], __METHOD__ );
-			$file->unlock();
 		}
 
 		$this->commitTransaction( $dbw, __METHOD__ );
@@ -130,5 +118,5 @@ class DeleteArchivedFiles extends Maintenance {
 	}
 }
 
-$maintClass = DeleteArchivedFiles::class;
+$maintClass = "DeleteArchivedFiles";
 require_once RUN_MAINTENANCE_IF_MAIN;

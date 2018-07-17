@@ -20,7 +20,6 @@
  * @file
  * @ingroup SpecialPage
  */
-use MediaWiki\MediaWikiServices;
 
 /**
  * Implements Special:Prefixindex
@@ -83,7 +82,7 @@ class SpecialPrefixindex extends SpecialAllPages {
 			$showme = $from;
 		}
 
-		// T29864: if transcluded, show all pages instead of the form.
+		// Bug 27864: if transcluded, show all pages instead of the form.
 		if ( $this->including() || $showme != '' || $ns !== null ) {
 			$this->showPrefixChunk( $namespace, $showme, $from );
 		} else {
@@ -166,8 +165,6 @@ class SpecialPrefixindex extends SpecialAllPages {
 		$prefixList = $this->getNamespaceKeyAndText( $namespace, $prefix );
 		$namespaces = $wgContLang->getNamespaces();
 		$res = null;
-		$n = 0;
-		$nextRow = null;
 
 		if ( !$prefixList || !$fromList ) {
 			$out = $this->msg( 'allpagesbadtitle' )->parseAsBlock();
@@ -181,7 +178,7 @@ class SpecialPrefixindex extends SpecialAllPages {
 
 			# ## @todo FIXME: Should complain if $fromNs != $namespace
 
-			$dbr = wfGetDB( DB_REPLICA );
+			$dbr = wfGetDB( DB_SLAVE );
 
 			$conds = [
 				'page_namespace' => $namespace,
@@ -194,10 +191,7 @@ class SpecialPrefixindex extends SpecialAllPages {
 			}
 
 			$res = $dbr->select( 'page',
-				array_merge(
-					[ 'page_namespace', 'page_title' ],
-					LinkCache::getSelectFields()
-				),
+				[ 'page_namespace', 'page_title', 'page_is_redirect' ],
 				$conds,
 				__METHOD__,
 				[
@@ -209,30 +203,29 @@ class SpecialPrefixindex extends SpecialAllPages {
 
 			// @todo FIXME: Side link to previous
 
+			$n = 0;
 			if ( $res->numRows() > 0 ) {
 				$out = Html::openElement( 'ul', [ 'class' => 'mw-prefixindex-list' ] );
-				$linkCache = MediaWikiServices::getInstance()->getLinkCache();
 
 				$prefixLength = strlen( $prefix );
-				foreach ( $res as $row ) {
-					if ( $n >= $this->maxPerPage ) {
-						$nextRow = $row;
-						break;
+				while ( ( $n < $this->maxPerPage ) && ( $s = $res->fetchObject() ) ) {
+					$t = Title::makeTitle( $s->page_namespace, $s->page_title );
+					if ( $t ) {
+						$displayed = $t->getText();
+						// Try not to generate unclickable links
+						if ( $this->stripPrefix && $prefixLength !== strlen( $displayed ) ) {
+							$displayed = substr( $displayed, $prefixLength );
+						}
+						$link = ( $s->page_is_redirect ? '<div class="allpagesredirect">' : '' ) .
+							Linker::linkKnown(
+								$t,
+								htmlspecialchars( $displayed ),
+								$s->page_is_redirect ? [ 'class' => 'mw-redirect' ] : []
+							) .
+							( $s->page_is_redirect ? '</div>' : '' );
+					} else {
+						$link = '[[' . htmlspecialchars( $s->page_title ) . ']]';
 					}
-					$title = Title::newFromRow( $row );
-					// Make sure it gets into LinkCache
-					$linkCache->addGoodLinkObjFromRow( $title, $row );
-					$displayed = $title->getText();
-					// Try not to generate unclickable links
-					if ( $this->stripPrefix && $prefixLength !== strlen( $displayed ) ) {
-						$displayed = substr( $displayed, $prefixLength );
-					}
-					$link = ( $title->isRedirect() ? '<div class="allpagesredirect">' : '' ) .
-						$this->getLinkRenderer()->makeKnownLink(
-							$title,
-							$displayed
-						) .
-						( $title->isRedirect() ? '</div>' : '' );
 
 					$out .= "<li>$link</li>\n";
 					$n++;
@@ -261,9 +254,9 @@ class SpecialPrefixindex extends SpecialAllPages {
 
 		$topOut = $this->namespacePrefixForm( $namespace, $prefix );
 
-		if ( $res && ( $n == $this->maxPerPage ) && $nextRow ) {
+		if ( $res && ( $n == $this->maxPerPage ) && ( $s = $res->fetchObject() ) ) {
 			$query = [
-				'from' => $nextRow->page_title,
+				'from' => $s->page_title,
 				'prefix' => $prefix,
 				'hideredirects' => $this->hideRedirects,
 				'stripprefix' => $this->stripPrefix,
@@ -275,9 +268,9 @@ class SpecialPrefixindex extends SpecialAllPages {
 				$query['namespace'] = $namespace;
 			}
 
-			$nextLink = $this->getLinkRenderer()->makeKnownLink(
+			$nextLink = Linker::linkKnown(
 				$this->getPageTitle(),
-				$this->msg( 'nextpage', str_replace( '_', ' ', $nextRow->page_title ) )->text(),
+				$this->msg( 'nextpage', str_replace( '_', ' ', $s->page_title ) )->escaped(),
 				[],
 				$query
 			);

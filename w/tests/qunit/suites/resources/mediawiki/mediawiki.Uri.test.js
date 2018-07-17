@@ -1,4 +1,5 @@
-( function ( mw ) {
+/*jshint -W024 */
+( function ( mw, $ ) {
 	QUnit.module( 'mediawiki.Uri', QUnit.newMwEnvironment( {
 		setup: function () {
 			this.mwUriOrg = mw.Uri;
@@ -10,8 +11,8 @@
 		}
 	} ) );
 
-	[ true, false ].forEach( function ( strictMode ) {
-		QUnit.test( 'Basic construction and properties (' + ( strictMode ? '' : 'non-' ) + 'strict mode)', function ( assert ) {
+	$.each( [ true, false ], function ( i, strictMode ) {
+		QUnit.test( 'Basic construction and properties (' + ( strictMode ? '' : 'non-' ) + 'strict mode)', 2, function ( assert ) {
 			var uriString, uri;
 			uriString = 'http://www.ietf.org/rfc/rfc2396.txt';
 			uri = new mw.Uri( uriString, {
@@ -59,7 +60,7 @@
 		} );
 	} );
 
-	QUnit.test( 'Constructor( String[, Object ] )', function ( assert ) {
+	QUnit.test( 'Constructor( String[, Object ] )', 11, function ( assert ) {
 		var uri;
 
 		uri = new mw.Uri( 'http://www.example.com/dir/?m=foo&m=bar&n=1', {
@@ -132,6 +133,7 @@
 		} );
 		assert.equal( uri.toString(), 'http://example.com/bar/baz', 'normalize URI without protocol or // in loose mode' );
 
+		/*jshint -W001 */
 		uri = new mw.Uri( 'http://example.com/index.php?key=key&hasOwnProperty=hasOwnProperty&constructor=constructor&watch=watch' );
 		assert.deepEqual(
 			uri.query,
@@ -143,9 +145,10 @@
 			},
 			'Keys in query strings support names of Object prototypes (bug T114344)'
 		);
+		/*jshint +W001 */
 	} );
 
-	QUnit.test( 'Constructor( Object )', function ( assert ) {
+	QUnit.test( 'Constructor( Object )', 3, function ( assert ) {
 		var uri = new mw.Uri( {
 			protocol: 'http',
 			host: 'www.foo.local',
@@ -176,10 +179,10 @@
 		);
 	} );
 
-	QUnit.test( 'Constructor( empty[, Object ] )', function ( assert ) {
+	QUnit.test( 'Constructor( empty )', 4, function ( assert ) {
 		var testuri, MyUri, uri;
 
-		testuri = 'http://example.org/w/index.php?a=1&a=2';
+		testuri = 'http://example.org/w/index.php';
 		MyUri = mw.UriRelative( testuri );
 
 		uri = new MyUri();
@@ -193,12 +196,9 @@
 
 		uri = new MyUri( '' );
 		assert.equal( uri.toString(), testuri, 'empty string' );
-
-		uri = new MyUri( null, { overrideKeys: true } );
-		assert.deepEqual( uri.query, { a: '2' }, 'null, with options' );
 	} );
 
-	QUnit.test( 'Properties', function ( assert ) {
+	QUnit.test( 'Properties', 8, function ( assert ) {
 		var uriBase, uri;
 
 		uriBase = new mw.Uri( 'http://en.wiki.local/w/api.php' );
@@ -206,8 +206,6 @@
 		uri = uriBase.clone();
 		uri.fragment = 'frag';
 		assert.equal( uri.toString(), 'http://en.wiki.local/w/api.php#frag', 'add a fragment' );
-		uri.fragment = 'café';
-		assert.equal( uri.toString(), 'http://en.wiki.local/w/api.php#caf%C3%A9', 'fragment is url-encoded' );
 
 		uri = uriBase.clone();
 		uri.host = 'fr.wiki.local';
@@ -233,7 +231,7 @@
 		assert.ok( uri.toString().indexOf( 'pif=paf' ) >= 0, 'extend query arguments' );
 	} );
 
-	QUnit.test( '.getQueryString()', function ( assert ) {
+	QUnit.test( '.getQueryString()', 2, function ( assert ) {
 		var uri = new mw.Uri( 'http://search.example.com/?q=uri' );
 
 		assert.deepEqual(
@@ -267,7 +265,7 @@
 
 	} );
 
-	QUnit.test( '.clone()', function ( assert ) {
+	QUnit.test( '.clone()', 6, function ( assert ) {
 		var original, clone;
 
 		original = new mw.Uri( 'http://foo.example.org/index.php?one=1&two=2' );
@@ -287,11 +285,11 @@
 		assert.deepEqual(
 			original.query,
 			{ one: '1', two: '2' },
-			'Properties is deep cloned (T39708)'
+			'Properties is deep cloned (bug 37708)'
 		);
 	} );
 
-	QUnit.test( '.toString() after query manipulation', function ( assert ) {
+	QUnit.test( '.toString() after query manipulation', 8, function ( assert ) {
 		var uri;
 
 		uri = new mw.Uri( 'http://www.example.com/dir/?m=foo&m=bar&n=1', {
@@ -330,7 +328,7 @@
 		assert.equal( uri.toString(), 'http://www.example.com/dir/', 'empty array value is ommitted' );
 	} );
 
-	QUnit.test( 'Variable defaultUri', function ( assert ) {
+	QUnit.test( 'Variable defaultUri', 2, function ( assert ) {
 		var uri,
 			href = 'http://example.org/w/index.php#here',
 			UriClass = mw.UriRelative( function () {
@@ -390,10 +388,10 @@
 		);
 	} );
 
-	QUnit.test( 'Advanced URL', function ( assert ) {
+	QUnit.test( 'Advanced URL', 11, function ( assert ) {
 		var uri, queryString, relativePath;
 
-		uri = new mw.Uri( 'http://auth@www.example.com:81/dir/dir.2/index.htm?q1=0&&test1&test2=value+%28escaped%29#caf%C3%A9' );
+		uri = new mw.Uri( 'http://auth@www.example.com:81/dir/dir.2/index.htm?q1=0&&test1&test2=value+%28escaped%29#top' );
 
 		assert.deepEqual(
 			{
@@ -414,7 +412,7 @@
 				port: '81',
 				path: '/dir/dir.2/index.htm',
 				query: { q1: '0', test1: null, test2: 'value (escaped)' },
-				fragment: 'café'
+				fragment: 'top'
 			},
 			'basic object properties'
 		);
@@ -434,10 +432,10 @@
 		relativePath = uri.getRelativePath();
 		assert.ok( relativePath.indexOf( uri.path ) >= 0, 'path in relative path' );
 		assert.ok( relativePath.indexOf( uri.getQueryString() ) >= 0, 'query string in relative path' );
-		assert.ok( relativePath.indexOf( mw.Uri.encode( uri.fragment ) ) >= 0, 'escaped fragment in relative path' );
+		assert.ok( relativePath.indexOf( uri.fragment ) >= 0, 'fragment in relative path' );
 	} );
 
-	QUnit.test( 'Parse a uri with an @ symbol in the path and query', function ( assert ) {
+	QUnit.test( 'Parse a uri with an @ symbol in the path and query', 1, function ( assert ) {
 		var uri = new mw.Uri( 'http://www.example.com/test@test?x=@uri&y@=uri&z@=@' );
 
 		assert.deepEqual(
@@ -467,7 +465,7 @@
 		);
 	} );
 
-	QUnit.test( 'Handle protocol-relative URLs', function ( assert ) {
+	QUnit.test( 'Handle protocol-relative URLs', 5, function ( assert ) {
 		var UriRel, uri;
 
 		UriRel = mw.UriRelative( 'glork://en.wiki.local/foo.php' );
@@ -488,7 +486,7 @@
 		assert.equal( uri.toString(), 'http://en.wiki.local/foo.com', 'handle absolute paths by supplying host from document in strict mode' );
 	} );
 
-	QUnit.test( 'T37658', function ( assert ) {
+	QUnit.test( 'bug 35658', 2, function ( assert ) {
 		var testProtocol, testServer, testPort, testPath, UriClass, uri, href;
 
 		testProtocol = 'https://';
@@ -506,4 +504,4 @@
 		href = uri.toString();
 		assert.equal( href, testProtocol + testServer + ':' + testPort + testPath, 'Root-relative URL gets host, protocol, and port supplied' );
 	} );
-}( mediaWiki ) );
+}( mediaWiki, jQuery ) );

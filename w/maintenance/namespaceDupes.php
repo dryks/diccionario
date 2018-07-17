@@ -24,12 +24,9 @@
  * @ingroup Maintenance
  */
 
-require_once __DIR__ . '/Maintenance.php';
-
 use MediaWiki\Linker\LinkTarget;
-use MediaWiki\MediaWikiServices;
-use Wikimedia\Rdbms\ResultWrapper;
-use Wikimedia\Rdbms\IMaintainableDatabase;
+
+require_once __DIR__ . '/Maintenance.php';
 
 /**
  * Maintenance script that checks for articles to fix after
@@ -40,7 +37,7 @@ use Wikimedia\Rdbms\IMaintainableDatabase;
 class NamespaceConflictChecker extends Maintenance {
 
 	/**
-	 * @var IMaintainableDatabase
+	 * @var DatabaseBase
 	 */
 	protected $db;
 
@@ -227,7 +224,7 @@ class NamespaceConflictChecker extends Maintenance {
 	 * @return array
 	 */
 	private function getInterwikiList() {
-		$result = MediaWikiServices::getInstance()->getInterwikiLookup()->getAllPrefixes();
+		$result = Interwiki::getAllPrefixes();
 		$prefixes = [];
 		foreach ( $result as $row ) {
 			$prefixes[] = $row['iw_prefix'];
@@ -256,6 +253,7 @@ class NamespaceConflictChecker extends Maintenance {
 
 		$ok = true;
 		foreach ( $targets as $row ) {
+
 			// Find the new title and determine the action to take
 
 			$newTitle = $this->getDestinationTitle( $ns, $name,
@@ -459,10 +457,10 @@ class NamespaceConflictChecker extends Maintenance {
 
 	/**
 	 * Get the preferred destination title for a given target page.
-	 * @param int $ns The destination namespace ID
+	 * @param integer $ns The destination namespace ID
 	 * @param string $name The conflicting prefix
-	 * @param int $sourceNs The source namespace
-	 * @param int $sourceDbk The source DB key (i.e. page_title)
+	 * @param integer $sourceNs The source namespace
+	 * @param integer $sourceDbk The source DB key (i.e. page_title)
 	 * @param array $options Associative array of validated command-line options
 	 * @return Title|false
 	 */
@@ -572,7 +570,7 @@ class NamespaceConflictChecker extends Maintenance {
 	/**
 	 * Merge page histories
 	 *
-	 * @param stdClass $row Page row
+	 * @param integer $id The page_id
 	 * @param Title $newTitle The new title
 	 * @return bool
 	 */
@@ -598,8 +596,6 @@ class NamespaceConflictChecker extends Maintenance {
 
 		$this->db->delete( 'page', [ 'page_id' => $id ], __METHOD__ );
 
-		$this->commitTransaction( $this->db, __METHOD__ );
-
 		/* Call LinksDeletionUpdate to delete outgoing links from the old title,
 		 * and update category counts.
 		 *
@@ -609,12 +605,13 @@ class NamespaceConflictChecker extends Maintenance {
 		 * accidentally introduce an assumption of title validity to the code we
 		 * are calling.
 		 */
-		DeferredUpdates::addUpdate( new LinksDeletionUpdate( $wikiPage ) );
-		DeferredUpdates::doUpdates();
+		$update = new LinksDeletionUpdate( $wikiPage );
+		$update->doUpdate();
+		$this->commitTransaction( $this->db, __METHOD__ );
 
 		return true;
 	}
 }
 
-$maintClass = NamespaceConflictChecker::class;
+$maintClass = "NamespaceConflictChecker";
 require_once RUN_MAINTENANCE_IF_MAIN;

@@ -1,6 +1,12 @@
 <?php
 
 /**
+ * API for MediaWiki 1.14+
+ *
+ * Created on Sep 2, 2008
+ *
+ * Copyright © 2008 Chad Horohoe
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -19,14 +25,13 @@
  * @file
  */
 use MediaWiki\Logger\LoggerFactory;
-use MediaWiki\MediaWikiServices;
 
 /**
  * API interface for page purging
  * @ingroup API
  */
 class ApiPurge extends ApiBase {
-	private $mPageSet = null;
+	private $mPageSet;
 
 	/**
 	 * Purges the cache of a page
@@ -50,11 +55,11 @@ class ApiPurge extends ApiBase {
 			ApiQueryBase::addTitleInfo( $r, $title );
 			$page = WikiPage::factory( $title );
 			if ( !$user->pingLimiter( 'purge' ) ) {
-				// Directly purge and skip the UI part of purge()
-				$page->doPurge();
+				$page->doPurge(); // Directly purge and skip the UI part of purge().
 				$r['purged'] = true;
 			} else {
-				$this->addWarning( 'apierror-ratelimited' );
+				$error = $this->parseMsg( [ 'actionthrottledtext' ] );
+				$this->setWarning( $error['info'] );
 			}
 
 			if ( $forceLinkUpdate || $forceRecursiveLinkUpdate ) {
@@ -63,43 +68,39 @@ class ApiPurge extends ApiBase {
 
 					# Parse content; note that HTML generation is only needed if we want to cache the result.
 					$content = $page->getContent( Revision::RAW );
-					if ( $content ) {
-						$enableParserCache = $this->getConfig()->get( 'EnableParserCache' );
-						$p_result = $content->getParserOutput(
-							$title,
-							$page->getLatest(),
-							$popts,
-							$enableParserCache
+					$enableParserCache = $this->getConfig()->get( 'EnableParserCache' );
+					$p_result = $content->getParserOutput(
+						$title,
+						$page->getLatest(),
+						$popts,
+						$enableParserCache
+					);
+
+					# Logging to better see expensive usage patterns
+					if ( $forceRecursiveLinkUpdate ) {
+						LoggerFactory::getInstance( 'RecursiveLinkPurge' )->info(
+							"Recursive link purge enqueued for {title}",
+							[
+								'user' => $this->getUser()->getName(),
+								'title' => $title->getPrefixedText()
+							]
 						);
+					}
 
-						# Logging to better see expensive usage patterns
-						if ( $forceRecursiveLinkUpdate ) {
-							LoggerFactory::getInstance( 'RecursiveLinkPurge' )->info(
-								"Recursive link purge enqueued for {title}",
-								[
-									'user' => $this->getUser()->getName(),
-									'title' => $title->getPrefixedText()
-								]
-							);
-						}
+					# Update the links tables
+					$updates = $content->getSecondaryDataUpdates(
+						$title, null, $forceRecursiveLinkUpdate, $p_result );
+					DataUpdate::runUpdates( $updates );
 
-						# Update the links tables
-						$updates = $content->getSecondaryDataUpdates(
-							$title, null, $forceRecursiveLinkUpdate, $p_result );
-						foreach ( $updates as $update ) {
-							$update->setCause( 'api-purge', $this->getUser()->getName() );
-							DeferredUpdates::addUpdate( $update, DeferredUpdates::PRESEND );
-						}
+					$r['linkupdate'] = true;
 
-						$r['linkupdate'] = true;
-
-						if ( $enableParserCache ) {
-							$pcache = MediaWikiServices::getInstance()->getParserCache();
-							$pcache->save( $p_result, $page, $popts );
-						}
+					if ( $enableParserCache ) {
+						$pcache = ParserCache::singleton();
+						$pcache->save( $p_result, $page, $popts );
 					}
 				} else {
-					$this->addWarning( 'apierror-ratelimited' );
+					$error = $this->parseMsg( [ 'actionthrottledtext' ] );
+					$this->setWarning( $error['info'] );
 					$forceLinkUpdate = false;
 				}
 			}
@@ -132,7 +133,7 @@ class ApiPurge extends ApiBase {
 	 * @return ApiPageSet
 	 */
 	private function getPageSet() {
-		if ( $this->mPageSet === null ) {
+		if ( !isset( $this->mPageSet ) ) {
 			$this->mPageSet = new ApiPageSet( $this );
 		}
 
@@ -144,7 +145,8 @@ class ApiPurge extends ApiBase {
 	}
 
 	public function mustBePosted() {
-		return true;
+		// Anonymous users are not allowed a non-POST request
+		return !$this->getUser()->isAllowed( 'purge' );
 	}
 
 	public function getAllowedParams( $flags = 0 ) {
@@ -172,6 +174,6 @@ class ApiPurge extends ApiBase {
 	}
 
 	public function getHelpUrls() {
-		return 'https://www.mediawiki.org/wiki/Special:MyLanguage/API:Purge';
+		return 'https://www.mediawiki.org/wiki/API:Purge';
 	}
 }

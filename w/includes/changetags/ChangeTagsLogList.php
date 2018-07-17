@@ -19,8 +19,6 @@
  * @ingroup Change tagging
  */
 
-use Wikimedia\Rdbms\IDatabase;
-
 /**
  * Stores a list of taggable log entries.
  * @since 1.25
@@ -71,9 +69,12 @@ class ChangeTagsLogList extends ChangeTagsList {
 	 * @param User $user
 	 * @return Status
 	 */
-	public function updateChangeTagsOnAll( $tagsToAdd, $tagsToRemove, $params, $reason, $user ) {
-		// phpcs:ignore Generic.CodeAnalysis.ForLoopWithTestFunctionCall
+	public function updateChangeTagsOnAll( $tagsToAdd, $tagsToRemove, $params,
+		$reason, $user ) {
+
+		// @codingStandardsIgnoreStart Generic.CodeAnalysis.ForLoopWithTestFunctionCall.NotAllowed
 		for ( $this->reset(); $this->current(); $this->next() ) {
+			// @codingStandardsIgnoreEnd
 			$item = $this->current();
 			$status = ChangeTags::updateTagsWithChecks( $tagsToAdd, $tagsToRemove,
 				null, null, $item->getId(), $params, $reason, $user );

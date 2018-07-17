@@ -1,5 +1,9 @@
 <?php
 /**
+ *
+ *
+ * Created on Oct 13, 2006
+ *
  * Copyright © 2006 Yuri Astrakhan "<Firstname><Lastname>@gmail.com"
  *
  * This program is free software; you can redistribute it and/or modify
@@ -48,16 +52,15 @@ class ApiFeedWatchlist extends ApiBase {
 	public function execute() {
 		$config = $this->getConfig();
 		$feedClasses = $config->get( 'FeedClasses' );
-		$params = [];
 		try {
 			$params = $this->extractRequestParams();
 
 			if ( !$config->get( 'Feed' ) ) {
-				$this->dieWithError( 'feed-unavailable' );
+				$this->dieUsage( 'Syndication feeds are not available', 'feed-unavailable' );
 			}
 
 			if ( !isset( $feedClasses[$params['feedformat']] ) ) {
-				$this->dieWithError( 'feed-invalid' );
+				$this->dieUsage( 'Invalid subscription feed type', 'feed-invalid' );
 			}
 
 			// limit to the number of hours going from now back
@@ -148,26 +151,15 @@ class ApiFeedWatchlist extends ApiBase {
 			$msg = wfMessage( 'watchlist' )->inContentLanguage()->escaped();
 			$feed = new $feedClasses[$feedFormat] ( $feedTitle, $msg, $feedUrl );
 
-			if ( $e instanceof ApiUsageException ) {
-				foreach ( $e->getStatusValue()->getErrors() as $error ) {
-					$msg = ApiMessage::create( $error )
-						->inLanguage( $this->getLanguage() );
-					$errorTitle = $this->msg( 'api-feed-error-title', $msg->getApiCode() );
-					$errorText = $msg->text();
-					$feedItems[] = new FeedItem( $errorTitle, $errorText, '', '', '' );
-				}
+			if ( $e instanceof UsageException ) {
+				$errorCode = $e->getCodeString();
 			} else {
-				if ( $e instanceof UsageException ) {
-					$errorCode = $e->getCodeString();
-				} else {
-					// Something is seriously wrong
-					$errorCode = 'internal_api_error';
-				}
-				$errorTitle = $this->msg( 'api-feed-error-title', $errorCode );
-				$errorText = $e->getMessage();
-				$feedItems[] = new FeedItem( $errorTitle, $errorText, '', '', '' );
+				// Something is seriously wrong
+				$errorCode = 'internal_api_error';
 			}
 
+			$errorText = $e->getMessage();
+			$feedItems[] = new FeedItem( "Error ($errorCode)", $errorText, '', '', '' );
 			ApiFormatFeedWrapper::setResult( $this->getResult(), $feed, $feedItems );
 		}
 	}
@@ -211,7 +203,10 @@ class ApiFeedWatchlist extends ApiBase {
 			preg_match( '!(.*)/\*\s*(.*?)\s*\*/(.*)!', $comment, $matches )
 		) {
 			global $wgParser;
-			$titleUrl .= $wgParser->guessSectionNameFromWikiText( $matches[ 2 ] );
+
+			$sectionTitle = $wgParser->stripSectionName( $matches[2] );
+			$sectionTitle = Sanitizer::normalizeSectionNameWhitespace( $sectionTitle );
+			$titleUrl .= Title::newFromText( '#' . $sectionTitle )->getFragmentForURL();
 		}
 
 		$timestamp = $info['timestamp'];
@@ -300,6 +295,6 @@ class ApiFeedWatchlist extends ApiBase {
 	}
 
 	public function getHelpUrls() {
-		return 'https://www.mediawiki.org/wiki/Special:MyLanguage/API:Watchlist_feed';
+		return 'https://www.mediawiki.org/wiki/API:Watchlist_feed';
 	}
 }

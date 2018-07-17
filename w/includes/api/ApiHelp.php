@@ -1,6 +1,10 @@
 <?php
 /**
- * Copyright © 2014 Wikimedia Foundation and contributors
+ *
+ *
+ * Created on Aug 29, 2014
+ *
+ * Copyright © 2014 Brad Jorsch <bjorsch@wikimedia.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +25,6 @@
  */
 
 use HtmlFormatter\HtmlFormatter;
-use MediaWiki\MediaWikiServices;
 
 /**
  * Class to output help for an API module
@@ -89,6 +92,7 @@ class ApiHelp extends ApiBase {
 	 * @param IContextSource $context
 	 * @param ApiBase[]|ApiBase $modules
 	 * @param array $options Formatting options (described above)
+	 * @return string
 	 */
 	public static function getHelp( IContextSource $context, $modules, array $options ) {
 		global $wgContLang;
@@ -98,16 +102,14 @@ class ApiHelp extends ApiBase {
 		}
 
 		$out = $context->getOutput();
-		$out->addModuleStyles( [
-			'mediawiki.hlist',
-			'mediawiki.apihelp',
-		] );
+		$out->addModuleStyles( 'mediawiki.hlist' );
+		$out->addModuleStyles( 'mediawiki.apihelp' );
 		if ( !empty( $options['toc'] ) ) {
 			$out->addModules( 'mediawiki.toc' );
 		}
 		$out->setPageTitle( $context->msg( 'api-help-title' ) );
 
-		$cache = MediaWikiServices::getInstance()->getMainWANObjectCache();
+		$cache = ObjectCache::getMainWANInstance();
 		$cacheKey = null;
 		if ( count( $modules ) == 1 && $modules[0] instanceof ApiMain &&
 			$options['recursivesubmodules'] && $context->getLanguage() === $wgContLang
@@ -115,7 +117,7 @@ class ApiHelp extends ApiBase {
 			$cacheHelpTimeout = $context->getConfig()->get( 'APICacheHelpTimeout' );
 			if ( $cacheHelpTimeout > 0 ) {
 				// Get help text from cache if present
-				$cacheKey = $cache->makeKey( 'apihelp', $modules[0]->getModulePath(),
+				$cacheKey = wfMemcKey( 'apihelp', $modules[0]->getModulePath(),
 					(int)!empty( $options['toc'] ),
 					str_replace( ' ', '_', SpecialVersion::getVersion( 'nodb' ) ) );
 				$cached = $cache->get( $cacheKey );
@@ -309,11 +311,11 @@ class ApiHelp extends ApiBase {
 				if ( count( $modules ) === 1 && $m === $modules[0] &&
 					!( !empty( $options['submodules'] ) && $m->getModuleManager() )
 				) {
-					$link = Html::element( 'b', [ 'dir' => 'ltr', 'lang' => 'en' ], $name );
+					$link = Html::element( 'b', null, $name );
 				} else {
 					$link = SpecialPage::getTitleFor( 'ApiHelp', $m->getModulePath() )->getLocalURL();
 					$link = Html::element( 'a',
-						[ 'href' => $link, 'class' => 'apihelp-linktrail', 'dir' => 'ltr', 'lang' => 'en' ],
+						[ 'href' => $link, 'class' => 'apihelp-linktrail' ],
 						$name
 					);
 					$any = true;
@@ -348,8 +350,7 @@ class ApiHelp extends ApiBase {
 				if ( isset( $sourceInfo['namemsg'] ) ) {
 					$extname = $context->msg( $sourceInfo['namemsg'] )->text();
 				} else {
-					// Probably English, so wrap it.
-					$extname = Html::element( 'span', [ 'dir' => 'ltr', 'lang' => 'en' ], $sourceInfo['name'] );
+					$extname = $sourceInfo['name'];
 				}
 				$help['flags'] .= Html::rawElement( 'li', null,
 					self::wrap(
@@ -360,9 +361,7 @@ class ApiHelp extends ApiBase {
 
 				$link = SpecialPage::getTitleFor( 'Version', 'License/' . $sourceInfo['name'] );
 				if ( isset( $sourceInfo['license-name'] ) ) {
-					$msg = $context->msg( 'api-help-license', $link,
-						Html::element( 'span', [ 'dir' => 'ltr', 'lang' => 'en' ], $sourceInfo['license-name'] )
-					);
+					$msg = $context->msg( 'api-help-license', $link, $sourceInfo['license-name'] );
 				} elseif ( SpecialVersion::getExtLicenseFileName( dirname( $sourceInfo['path'] ) ) ) {
 					$msg = $context->msg( 'api-help-license-noname', $link );
 				} else {
@@ -404,7 +403,7 @@ class ApiHelp extends ApiBase {
 				$help['help-urls'] .= Html::openElement( 'ul' );
 				foreach ( $urls as $url ) {
 					$help['help-urls'] .= Html::rawElement( 'li', null,
-						Html::element( 'a', [ 'href' => $url, 'dir' => 'ltr' ], $url )
+						Html::element( 'a', [ 'href' => $url ], $url )
 					);
 				}
 				$help['help-urls'] .= Html::closeElement( 'ul' );
@@ -433,9 +432,8 @@ class ApiHelp extends ApiBase {
 						$settings = [ ApiBase::PARAM_DFLT => $settings ];
 					}
 
-					$help['parameters'] .= Html::rawElement( 'dt', null,
-						Html::element( 'span', [ 'dir' => 'ltr', 'lang' => 'en' ], $module->encodeParamName( $name ) )
-					);
+					$help['parameters'] .= Html::element( 'dt', null,
+						$module->encodeParamName( $name ) );
 
 					// Add description
 					$description = [];
@@ -483,28 +481,15 @@ class ApiHelp extends ApiBase {
 						$type = $settings[ApiBase::PARAM_TYPE];
 						$multi = !empty( $settings[ApiBase::PARAM_ISMULTI] );
 						$hintPipeSeparated = true;
-						$count = !empty( $settings[ApiBase::PARAM_ISMULTI_LIMIT2] )
-							? $settings[ApiBase::PARAM_ISMULTI_LIMIT2] + 1
-							: ApiBase::LIMIT_SML2 + 1;
+						$count = ApiBase::LIMIT_SML2 + 1;
 
 						if ( is_array( $type ) ) {
 							$count = count( $type );
-							$deprecatedValues = isset( $settings[ApiBase::PARAM_DEPRECATED_VALUES] )
-								? $settings[ApiBase::PARAM_DEPRECATED_VALUES]
-								: [];
 							$links = isset( $settings[ApiBase::PARAM_VALUE_LINKS] )
 								? $settings[ApiBase::PARAM_VALUE_LINKS]
 								: [];
-							$values = array_map( function ( $v ) use ( $links, $deprecatedValues ) {
-								$attr = [];
-								if ( $v !== '' ) {
-									// We can't know whether this contains LTR or RTL text.
-									$attr['dir'] = 'auto';
-								}
-								if ( isset( $deprecatedValues[$v] ) ) {
-									$attr['class'] = 'apihelp-deprecated-value';
-								}
-								$ret = $attr ? Html::element( 'span', $attr, $v ) : $v;
+							$type = array_map( function ( $v ) use ( $links ) {
+								$ret = wfEscapeWikiText( $v );
 								if ( isset( $links[$v] ) ) {
 									$ret = "[[{$links[$v]}|$ret]]";
 								}
@@ -512,59 +497,39 @@ class ApiHelp extends ApiBase {
 							}, $type );
 							$i = array_search( '', $type, true );
 							if ( $i === false ) {
-								$values = $context->getLanguage()->commaList( $values );
+								$type = $context->getLanguage()->commaList( $type );
 							} else {
-								unset( $values[$i] );
-								$values = $context->msg( 'api-help-param-list-can-be-empty' )
-									->numParams( count( $values ) )
-									->params( $context->getLanguage()->commaList( $values ) )
+								unset( $type[$i] );
+								$type = $context->msg( 'api-help-param-list-can-be-empty' )
+									->numParams( count( $type ) )
+									->params( $context->getLanguage()->commaList( $type ) )
 									->parse();
 							}
 							$info[] = $context->msg( 'api-help-param-list' )
 								->params( $multi ? 2 : 1 )
-								->params( $values )
+								->params( $type )
 								->parse();
 							$hintPipeSeparated = false;
 						} else {
 							switch ( $type ) {
 								case 'submodule':
 									$groups[] = $name;
-
 									if ( isset( $settings[ApiBase::PARAM_SUBMODULE_MAP] ) ) {
 										$map = $settings[ApiBase::PARAM_SUBMODULE_MAP];
-										$defaultAttrs = [];
+										ksort( $map );
+										$submodules = [];
+										foreach ( $map as $v => $m ) {
+											$submodules[] = "[[Special:ApiHelp/{$m}|{$v}]]";
+										}
 									} else {
-										$prefix = $module->isMain() ? '' : ( $module->getModulePath() . '+' );
-										$map = [];
-										foreach ( $module->getModuleManager()->getNames( $name ) as $submoduleName ) {
-											$map[$submoduleName] = $prefix . $submoduleName;
-										}
-										$defaultAttrs = [ 'dir' => 'ltr', 'lang' => 'en' ];
+										$submodules = $module->getModuleManager()->getNames( $name );
+										sort( $submodules );
+										$prefix = $module->isMain()
+											? '' : ( $module->getModulePath() . '+' );
+										$submodules = array_map( function ( $name ) use ( $prefix ) {
+											return "[[Special:ApiHelp/{$prefix}{$name}|{$name}]]";
+										}, $submodules );
 									}
-									ksort( $map );
-
-									$submodules = [];
-									$deprecatedSubmodules = [];
-									foreach ( $map as $v => $m ) {
-										$attrs = $defaultAttrs;
-										$arr = &$submodules;
-										try {
-											$submod = $module->getModuleFromPath( $m );
-											if ( $submod ) {
-												if ( $submod->isDeprecated() ) {
-													$arr = &$deprecatedSubmodules;
-													$attrs['class'] = 'apihelp-deprecated-value';
-												}
-											}
-										} catch ( ApiUsageException $ex ) {
-											// Ignore
-										}
-										if ( $attrs ) {
-											$v = Html::element( 'span', $attrs, $v );
-										}
-										$arr[] = "[[Special:ApiHelp/{$m}|{$v}]]";
-									}
-									$submodules = array_merge( $submodules, $deprecatedSubmodules );
 									$count = count( $submodules );
 									$info[] = $context->msg( 'api-help-param-list' )
 										->params( $multi ? 2 : 1 )
@@ -577,12 +542,6 @@ class ApiHelp extends ApiBase {
 
 								case 'namespace':
 									$namespaces = MWNamespace::getValidNamespaces();
-									if ( isset( $settings[ApiBase::PARAM_EXTRA_NAMESPACES] ) &&
-										is_array( $settings[ApiBase::PARAM_EXTRA_NAMESPACES] )
-									) {
-										$namespaces = array_merge( $namespaces, $settings[ApiBase::PARAM_EXTRA_NAMESPACES] );
-									}
-									sort( $namespaces );
 									$count = count( $namespaces );
 									$info[] = $context->msg( 'api-help-param-list' )
 										->params( $multi ? 2 : 1 )
@@ -669,53 +628,18 @@ class ApiHelp extends ApiBase {
 
 						if ( $multi ) {
 							$extra = [];
-							$lowcount = !empty( $settings[ApiBase::PARAM_ISMULTI_LIMIT1] )
-								? $settings[ApiBase::PARAM_ISMULTI_LIMIT1]
-								: ApiBase::LIMIT_SML1;
-							$highcount = !empty( $settings[ApiBase::PARAM_ISMULTI_LIMIT2] )
-								? $settings[ApiBase::PARAM_ISMULTI_LIMIT2]
-								: ApiBase::LIMIT_SML2;
-
 							if ( $hintPipeSeparated ) {
 								$extra[] = $context->msg( 'api-help-param-multi-separate' )->parse();
 							}
-							if ( $count > $lowcount ) {
-								if ( $lowcount === $highcount ) {
-									$msg = $context->msg( 'api-help-param-multi-max-simple' )
-										->numParams( $lowcount );
-								} else {
-									$msg = $context->msg( 'api-help-param-multi-max' )
-										->numParams( $lowcount, $highcount );
-								}
-								$extra[] = $msg->parse();
+							if ( $count > ApiBase::LIMIT_SML1 ) {
+								$extra[] = $context->msg( 'api-help-param-multi-max' )
+									->numParams( ApiBase::LIMIT_SML1, ApiBase::LIMIT_SML2 )
+									->parse();
 							}
 							if ( $extra ) {
 								$info[] = implode( ' ', $extra );
 							}
-
-							$allowAll = isset( $settings[ApiBase::PARAM_ALL] )
-								? $settings[ApiBase::PARAM_ALL]
-								: false;
-							if ( $allowAll || $settings[ApiBase::PARAM_TYPE] === 'namespace' ) {
-								if ( $settings[ApiBase::PARAM_TYPE] === 'namespace' ) {
-									$allSpecifier = ApiBase::ALL_DEFAULT_STRING;
-								} else {
-									$allSpecifier = ( is_string( $allowAll ) ? $allowAll : ApiBase::ALL_DEFAULT_STRING );
-								}
-								$info[] = $context->msg( 'api-help-param-multi-all' )
-									->params( $allSpecifier )
-									->parse();
-							}
 						}
-					}
-
-					if ( isset( $settings[self::PARAM_MAX_BYTES] ) ) {
-						$info[] = $context->msg( 'api-help-param-maxbytes' )
-							->numParams( $settings[self::PARAM_MAX_BYTES] );
-					}
-					if ( isset( $settings[self::PARAM_MAX_CHARS] ) ) {
-						$info[] = $context->msg( 'api-help-param-maxchars' )
-							->numParams( $settings[self::PARAM_MAX_CHARS] );
 					}
 
 					// Add default
@@ -726,9 +650,8 @@ class ApiHelp extends ApiBase {
 						$info[] = $context->msg( 'api-help-param-default-empty' )
 							->parse();
 					} elseif ( $default !== null && $default !== false ) {
-						// We can't know whether this contains LTR or RTL text.
 						$info[] = $context->msg( 'api-help-param-default' )
-							->params( Html::element( 'span', [ 'dir' => 'auto' ], $default ) )
+							->params( wfEscapeWikiText( $default ) )
 							->parse();
 					}
 
@@ -800,7 +723,7 @@ class ApiHelp extends ApiBase {
 					$sandbox = SpecialPage::getTitleFor( 'ApiSandbox' )->getLocalURL() . '#' . $qs;
 					$help['examples'] .= Html::rawElement( 'dt', null, $msg->parse() );
 					$help['examples'] .= Html::rawElement( 'dd', null,
-						Html::element( 'a', [ 'href' => $link, 'dir' => 'ltr' ], "api.php?$qs" ) . ' ' .
+						Html::element( 'a', [ 'href' => $link ], "api.php?$qs" ) . ' ' .
 						Html::rawElement( 'a', [ 'href' => $sandbox ],
 							$context->msg( 'api-help-open-in-apisandbox' )->parse() )
 					);
@@ -895,9 +818,9 @@ class ApiHelp extends ApiBase {
 
 	public function getHelpUrls() {
 		return [
-			'https://www.mediawiki.org/wiki/Special:MyLanguage/API:Main_page',
-			'https://www.mediawiki.org/wiki/Special:MyLanguage/API:FAQ',
-			'https://www.mediawiki.org/wiki/Special:MyLanguage/API:Quick_start_guide',
+			'https://www.mediawiki.org/wiki/API:Main_page',
+			'https://www.mediawiki.org/wiki/API:FAQ',
+			'https://www.mediawiki.org/wiki/API:Quick_start_guide',
 		];
 	}
 }

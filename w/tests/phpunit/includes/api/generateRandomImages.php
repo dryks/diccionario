@@ -16,6 +16,7 @@ class GenerateRandomImages extends Maintenance {
 	}
 
 	public function execute() {
+
 		$getOptSpec = [
 			'dictionaryFile::',
 			'minWidth::',

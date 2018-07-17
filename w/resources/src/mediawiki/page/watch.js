@@ -2,22 +2,11 @@
  * Animate watch/unwatch links to use asynchronous API requests to
  * watch pages, rather than navigating to a different URI.
  *
- * Usage:
- *
- *     var watch = require( 'mediawiki.page.watch.ajax' );
- *     watch.updateWatchLink(
- *         $node,
- *         'watch',
- *         'loading'
- *     );
- *
- * @class mw.plugin.page.watch.ajax
- * @singleton
+ * @class mw.page.watch.ajax
  */
 ( function ( mw, $ ) {
-	var watch,
-		// The name of the page to watch or unwatch
-		title = mw.config.get( 'wgRelevantPageName' );
+	// The name of the page to watch or unwatch
+	var title = mw.config.get( 'wgRelevantPageName' );
 
 	/**
 	 * Update the link text, link href attribute and (if applicable)
@@ -79,7 +68,7 @@
 	 * @return {string} The extracted action, defaults to 'view'
 	 */
 	function mwUriGetAction( url ) {
-		var action, actionPaths, key, m, parts;
+		var action, actionPaths, key, i, m, parts;
 
 		// TODO: Does MediaWiki give action path or query param
 		// precedence? If the former, move this to the bottom
@@ -92,7 +81,9 @@
 		for ( key in actionPaths ) {
 			if ( actionPaths.hasOwnProperty( key ) ) {
 				parts = actionPaths[ key ].split( '$1' );
-				parts = parts.map( mw.RegExp.escape );
+				for ( i = 0; i < parts.length; i++ ) {
+					parts[ i ] = mw.RegExp.escape( parts[ i ] );
+				}
 				m = new RegExp( parts.join( '(.+)' ) ).exec( url );
 				if ( m && m[ 1 ] ) {
 					return key;
@@ -105,28 +96,26 @@
 	}
 
 	// Expose public methods
-	watch = {
+	mw.page.watch = {
 		updateWatchLink: updateWatchLink
 	};
-	module.exports = watch;
 
 	$( function () {
-		var $links = $( '.mw-watchlink a[data-mw="interface"], a.mw-watchlink[data-mw="interface"]' );
-		if ( !$links.length ) {
-			// Fallback to the class-based exclusion method for backwards-compatibility
-			$links = $( '.mw-watchlink a, a.mw-watchlink' );
-			// Restrict to core interfaces, ignore user-generated content
-			$links = $links.filter( ':not( #bodyContent *, #content * )' );
-		}
+		var $links = $( '.mw-watchlink a, a.mw-watchlink' );
+		// Restrict to core interfaces, ignore user-generated content
+		$links = $links.filter( ':not( #bodyContent *, #content * )' );
 
 		$links.click( function ( e ) {
-			var mwTitle, action, api, $link;
+			var action, api, $link;
 
-			mwTitle = mw.Title.newFromText( title );
+			// Start preloading the notification module (normally loaded by mw.notify())
+			mw.loader.load( 'mediawiki.notification' );
+
 			action = mwUriGetAction( this.href );
 
-			if ( !mwTitle || ( action !== 'watch' && action !== 'unwatch' ) ) {
-				// Let native browsing handle the link
+			if ( action !== 'watch' && action !== 'unwatch' ) {
+				// Could not extract target action from link url,
+				// let native browsing handle it further
 				return true;
 			}
 			e.preventDefault();
@@ -140,22 +129,13 @@
 
 			updateWatchLink( $link, action, 'loading' );
 
-			// Preload the notification module for mw.notify
-			mw.loader.load( 'mediawiki.notification' );
-
 			api = new mw.Api();
 
 			api[ action ]( title )
 				.done( function ( watchResponse ) {
-					var message, otherAction = action === 'watch' ? 'unwatch' : 'watch';
+					var otherAction = action === 'watch' ? 'unwatch' : 'watch';
 
-					if ( mwTitle.getNamespaceId() > 0 && mwTitle.getNamespaceId() % 2 === 1 ) {
-						message = action === 'watch' ? 'addedwatchtext-talk' : 'removedwatchtext-talk';
-					} else {
-						message = action === 'watch' ? 'addedwatchtext' : 'removedwatchtext';
-					}
-
-					mw.notify( mw.message( message, mwTitle.getPrefixedText() ).parseDom(), {
+					mw.notify( $.parseHTML( watchResponse.message ), {
 						tag: 'watch-self'
 					} );
 
@@ -163,21 +143,22 @@
 					updateWatchLink( $link, otherAction );
 
 					// Update the "Watch this page" checkbox on action=edit when the
-					// page is watched or unwatched via the tab (T14395).
-					$( '#wpWatchthis' ).prop( 'checked', watchResponse.watched === true );
+					// page is watched or unwatched via the tab (bug 12395).
+					$( '#wpWatchthis' ).prop( 'checked', watchResponse.watched !== undefined );
 				} )
 				.fail( function () {
-					var msg, link;
+					var cleanTitle, msg, link;
 
 					// Reset link to non-loading mode
 					updateWatchLink( $link, action );
 
 					// Format error message
+					cleanTitle = title.replace( /_/g, ' ' );
 					link = mw.html.element(
 						'a', {
 							href: mw.util.getUrl( title ),
-							title: mwTitle.getPrefixedText()
-						}, mwTitle.getPrefixedText()
+							title: cleanTitle
+						}, cleanTitle
 					);
 					msg = mw.message( 'watcherrortext', link );
 

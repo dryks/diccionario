@@ -25,9 +25,8 @@
  * @ingroup Maintenance
  */
 
+$wgUseMasterForMaintenance = true;
 require_once __DIR__ . '/Maintenance.php';
-
-use Wikimedia\Rdbms\IMaintainableDatabase;
 
 /**
  * Maintenance script to run database schema updates.
@@ -66,21 +65,30 @@ class UpdateMediaWiki extends Maintenance {
 
 		list( $pcreVersion ) = explode( ' ', PCRE_VERSION, 2 );
 		if ( version_compare( $pcreVersion, $minimumPcreVersion, '<' ) ) {
-			$this->fatalError(
+			$this->error(
 				"PCRE $minimumPcreVersion or later is required.\n" .
 				"Your PHP binary is linked with PCRE $pcreVersion.\n\n" .
 				"More information:\n" .
 				"https://www.mediawiki.org/wiki/Manual:Errors_and_symptoms/PCRE\n\n" .
-				"ABORTING.\n" );
+				"ABORTING.\n",
+				true );
 		}
 
 		$test = new PhpXmlBugTester();
 		if ( !$test->ok ) {
-			$this->fatalError(
+			$this->error(
 				"Your system has a combination of PHP and libxml2 versions that is buggy\n" .
 				"and can cause hidden data corruption in MediaWiki and other web apps.\n" .
 				"Upgrade to libxml2 2.7.3 or later.\n" .
-				"ABORTING (see https://bugs.php.net/bug.php?id=45996).\n" );
+				"ABORTING (see https://bugs.php.net/bug.php?id=45996).\n",
+				true );
+		}
+
+		if ( !function_exists( 'mb_strlen' ) ) {
+			$this->error(
+				"MediaWiki now requires the mbstring PHP extension, your system doesn't have it.\n"
+				. "ABORTING.\n",
+				true );
 		}
 	}
 
@@ -92,27 +100,27 @@ class UpdateMediaWiki extends Maintenance {
 				|| $this->hasOption( 'schema' )
 				|| $this->hasOption( 'noschema' ) )
 		) {
-			$this->fatalError( "Do not run update.php on this wiki. If you're seeing this you should\n"
+			$this->error( "Do not run update.php on this wiki. If you're seeing this you should\n"
 				. "probably ask for some help in performing your schema updates or use\n"
 				. "the --noschema and --schema options to get an SQL file for someone\n"
 				. "else to inspect and run.\n\n"
-				. "If you know what you are doing, you can continue with --force\n" );
+				. "If you know what you are doing, you can continue with --force\n", true );
 		}
 
 		$this->fileHandle = null;
 		if ( substr( $this->getOption( 'schema' ), 0, 2 ) === "--" ) {
-			$this->fatalError( "The --schema option requires a file as an argument.\n" );
+			$this->error( "The --schema option requires a file as an argument.\n", true );
 		} elseif ( $this->hasOption( 'schema' ) ) {
 			$file = $this->getOption( 'schema' );
 			$this->fileHandle = fopen( $file, "w" );
 			if ( $this->fileHandle === false ) {
 				$err = error_get_last();
-				$this->fatalError( "Problem opening the schema file for writing: $file\n\t{$err['message']}" );
+				$this->error( "Problem opening the schema file for writing: $file\n\t{$err['message']}", true );
 			}
 		}
 
 		$lang = Language::factory( 'en' );
-		// Set global language to ensure localised errors are in English (T22633)
+		// Set global language to ensure localised errors are in English (bug 20633)
 		RequestContext::getMain()->setLanguage( $lang );
 		$wgLang = $lang; // BackCompat
 
@@ -126,12 +134,12 @@ class UpdateMediaWiki extends Maintenance {
 			$this->compatChecks();
 		} else {
 			$this->output( "Skipping compatibility checks, proceed at your own risk (Ctrl+C to abort)\n" );
-			$this->countDown( 5 );
+			wfCountDown( 5 );
 		}
 
 		// Check external dependencies are up to date
 		if ( !$this->hasOption( 'skip-external-dependencies' ) ) {
-			$composerLockUpToDate = $this->runChild( CheckComposerLockUpToDate::class );
+			$composerLockUpToDate = $this->runChild( 'CheckComposerLockUpToDate' );
 			$composerLockUpToDate->execute();
 		} else {
 			$this->output(
@@ -143,19 +151,8 @@ class UpdateMediaWiki extends Maintenance {
 		# This will vomit up an error if there are permissions problems
 		$db = $this->getDB( DB_MASTER );
 
-		# Check to see whether the database server meets the minimum requirements
-		/** @var DatabaseInstaller $dbInstallerClass */
-		$dbInstallerClass = Installer::getDBInstallerClass( $db->getType() );
-		$status = $dbInstallerClass::meetsMinimumRequirement( $db->getServerVersion() );
-		if ( !$status->isOK() ) {
-			// This might output some wikitext like <strong> but it should be comprehensible
-			$text = $status->getWikiText();
-			$this->fatalError( $text );
-		}
-
 		$this->output( "Going to run database updates for " . wfWikiID() . "\n" );
 		if ( $db->getType() === 'sqlite' ) {
-			/** @var IMaintainableDatabase|DatabaseSqlite $db */
 			$this->output( "Using SQLite file: '{$db->getDbFilePath()}'\n" );
 		}
 		$this->output( "Depending on the size of your database this may take a while!\n" );
@@ -163,7 +160,7 @@ class UpdateMediaWiki extends Maintenance {
 		if ( !$this->hasOption( 'quick' ) ) {
 			$this->output( "Abort with control-c in the next five seconds "
 				. "(skip this countdown with --quick) ... " );
-			$this->countDown( 5 );
+			wfCountDown( 5 );
 		}
 
 		$time1 = microtime( true );
@@ -231,15 +228,15 @@ class UpdateMediaWiki extends Maintenance {
 
 		# Don't try to access the database
 		# This needs to be disabled early since extensions will try to use the l10n
-		# cache from $wgExtensionFunctions (T22471)
+		# cache from $wgExtensionFunctions (bug 20471)
 		$wgLocalisationCacheConf = [
-			'class' => LocalisationCache::class,
-			'storeClass' => LCStoreNull::class,
+			'class' => 'LocalisationCache',
+			'storeClass' => 'LCStoreNull',
 			'storeDirectory' => false,
 			'manualRecache' => false,
 		];
 	}
 }
 
-$maintClass = UpdateMediaWiki::class;
+$maintClass = 'UpdateMediaWiki';
 require_once RUN_MAINTENANCE_IF_MAIN;

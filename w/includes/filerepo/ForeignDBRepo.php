@@ -21,9 +21,6 @@
  * @ingroup FileRepo
  */
 
-use Wikimedia\Rdbms\Database;
-use Wikimedia\Rdbms\IDatabase;
-
 /**
  * A foreign repository with an accessible MediaWiki database
  *
@@ -54,13 +51,10 @@ class ForeignDBRepo extends LocalRepo {
 	/** @var bool */
 	protected $hasSharedCache;
 
-	/** @var IDatabase */
+	# Other stuff
 	protected $dbConn;
-
-	/** @var callable */
-	protected $fileFactory = [ ForeignDBFile::class, 'newFromTitle' ];
-	/** @var callable */
-	protected $fileFromRowFactory = [ ForeignDBFile::class, 'newFromRow' ];
+	protected $fileFactory = [ 'ForeignDBFile', 'newFromTitle' ];
+	protected $fileFromRowFactory = [ 'ForeignDBFile', 'newFromRow' ];
 
 	/**
 	 * @param array|null $info
@@ -92,7 +86,7 @@ class ForeignDBRepo extends LocalRepo {
 	/**
 	 * @return IDatabase
 	 */
-	function getReplicaDB() {
+	function getSlaveDB() {
 		return $this->getMasterDB();
 	}
 
@@ -112,7 +106,7 @@ class ForeignDBRepo extends LocalRepo {
 		];
 
 		return function ( $index ) use ( $type, $params ) {
-			return Database::factory( $type, $params );
+			return DatabaseBase::factory( $type, $params );
 		};
 	}
 
@@ -141,7 +135,7 @@ class ForeignDBRepo extends LocalRepo {
 	}
 
 	protected function assertWritableRepo() {
-		throw new MWException( static::class . ': write operations are not supported.' );
+		throw new MWException( get_class( $this ) . ': write operations are not supported.' );
 	}
 
 	/**

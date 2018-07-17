@@ -1,5 +1,4 @@
-/* stylelint-disable no-duplicate-selectors */
-@import 'mediawiki.widgets.datetime.definitions';
+@import "mediawiki.widgets.datetime.definitions";
 
 .mw-widgets-datetime-dateTimeInputWidget {
 	display: inline-block;
@@ -52,7 +51,8 @@
 		padding: 0 1em;
 		margin: 0;
 		background-color: #fff;
-		color: #000;
+		color: black;
+		border: solid 1px #ccc;
 		box-shadow: inset 0 0 0 0 @progressive;
 		border-radius: 0.1em;
 		.oo-ui-transition(box-shadow @quick-ease);
@@ -92,7 +92,7 @@
 		font-family: inherit;
 		background-color: transparent;
 		color: inherit;
-		border: 0;
+		border: none;
 		box-shadow: none;
 		text-align: center;
 		vertical-align: middle;
@@ -120,13 +120,13 @@
 
 		&.oo-ui-flaggedElement-invalid {
 			.mw-widgets-datetime-dateTimeInputWidget-handle {
-				border-color: #f00;
-				box-shadow: inset 0 0 0 0 #f00;
+				border-color: red;
+				box-shadow: inset 0 0 0 0 red;
 			}
 
 			.mw-widgets-datetime-dateTimeInputWidget-handle:focus {
-				border-color: #f00;
-				box-shadow: inset 0 0 0 0.1em #f00;
+				border-color: red;
+				box-shadow: inset 0 0 0 0.1em red;
 			}
 		}
 	}
@@ -136,12 +136,12 @@
 	}
 
 	&-editField.mw-widgets-datetime-dateTimeInputWidget-invalid {
-		border: 1px solid #f00;
-		box-shadow: inset 0 0 0 0 #f00;
+		border: 1px solid red;
+		box-shadow: inset 0 0 0 0 red;
 
 		&:focus {
-			border: 1px solid #f00;
-			box-shadow: inset 0 0 0 0.1em #f00;
+			border: 1px solid red;
+			box-shadow: inset 0 0 0 0.1em red;
 		}
 	}
 

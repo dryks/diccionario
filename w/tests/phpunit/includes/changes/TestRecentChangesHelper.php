@@ -1,7 +1,5 @@
 <?php
 
-use MediaWiki\MediaWikiServices;
-
 /**
  * Helper for generating test recent changes entries.
  *
@@ -12,6 +10,7 @@ class TestRecentChangesHelper {
 	public function makeEditRecentChange( User $user, $titleText, $curid, $thisid, $lastid,
 		$timestamp, $counter, $watchingUsers
 	) {
+
 		$attribs = array_merge(
 			$this->getDefaultAttributes( $titleText, $timestamp ),
 			[
@@ -71,6 +70,7 @@ class TestRecentChangesHelper {
 	public function makeNewBotEditRecentChange( User $user, $titleText, $curid, $thisid, $lastid,
 		$timestamp, $counter, $watchingUsers
 	) {
+
 		$attribs = array_merge(
 			$this->getDefaultAttributes( $titleText, $timestamp ),
 			[
@@ -100,8 +100,7 @@ class TestRecentChangesHelper {
 	public function getCacheEntry( $recentChange ) {
 		$rcCacheFactory = new RCCacheEntryFactory(
 			new RequestContext(),
-			[ 'diff' => 'diff', 'cur' => 'cur', 'last' => 'last' ],
-			MediaWikiServices::getInstance()->getLinkRenderer()
+			[ 'diff' => 'diff', 'cur' => 'cur', 'last' => 'last' ]
 		);
 		return $rcCacheFactory->newFromRecentChange( $recentChange, false );
 	}
@@ -109,6 +108,7 @@ class TestRecentChangesHelper {
 	public function makeCategorizationRecentChange(
 		User $user, $titleText, $curid, $thisid, $lastid, $timestamp
 	) {
+
 		$attribs = array_merge(
 			$this->getDefaultAttributes( $titleText, $timestamp ),
 			[
@@ -119,8 +119,6 @@ class TestRecentChangesHelper {
 				'rc_last_oldid' => $lastid,
 				'rc_cur_id' => $curid,
 				'rc_comment' => '[[:Testpage]] added to category',
-				'rc_comment_text' => '[[:Testpage]] added to category',
-				'rc_comment_data' => null,
 				'rc_old_len' => 0,
 				'rc_new_len' => 0,
 			]
@@ -141,8 +139,6 @@ class TestRecentChangesHelper {
 			'rc_old_len' => 212,
 			'rc_new_len' => 188,
 			'rc_comment' => '',
-			'rc_comment_text' => '',
-			'rc_comment_data' => null,
 			'rc_minor' => 0,
 			'rc_bot' => 0,
 			'rc_type' => 0,

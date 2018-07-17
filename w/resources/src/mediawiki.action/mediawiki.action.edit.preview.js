@@ -8,17 +8,15 @@
 	 * @param {jQuery.Event} e
 	 */
 	function doLivePreview( e ) {
-		var isDiff, api, parseRequest, diffRequest, postData, copySelectors, section, summary,
-			$wikiPreview, $wikiDiff, $editform, $textbox, $copyElements, $spinner, $errorBox;
+		var isDiff, api, parseRequest, diffRequest, postData, copySelectors, section,
+			$wikiPreview, $wikiDiff, $editform, $textbox, $summary, $copyElements, $spinner, $errorBox;
 
 		isDiff = ( e.target.name === 'wpDiff' );
 		$wikiPreview = $( '#wikiPreview' );
 		$wikiDiff = $( '#wikiDiff' );
 		$editform = $( '#editform' );
 		$textbox = $editform.find( '#wpTextbox1' );
-
-		summary = OO.ui.infuse( $( '#wpSummaryWidget' ) );
-
+		$summary = $editform.find( '#wpSummary' );
 		$spinner = $( '.mw-spinner-preview' );
 		$errorBox = $( '.errorbox' );
 		section = $editform.find( '[name="wpSection"]' ).val();
@@ -80,7 +78,7 @@
 			formatversion: 2,
 			action: 'parse',
 			title: mw.config.get( 'wgPageName' ),
-			summary: summary.getValue(),
+			summary: $summary.textSelection( 'getContents' ),
 			prop: ''
 		};
 
@@ -99,8 +97,7 @@
 				rvdifftotext: $textbox.textSelection( 'getContents' ),
 				rvdifftotextpst: true,
 				rvprop: '',
-				rvsection: section === '' ? undefined : section,
-				uselang: mw.config.get( 'wgUserLanguage' )
+				rvsection: section === '' ? undefined : section
 			} );
 
 			// Wait for the summary before showing the diff so the page doesn't jump twice
@@ -111,9 +108,9 @@
 						.revisions[ 0 ].diff.body;
 					$wikiDiff.find( 'table.diff tbody' ).html( diffHtml );
 					mw.hook( 'wikipage.diff' ).fire( $wikiDiff.find( 'table.diff' ) );
-				} catch ( err ) {
+				} catch ( e ) {
 					// "result.blah is undefined" error, ignore
-					mw.log.warn( err );
+					mw.log.warn( e );
 				}
 				$wikiDiff.show();
 			} );
@@ -127,7 +124,6 @@
 				preview: true,
 				sectionpreview: section !== '',
 				disableeditsection: true,
-				useskin: mw.config.get( 'skin' ),
 				uselang: mw.config.get( 'wgUserLanguage' )
 			} );
 			if ( section === 'new' ) {
@@ -137,7 +133,7 @@
 
 			parseRequest = api.post( postData );
 			parseRequest.done( function ( response ) {
-				var newList, $displaytitle, $content, $parent, $list;
+				var li, newList, $displaytitle, $content, $parent, $list;
 				if ( response.parse.jsconfigvars ) {
 					mw.config.set( response.parse.jsconfigvars );
 				}
@@ -153,7 +149,7 @@
 					newList.push(
 						$( '<div>' )
 							.addClass( 'mw-indicator' )
-							.attr( 'id', mw.util.escapeIdForAttribute( 'mw-indicator-' + name ) )
+							.attr( 'id', mw.util.escapeId( 'mw-indicator-' + name ) )
 							.html( indicator )
 							.get( 0 ),
 						// Add a whitespace between the <div>s because
@@ -183,8 +179,9 @@
 					$( '.catlinks[data-mw="interface"]' ).replaceWith( $content );
 				}
 				if ( response.parse.templates ) {
-					newList = response.parse.templates.map( function ( template ) {
-						return $( '<li>' )
+					newList = [];
+					$.each( response.parse.templates, function ( i, template ) {
+						li = $( '<li>' )
 							.append( $( '<a>' )
 								.attr( {
 									href: mw.util.getUrl( template.title ),
@@ -192,6 +189,7 @@
 								} )
 								.text( template.title )
 							);
+						newList.push( li );
 					} );
 
 					$editform.find( '.templatesUsed .mw-editfooter-list' ).detach().empty().append( newList ).appendTo( '.templatesUsed' );
@@ -200,19 +198,20 @@
 					$( '.limitreport' ).html( response.parse.limitreporthtml );
 				}
 				if ( response.parse.langlinks && mw.config.get( 'skin' ) === 'vector' ) {
-					newList = response.parse.langlinks.map( function ( langlink ) {
-						var bcp47 = mw.language.bcp47( langlink.lang );
-						return $( '<li>' )
+					newList = [];
+					$.each( response.parse.langlinks, function ( i, langlink ) {
+						li = $( '<li>' )
 							.addClass( 'interlanguage-link interwiki-' + langlink.lang )
 							.append( $( '<a>' )
 								.attr( {
 									href: langlink.url,
 									title: langlink.title + ' - ' + langlink.langname,
-									lang: bcp47,
-									hreflang: bcp47
+									lang: langlink.lang,
+									hreflang: langlink.lang
 								} )
 								.text( langlink.autonym )
 							);
+						newList.push( li );
 					} );
 					$list = $( '#p-lang ul' );
 					$parent = $list.parent();
@@ -246,11 +245,7 @@
 					$( '<span>' ).addClass( 'comment' ).html(
 						// There is no equivalent to rawParams
 						mw.message( 'parentheses' ).escaped()
-							// .replace() use $ as start of a pattern.
-							// $$ is the pattern for '$'.
-							// The inner .replace() duplicates any $ and
-							// the outer .replace() simplifies the $$.
-							.replace( '$1', parse.parsedsummary.replace( /\$/g, '$$$$' ) )
+							.replace( '$1', parse.parsedsummary )
 					)
 				);
 			}
@@ -301,13 +296,13 @@
 					role: 'navigation',
 					'aria-labelledby': 'p-lang-label'
 				} )
-					.append( $( '<h3>' ).attr( 'id', 'p-lang-label' ).text( mw.msg( 'otherlanguages' ) ) )
-					.append( $( '<div>' ).addClass( 'body' ).append( '<ul>' ) )
+				.append( $( '<h3>' ).attr( 'id', 'p-lang-label' ).text( mw.msg( 'otherlanguages' ) ) )
+				.append( $( '<div>' ).addClass( 'body' ).append( '<ul>' ) )
 			);
 		}
 
 		if ( !$( '.mw-summary-preview' ).length ) {
-			$( '#wpSummaryWidget' ).after(
+			$( '#wpSummary' ).after(
 				$( '<div>' ).addClass( 'mw-summary-preview' )
 			);
 		}
@@ -324,7 +319,7 @@
 
 		// This should be moved down to '#editform', but is kept on the body for now
 		// because the LiquidThreads extension is re-using this module with only half
-		// the EditPage (doesn't include #editform presumably, T57463).
+		// the EditPage (doesn't include #editform presumably, bug 55463).
 		$( document.body ).on( 'click', '#wpPreview, #wpDiff', doLivePreview );
 	} );
 

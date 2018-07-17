@@ -19,6 +19,7 @@
  * @class jQuery.plugin.suggestions
  */
 
+ // jscs:disable checkParamNames
 /**
  * @method suggestions
  * @chainable
@@ -93,8 +94,9 @@
  * @param {boolean} [options.highlightInput=false] Whether to highlight matched portions of the
  *  input or not.
  */
+ // jscs:enable checkParamNames
 
-( function ( $, mw ) {
+( function ( $ ) {
 
 	var hasOwn = Object.hasOwnProperty;
 
@@ -176,7 +178,7 @@
 					context.data.prevText = val;
 					// Try cache first
 					if ( context.config.cache && hasOwn.call( cache, val ) ) {
-						if ( mw.now() - cache[ val ].timestamp < context.config.cacheMaxAge ) {
+						if ( +new Date() - cache[ val ].timestamp < context.config.cacheMaxAge ) {
 							context.data.$textbox.suggestions( 'suggestions', cache[ val ].suggestions );
 							if ( typeof context.config.update.after === 'function' ) {
 								context.config.update.after.call( context.data.$textbox, cache[ val ].metadata );
@@ -201,7 +203,7 @@
 									cache[ val ] = {
 										suggestions: suggestions,
 										metadata: metadata,
-										timestamp: mw.now()
+										timestamp: +new Date()
 									};
 								}
 							},
@@ -293,7 +295,7 @@
 									expandFrom = 'left';
 
 								// Catch invalid values, default to 'auto'
-								} else if ( [ 'left', 'right', 'start', 'end', 'auto' ].indexOf( expandFrom ) === -1 ) {
+								} else if ( $.inArray( expandFrom, [ 'left', 'right', 'start', 'end', 'auto' ] ) === -1 ) {
 									expandFrom = 'auto';
 								}
 
@@ -351,6 +353,7 @@
 							$results.empty();
 							expWidth = -1;
 							for ( i = 0; i < context.config.suggestions.length; i++ ) {
+								/*jshint loopfunc:true */
 								text = context.config.suggestions[ i ];
 								$result = $( '<div>' )
 									.addClass( 'suggestions-result' )
@@ -373,7 +376,7 @@
 								}
 
 								if ( context.config.highlightInput ) {
-									$result.highlightText( context.data.prevText, { method: 'prefixHighlight' } );
+									$result.highlightText( context.data.prevText );
 								}
 
 								// Widen results box if needed (new width is only calculated here, applied later).
@@ -552,14 +555,14 @@
 					} else if ( selected.is( '.suggestions-special' ) ) {
 						if ( typeof context.config.special.select === 'function' ) {
 							// Allow the callback to decide whether to prevent default or not
-							if ( context.config.special.select.call( selected, context.data.$textbox, 'keyboard' ) === true ) {
+							if ( context.config.special.select.call( selected, context.data.$textbox ) === true ) {
 								preventDefault = false;
 							}
 						}
 					} else {
 						if ( typeof context.config.result.select === 'function' ) {
 							// Allow the callback to decide whether to prevent default or not
-							if ( context.config.result.select.call( selected, context.data.$textbox, 'keyboard' ) === true ) {
+							if ( context.config.result.select.call( selected, context.data.$textbox ) === true ) {
 								preventDefault = false;
 							}
 						}
@@ -672,14 +675,14 @@
 								if ( $result.get( 0 ) !== $other.get( 0 ) ) {
 									return;
 								}
-								$.suggestions.highlight( context, $result, true );
-								if ( typeof context.config.result.select === 'function' ) {
-									context.config.result.select.call( $result, context.data.$textbox, 'mouse' );
-								}
 								// Don't interfere with special clicks (e.g. to open in new tab)
 								if ( !( e.which !== 1 || e.altKey || e.ctrlKey || e.shiftKey || e.metaKey ) ) {
+									$.suggestions.highlight( context, $result, true );
+									if ( typeof context.config.result.select === 'function' ) {
+										context.config.result.select.call( $result, context.data.$textbox );
+									}
 									// This will hide the link we're just clicking on, which causes problems
-									// when done synchronously in at least Firefox 3.6 (T64858).
+									// when done synchronously in at least Firefox 3.6 (bug 62858).
 									setTimeout( function () {
 										$.suggestions.hide( context );
 									}, 0 );
@@ -705,13 +708,13 @@
 								if ( $special.get( 0 ) !== $other.get( 0 ) ) {
 									return;
 								}
-								if ( typeof context.config.special.select === 'function' ) {
-									context.config.special.select.call( $special, context.data.$textbox, 'mouse' );
-								}
 								// Don't interfere with special clicks (e.g. to open in new tab)
 								if ( !( e.which !== 1 || e.altKey || e.ctrlKey || e.shiftKey || e.metaKey ) ) {
+									if ( typeof context.config.special.select === 'function' ) {
+										context.config.special.select.call( $special, context.data.$textbox );
+									}
 									// This will hide the link we're just clicking on, which causes problems
-									// when done synchronously in at least Firefox 3.6 (T64858).
+									// when done synchronously in at least Firefox 3.6 (bug 62858).
 									setTimeout( function () {
 										$.suggestions.hide( context );
 									}, 0 );
@@ -742,23 +745,9 @@
 						$.suggestions.keypress( e, context, context.data.keypressed );
 					} )
 					.keyup( function ( e ) {
-						// The keypress event is fired when a key is pressed down and that key normally
-						// produces a character value. We also want to handle some keys that don't
-						// produce a character value so we also attach to the keydown/keyup events.
-						// List of codes sourced from
-						// https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/keyCode
-						var allowed = [
-							40, // up arrow
-							38, // down arrow
-							27, // escape
-							13, // enter
-							46, // delete
-							8 //   backspace
-						];
-						if ( context.data.keypressedCount === 0 &&
-							e.which === context.data.keypressed &&
-							allowed.indexOf( e.which ) !== -1
-						) {
+						// Some browsers won't throw keypress() for arrow keys. If we got a keydown and a keyup without a
+						// keypress in between, solve it
+						if ( context.data.keypressedCount === 0 ) {
 							$.suggestions.keypress( e, context, context.data.keypressed );
 						}
 					} )
@@ -784,4 +773,4 @@
 	 * @mixins jQuery.plugin.suggestions
 	 */
 
-}( jQuery, mediaWiki ) );
+}( jQuery ) );

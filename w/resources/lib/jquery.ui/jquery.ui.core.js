@@ -151,13 +151,13 @@ function focusable( element, isTabIndexNotNaN ) {
 }
 
 function visible( element ) {
-	return $.expr.pseudos.visible( element ) &&
-		!$( element ).parents().addBack().filter(function() {
+	return $.expr.filters.visible( element ) &&
+		!$( element ).parents().andSelf().filter(function() {
 			return $.css( this, "visibility" ) === "hidden";
 		}).length;
 }
 
-$.extend( $.expr.pseudos, {
+$.extend( $.expr[ ":" ], {
 	data: $.expr.createPseudo ?
 		$.expr.createPseudo(function( dataName ) {
 			return function( elem ) {

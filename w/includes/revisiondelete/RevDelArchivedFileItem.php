@@ -23,15 +23,9 @@
  * Item class for a filearchive table row
  */
 class RevDelArchivedFileItem extends RevDelFileItem {
-	/** @var RevDelArchivedFileList $list */
-	/** @var ArchivedFile $file */
-	/** @var LocalFile */
-	protected $lockFile;
-
 	public function __construct( $list, $row ) {
 		RevDelItem::__construct( $list, $row );
 		$this->file = ArchivedFile::newFromRow( $row );
-		$this->lockFile = RepoGroup::singleton()->getLocalRepo()->newFile( $row->fa_name );
 	}
 
 	public function getIdField() {
@@ -48,10 +42,6 @@ class RevDelArchivedFileItem extends RevDelFileItem {
 
 	public function getAuthorNameField() {
 		return 'fa_user_text';
-	}
-
-	public function getAuthorActorField() {
-		return 'fa_actor';
 	}
 
 	public function getId() {
@@ -73,16 +63,16 @@ class RevDelArchivedFileItem extends RevDelFileItem {
 	}
 
 	protected function getLink() {
-		$date = $this->list->getLanguage()->userTimeAndDate(
-			$this->file->getTimestamp(), $this->list->getUser() );
+		$date = htmlspecialchars( $this->list->getLanguage()->userTimeAndDate(
+			$this->file->getTimestamp(), $this->list->getUser() ) );
 
 		# Hidden files...
 		if ( !$this->canViewContent() ) {
-			$link = htmlspecialchars( $date );
+			$link = $date;
 		} else {
 			$undelete = SpecialPage::getTitleFor( 'Undelete' );
 			$key = $this->file->getKey();
-			$link = $this->getLinkRenderer()->makeLink( $undelete, $date, [],
+			$link = Linker::link( $undelete, $date, [],
 				[
 					'target' => $this->list->title->getPrefixedText(),
 					'file' => $key,
@@ -106,10 +96,10 @@ class RevDelArchivedFileItem extends RevDelFileItem {
 			'width' => $file->getWidth(),
 			'height' => $file->getHeight(),
 			'size' => $file->getSize(),
-			'userhidden' => (bool)$file->isDeleted( Revision::DELETED_USER ),
-			'commenthidden' => (bool)$file->isDeleted( Revision::DELETED_COMMENT ),
-			'contenthidden' => (bool)$this->isDeleted(),
 		];
+		$ret += $file->isDeleted( Revision::DELETED_USER ) ? [ 'userhidden' => '' ] : [];
+		$ret += $file->isDeleted( Revision::DELETED_COMMENT ) ? [ 'commenthidden' => '' ] : [];
+		$ret += $this->isDeleted() ? [ 'contenthidden' => '' ] : [];
 		if ( $this->canViewContent() ) {
 			$ret += [
 				'url' => SpecialPage::getTitleFor( 'Revisiondelete' )->getLinkURL(
@@ -117,7 +107,8 @@ class RevDelArchivedFileItem extends RevDelFileItem {
 						'target' => $this->list->title->getPrefixedText(),
 						'file' => $file->getKey(),
 						'token' => $user->getEditToken( $file->getKey() )
-					]
+					],
+					false, PROTO_RELATIVE
 				),
 			];
 		}
@@ -134,13 +125,5 @@ class RevDelArchivedFileItem extends RevDelFileItem {
 		}
 
 		return $ret;
-	}
-
-	public function lock() {
-		return $this->lockFile->acquireFileLock();
-	}
-
-	public function unlock() {
-		return $this->lockFile->releaseFileLock();
 	}
 }

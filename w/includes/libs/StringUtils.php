@@ -39,60 +39,19 @@ class StringUtils {
 	 * @return bool Whether the given $value is a valid UTF-8 encoded string
 	 */
 	static function isUtf8( $value ) {
-		return mb_check_encoding( (string)$value, 'UTF-8' );
-	}
+		$value = (string)$value;
 
-	/**
-	 * Explode a string, but ignore any instances of the separator inside
-	 * the given start and end delimiters, which may optionally nest.
-	 * The delimiters are literal strings, not regular expressions.
-	 * @param string $startDelim Start delimiter
-	 * @param string $endDelim End delimiter
-	 * @param string $separator Separator string for the explode.
-	 * @param string $subject Subject string to explode.
-	 * @param bool $nested True iff the delimiters are allowed to nest.
-	 * @return ArrayIterator
-	 */
-	static function delimiterExplode( $startDelim, $endDelim, $separator,
-		$subject, $nested = false ) {
-		$inputPos = 0;
-		$lastPos = 0;
-		$depth = 0;
-		$encStart = preg_quote( $startDelim, '!' );
-		$encEnd = preg_quote( $endDelim, '!' );
-		$encSep = preg_quote( $separator, '!' );
-		$len = strlen( $subject );
-		$m = [];
-		$exploded = [];
-		while (
-			$inputPos < $len &&
-			preg_match(
-				"!$encStart|$encEnd|$encSep!S", $subject, $m,
-				PREG_OFFSET_CAPTURE, $inputPos
-			)
-		) {
-			$match = $m[0][0];
-			$matchPos = $m[0][1];
-			$inputPos = $matchPos + strlen( $match );
-			if ( $match === $separator ) {
-				if ( $depth === 0 ) {
-					$exploded[] = substr(
-						$subject, $lastPos, $matchPos - $lastPos
-					);
-					$lastPos = $inputPos;
-				}
-			} elseif ( $match === $startDelim ) {
-				if ( $depth === 0 || $nested ) {
-					$depth++;
-				}
-			} else {
-				$depth--;
-			}
+		// HHVM 3.4 and older come with an outdated version of libmbfl that
+		// incorrectly allows values above U+10FFFF, so we have to check
+		// for them separately. (This issue also exists in PHP 5.3 and
+		// older, which are no longer supported.)
+		static $newPHP;
+		if ( $newPHP === null ) {
+			$newPHP = !mb_check_encoding( "\xf4\x90\x80\x80", 'UTF-8' );
 		}
-		$exploded[] = substr( $subject, $lastPos );
-		// This method could be rewritten in the future to avoid creating an
-		// intermediate array, since the return type is just an iterator.
-		return new ArrayIterator( $exploded );
+
+		return mb_check_encoding( $value, 'UTF-8' ) &&
+			( $newPHP || preg_match( "/\xf4[\x90-\xbf]|[\xf5-\xff]/S", $value ) === 0 );
 	}
 
 	/**
@@ -156,7 +115,6 @@ class StringUtils {
 	) {
 		$inputPos = 0;
 		$outputPos = 0;
-		$contentPos = 0;
 		$output = '';
 		$foundStart = false;
 		$encStart = preg_quote( $startDelim, '!' );
@@ -264,7 +222,7 @@ class StringUtils {
 
 		// Replace instances of the separator inside HTML-like tags with the placeholder
 		$replacer = new DoubleReplacer( $separator, $placeholder );
-		$cleaned = self::delimiterReplaceCallback( '<', '>', $replacer->cb(), $text );
+		$cleaned = StringUtils::delimiterReplaceCallback( '<', '>', $replacer->cb(), $text );
 
 		// Explode, then put the replaced separators back in
 		$items = explode( $separator, $cleaned );
@@ -291,7 +249,7 @@ class StringUtils {
 
 		// Replace instances of the separator inside HTML-like tags with the placeholder
 		$replacer = new DoubleReplacer( $search, $placeholder );
-		$cleaned = self::delimiterReplaceCallback( '<', '>', $replacer->cb(), $text );
+		$cleaned = StringUtils::delimiterReplaceCallback( '<', '>', $replacer->cb(), $text );
 
 		// Explode, then put the replaced separators back in
 		$cleaned = str_replace( $search, $replace, $cleaned );

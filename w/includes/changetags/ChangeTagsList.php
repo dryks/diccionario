@@ -39,19 +39,18 @@ abstract class ChangeTagsList extends RevisionListBase {
 	 * @throws Exception If you give an unknown $typeName
 	 */
 	public static function factory( $typeName, IContextSource $context,
-		Title $title, array $ids
-	) {
+		Title $title, array $ids ) {
+
 		switch ( $typeName ) {
 			case 'revision':
-				$className = ChangeTagsRevisionList::class;
+				$className = 'ChangeTagsRevisionList';
 				break;
 			case 'logentry':
-				$className = ChangeTagsLogList::class;
+				$className = 'ChangeTagsLogList';
 				break;
 			default:
-				throw new Exception( "Class $typeName requested, but does not exist" );
+				throw new Exception( "Class $className requested, but does not exist" );
 		}
-
 		return new $className( $context, $title, $ids );
 	}
 

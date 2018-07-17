@@ -16,6 +16,7 @@
  * http://www.gnu.org/copyleft/gpl.html
  *
  * @file
+ * @author Aaron Schulz
  */
 use Psr\Log\LoggerInterface;
 use Psr\Log\LoggerAwareInterface;
@@ -64,3 +65,4 @@ abstract class EventRelayer implements LoggerAwareInterface {
 	 */
 	abstract protected function doNotify( $channel, array $events );
 }
+

@@ -92,7 +92,7 @@ class RebuildLocalisationCache extends Maintenance {
 				explode( ',', $this->getOption( 'lang' ) ) );
 			# Bailed out if nothing is left
 			if ( count( $codes ) == 0 ) {
-				$this->fatalError( 'None of the languages specified exists.' );
+				$this->error( 'None of the languages specified exists.', 1 );
 			}
 		} else {
 			# By default get all languages
@@ -112,7 +112,7 @@ class RebuildLocalisationCache extends Maintenance {
 
 			if ( $pid === 0 ) {
 				// Child, reseed because there is no bug in PHP:
-				// https://bugs.php.net/bug.php?id=42465
+				// http://bugs.php.net/bug.php?id=42465
 				mt_srand( getmypid() );
 
 				$this->doRebuild( $codes, $lc, $force );
@@ -177,5 +177,5 @@ class RebuildLocalisationCache extends Maintenance {
 	}
 }
 
-$maintClass = RebuildLocalisationCache::class;
+$maintClass = "RebuildLocalisationCache";
 require_once RUN_MAINTENANCE_IF_MAIN;

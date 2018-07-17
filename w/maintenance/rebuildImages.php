@@ -32,8 +32,6 @@
 
 require_once __DIR__ . '/Maintenance.php';
 
-use Wikimedia\Rdbms\IMaintainableDatabase;
-
 /**
  * Maintenance script to update image metadata records.
  *
@@ -42,7 +40,7 @@ use Wikimedia\Rdbms\IMaintainableDatabase;
 class ImageBuilder extends Maintenance {
 
 	/**
-	 * @var IMaintainableDatabase
+	 * @var DatabaseBase
 	 */
 	protected $dbw;
 
@@ -63,8 +61,7 @@ class ImageBuilder extends Maintenance {
 		$this->dbw = $this->getDB( DB_MASTER );
 		$this->dryrun = $this->hasOption( 'dry-run' );
 		if ( $this->dryrun ) {
-			MediaWiki\MediaWikiServices::getInstance()->getReadOnlyMode()
-				->setReason( 'Dry run mode, image upgrades are suppressed' );
+			$GLOBALS['wgReadOnly'] = 'Dry run mode, image upgrades are suppressed';
 		}
 
 		if ( $this->hasOption( 'missing' ) ) {
@@ -125,14 +122,12 @@ class ImageBuilder extends Maintenance {
 		flush();
 	}
 
-	function buildTable( $table, $key, $queryInfo, $callback ) {
+	function buildTable( $table, $key, $callback ) {
 		$count = $this->dbw->selectField( $table, 'count(*)', '', __METHOD__ );
 		$this->init( $count, $table );
 		$this->output( "Processing $table...\n" );
 
-		$result = $this->getDB( DB_REPLICA )->select(
-			$queryInfo['tables'], $queryInfo['fields'], [], __METHOD__, [], $queryInfo['joins']
-		);
+		$result = $this->getDB( DB_SLAVE )->select( $table, '*', [], __METHOD__ );
 
 		foreach ( $result as $row ) {
 			$update = call_user_func( $callback, $row, null );
@@ -147,7 +142,7 @@ class ImageBuilder extends Maintenance {
 
 	function buildImage() {
 		$callback = [ $this, 'imageCallback' ];
-		$this->buildTable( 'image', 'img_name', LocalFile::getQueryInfo(), $callback );
+		$this->buildTable( 'image', 'img_name', $callback );
 	}
 
 	function imageCallback( $row, $copy ) {
@@ -159,8 +154,7 @@ class ImageBuilder extends Maintenance {
 	}
 
 	function buildOldImage() {
-		$this->buildTable( 'oldimage', 'oi_archive_name', OldLocalFile::getQueryInfo(),
-			[ $this, 'oldimageCallback' ] );
+		$this->buildTable( 'oldimage', 'oi_archive_name', [ $this, 'oldimageCallback' ] );
 	}
 
 	function oldimageCallback( $row, $copy ) {
@@ -233,5 +227,5 @@ class ImageBuilder extends Maintenance {
 	}
 }
 
-$maintClass = ImageBuilder::class;
+$maintClass = 'ImageBuilder';
 require_once RUN_MAINTENANCE_IF_MAIN;

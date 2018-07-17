@@ -5,18 +5,16 @@
  * @file
  */
 
-/**
- * @covers LanguageTr
- */
+/** Tests for MediaWiki languages/LanguageTr.php */
 class LanguageTrTest extends LanguageClassesTestCase {
 
 	/**
-	 * See T30040
+	 * See @bug 28040
 	 * Credits to irc://irc.freenode.net/wikipedia-tr users:
 	 *  - berm
 	 *  - []LuCkY[]
 	 *  - Emperyan
-	 * @see https://en.wikipedia.org/wiki/Dotted_and_dotless_I
+	 * @see http://en.wikipedia.org/wiki/Dotted_and_dotless_I
 	 * @dataProvider provideDottedAndDotlessI
 	 * @covers Language::ucfirst
 	 * @covers Language::lcfirst
@@ -50,8 +48,8 @@ class LanguageTrTest extends LanguageClassesTestCase {
 			[ 'lcfirst', 'ı', 'lower', 'ı' ],
 			[ 'lcfirst', 'i', 'lower', 'i' ],
 
-			# A real example taken from T30040 using
-			# https://tr.wikipedia.org/wiki/%C4%B0Phone
+			# A real example taken from bug 28040 using
+			# http://tr.wikipedia.org/wiki/%C4%B0Phone
 			[ 'lcfirst', 'iPhone', 'lower', 'iPhone' ],
 
 			# next case is valid in Turkish but are different words if we

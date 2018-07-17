@@ -21,13 +21,8 @@
  *
  * @file
  */
-use MediaWiki\Linker\LinkRenderer;
-use MediaWiki\MediaWikiServices;
-use Wikimedia\Rdbms\ResultWrapper;
 
 class ChangesList extends ContextSource {
-	const CSS_CLASS_PREFIX = 'mw-changeslist-';
-
 	/**
 	 * @var Skin
 	 */
@@ -41,29 +36,15 @@ class ChangesList extends ContextSource {
 	protected $rclistOpen;
 	protected $rcMoveIndex;
 
-	/** @var callable */
-	protected $changeLinePrefixer;
-
 	/** @var BagOStuff */
 	protected $watchMsgCache;
-
-	/**
-	 * @var LinkRenderer
-	 */
-	protected $linkRenderer;
-
-	/**
-	 * @var array
-	 */
-	protected $filterGroups;
 
 	/**
 	 * Changeslist constructor
 	 *
 	 * @param Skin|IContextSource $obj
-	 * @param array $filterGroups Array of ChangesListFilterGroup objects (currently optional)
 	 */
-	public function __construct( $obj, array $filterGroups = [] ) {
+	public function __construct( $obj ) {
 		if ( $obj instanceof IContextSource ) {
 			$this->setContext( $obj );
 			$this->skin = $obj->getSkin();
@@ -73,8 +54,6 @@ class ChangesList extends ContextSource {
 		}
 		$this->preCacheMessages();
 		$this->watchMsgCache = new HashBagOStuff( [ 'maxKeys' => 50 ] );
-		$this->linkRenderer = MediaWikiServices::getInstance()->getLinkRenderer();
-		$this->filterGroups = $filterGroups;
 	}
 
 	/**
@@ -82,19 +61,16 @@ class ChangesList extends ContextSource {
 	 * Some users might want to use an enhanced list format, for instance
 	 *
 	 * @param IContextSource $context
-	 * @param array $groups Array of ChangesListFilterGroup objects (currently optional)
 	 * @return ChangesList
 	 */
-	public static function newFromContext( IContextSource $context, array $groups = [] ) {
+	public static function newFromContext( IContextSource $context ) {
 		$user = $context->getUser();
 		$sk = $context->getSkin();
 		$list = null;
 		if ( Hooks::run( 'FetchChangesList', [ $user, &$sk, &$list ] ) ) {
 			$new = $context->getRequest()->getBool( 'enhanced', $user->getOption( 'usenewrc' ) );
 
-			return $new ?
-				new EnhancedChangesList( $context, $groups ) :
-				new OldChangesList( $context, $groups );
+			return $new ? new EnhancedChangesList( $context ) : new OldChangesList( $context );
 		} else {
 			return $list;
 		}
@@ -105,7 +81,7 @@ class ChangesList extends ContextSource {
 	 *
 	 * @since 1.27
 	 *
-	 * @param RecentChange &$rc Passed by reference
+	 * @param RecentChange $rc Passed by reference
 	 * @param bool $watched (default false)
 	 * @param int $linenumber (default null)
 	 *
@@ -172,47 +148,21 @@ class ChangesList extends ContextSource {
 	 * @return array of classes
 	 */
 	protected function getHTMLClasses( $rc, $watched ) {
-		$classes = [ self::CSS_CLASS_PREFIX . 'line' ];
+		$classes = [];
 		$logType = $rc->mAttribs['rc_log_type'];
 
 		if ( $logType ) {
-			$classes[] = self::CSS_CLASS_PREFIX . 'log';
-			$classes[] = Sanitizer::escapeClass( self::CSS_CLASS_PREFIX . 'log-' . $logType );
+			$classes[] = Sanitizer::escapeClass( 'mw-changeslist-log-' . $logType );
 		} else {
-			$classes[] = self::CSS_CLASS_PREFIX . 'edit';
-			$classes[] = Sanitizer::escapeClass( self::CSS_CLASS_PREFIX . 'ns' .
+			$classes[] = Sanitizer::escapeClass( 'mw-changeslist-ns' .
 				$rc->mAttribs['rc_namespace'] . '-' . $rc->mAttribs['rc_title'] );
 		}
-		$classes[] = Sanitizer::escapeClass( self::CSS_CLASS_PREFIX . 'ns-' .
-			$rc->mAttribs['rc_namespace'] );
 
 		// Indicate watched status on the line to allow for more
 		// comprehensive styling.
 		$classes[] = $watched && $rc->mAttribs['rc_timestamp'] >= $watched
-			? self::CSS_CLASS_PREFIX . 'line-watched'
-			: self::CSS_CLASS_PREFIX . 'line-not-watched';
-
-		$classes = array_merge( $classes, $this->getHTMLClassesForFilters( $rc ) );
-
-		return $classes;
-	}
-
-	/**
-	 * Get an array of CSS classes attributed to filters for this row
-	 *
-	 * @param RecentChange $rc
-	 * @return array Array of CSS classes
-	 */
-	protected function getHTMLClassesForFilters( $rc ) {
-		$classes = [];
-
-		if ( $this->filterGroups !== null ) {
-			foreach ( $this->filterGroups as $filterGroup ) {
-				foreach ( $filterGroup->getFilters() as $filter ) {
-					$filter->applyCssClassIfNeeded( $this, $rc, $classes );
-				}
-			}
-		}
+			? 'mw-changeslist-line-watched'
+			: 'mw-changeslist-line-not-watched';
 
 		return $classes;
 	}
@@ -278,9 +228,6 @@ class ChangesList extends ContextSource {
 
 	/**
 	 * Show formatted char difference
-	 *
-	 * Needs the css module 'mediawiki.special.changeslist' to style output
-	 *
 	 * @param int $old Number of bytes
 	 * @param int $new Number of bytes
 	 * @param IContextSource $context
@@ -367,7 +314,7 @@ class ChangesList extends ContextSource {
 	}
 
 	/**
-	 * @param string &$s HTML to update
+	 * @param string $s HTML to update
 	 * @param mixed $rc_timestamp
 	 */
 	public function insertDateHeader( &$s, $rc_timestamp ) {
@@ -384,21 +331,19 @@ class ChangesList extends ContextSource {
 	}
 
 	/**
-	 * @param string &$s HTML to update
+	 * @param string $s HTML to update
 	 * @param Title $title
 	 * @param string $logtype
 	 */
 	public function insertLog( &$s, $title, $logtype ) {
 		$page = new LogPage( $logtype );
-		$logname = $page->getName()->setContext( $this->getContext() )->text();
-		$s .= $this->msg( 'parentheses' )->rawParams(
-			$this->linkRenderer->makeKnownLink( $title, $logname )
-		)->escaped();
+		$logname = $page->getName()->setContext( $this->getContext() )->escaped();
+		$s .= $this->msg( 'parentheses' )->rawParams( Linker::linkKnown( $title, $logname ) )->escaped();
 	}
 
 	/**
-	 * @param string &$s HTML to update
-	 * @param RecentChange &$rc
+	 * @param string $s HTML to update
+	 * @param RecentChange $rc
 	 * @param bool|null $unpatrolled Unused variable, since 1.27.
 	 */
 	public function insertDiffHist( &$s, &$rc, $unpatrolled = null ) {
@@ -418,10 +363,10 @@ class ChangesList extends ContextSource {
 				'oldid' => $rc->mAttribs['rc_last_oldid']
 			];
 
-			$diffLink = $this->linkRenderer->makeKnownLink(
+			$diffLink = Linker::linkKnown(
 				$rc->getTitle(),
-				new HtmlArmor( $this->message['diff'] ),
-				[ 'class' => 'mw-changeslist-diff' ],
+				$this->message['diff'],
+				[ 'tabindex' => $rc->counter ],
 				$query
 			);
 		}
@@ -430,10 +375,10 @@ class ChangesList extends ContextSource {
 		} else {
 			$diffhist = $diffLink . $this->message['pipe-separator'];
 			# History link
-			$diffhist .= $this->linkRenderer->makeKnownLink(
+			$diffhist .= Linker::linkKnown(
 				$rc->getTitle(),
-				new HtmlArmor( $this->message['hist'] ),
-				[ 'class' => 'mw-changeslist-history' ],
+				$this->message['hist'],
+				[],
 				[
 					'curid' => $rc->mAttribs['rc_cur_id'],
 					'action' => 'history'
@@ -447,7 +392,7 @@ class ChangesList extends ContextSource {
 	}
 
 	/**
-	 * @param string &$s Article link will be appended to this string, in place.
+	 * @param string $s Article link will be appended to this string, in place.
 	 * @param RecentChange $rc
 	 * @param bool $unpatrolled
 	 * @param bool $watched
@@ -458,7 +403,7 @@ class ChangesList extends ContextSource {
 	}
 
 	/**
-	 * @param RecentChange &$rc
+	 * @param RecentChange $rc
 	 * @param bool $unpatrolled
 	 * @param bool $watched
 	 * @return string HTML
@@ -470,7 +415,7 @@ class ChangesList extends ContextSource {
 			$params = [ 'redirect' => 'no' ];
 		}
 
-		$articlelink = $this->linkRenderer->makeLink(
+		$articlelink = Linker::link(
 			$rc->getTitle(),
 			null,
 			[ 'class' => 'mw-changeslist-title' ],
@@ -513,7 +458,7 @@ class ChangesList extends ContextSource {
 	/**
 	 * Insert time timestamp string from $rc into $s
 	 *
-	 * @param string &$s HTML to update
+	 * @param string $s HTML to update
 	 * @param RecentChange $rc
 	 */
 	public function insertTimestamp( &$s, $rc ) {
@@ -576,9 +521,7 @@ class ChangesList extends ContextSource {
 			return '';
 		}
 		$cache = $this->watchMsgCache;
-		return $cache->getWithSetCallback(
-			$cache->makeKey( 'watching-users-msg', $count ),
-			$cache::TTL_INDEFINITE,
+		return $cache->getWithSetCallback( $count, $cache::TTL_INDEFINITE,
 			function () use ( $count ) {
 				return $this->msg( 'number_of_watching_users_RCview' )
 					->numParams( $count )->escaped();
@@ -627,8 +570,8 @@ class ChangesList extends ContextSource {
 
 	/** Inserts a rollback link
 	 *
-	 * @param string &$s
-	 * @param RecentChange &$rc
+	 * @param string $s
+	 * @param RecentChange $rc
 	 */
 	public function insertRollback( &$s, &$rc ) {
 		if ( $rc->mAttribs['rc_type'] == RC_EDIT
@@ -646,7 +589,6 @@ class ChangesList extends ContextSource {
 					'id' => $rc->mAttribs['rc_this_oldid'],
 					'user' => $rc->mAttribs['rc_user'],
 					'user_text' => $rc->mAttribs['rc_user_text'],
-					'actor' => isset( $rc->mAttribs['rc_actor'] ) ? $rc->mAttribs['rc_actor'] : null,
 					'deleted' => $rc->mAttribs['rc_deleted']
 				] );
 				$s .= ' ' . Linker::generateRollback( $rev, $this->getContext() );
@@ -666,9 +608,9 @@ class ChangesList extends ContextSource {
 	}
 
 	/**
-	 * @param string &$s
-	 * @param RecentChange &$rc
-	 * @param array &$classes
+	 * @param string $s
+	 * @param RecentChange $rc
+	 * @param array $classes
 	 */
 	public function insertTags( &$s, &$rc, &$classes ) {
 		if ( empty( $rc->mAttribs['ts_tags'] ) ) {
@@ -686,7 +628,7 @@ class ChangesList extends ContextSource {
 
 	/**
 	 * @param RecentChange $rc
-	 * @param array &$classes
+	 * @param array $classes
 	 * @return string
 	 * @since 1.26
 	 */
@@ -749,40 +691,4 @@ class ChangesList extends ContextSource {
 			&& intval( $rcObj->getAttribute( 'rc_this_oldid' ) ) === 0;
 	}
 
-	/**
-	 * Get recommended data attributes for a change line.
-	 * @param RecentChange $rc
-	 * @return string[] attribute name => value
-	 */
-	protected function getDataAttributes( RecentChange $rc ) {
-		$attrs = [];
-
-		$type = $rc->getAttribute( 'rc_source' );
-		switch ( $type ) {
-			case RecentChange::SRC_EDIT:
-			case RecentChange::SRC_NEW:
-				$attrs['data-mw-revid'] = $rc->mAttribs['rc_this_oldid'];
-				break;
-			case RecentChange::SRC_LOG:
-				$attrs['data-mw-logid'] = $rc->mAttribs['rc_logid'];
-				$attrs['data-mw-logaction'] =
-					$rc->mAttribs['rc_log_type'] . '/' . $rc->mAttribs['rc_log_action'];
-				break;
-		}
-
-		$attrs[ 'data-mw-ts' ] = $rc->getAttribute( 'rc_timestamp' );
-
-		return $attrs;
-	}
-
-	/**
-	 * Sets the callable that generates a change line prefix added to the beginning of each line.
-	 *
-	 * @param callable $prefixer Callable to run that generates the change line prefix.
-	 *     Takes three parameters: a RecentChange object, a ChangesList object,
-	 *     and whether the current entry is a grouped entry.
-	 */
-	public function setChangeLinePrefixer( callable $prefixer ) {
-		$this->changeLinePrefixer = $prefixer;
-	}
 }

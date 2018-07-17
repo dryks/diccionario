@@ -1,5 +1,5 @@
-@import 'mediawiki.mixins';
-@import '../variables';
+@import "mediawiki.mixins";
+@import "../variables";
 
 /**
  * The following code is highly modified from monobook. It would be nice if the
@@ -41,7 +41,7 @@
 				.background-image('../images/preferences/fade.png');
 				background-position: bottom;
 				background-repeat: repeat-x;
-				color: @colorText;
+				color: #333;
 			}
 		}
 	}
@@ -69,26 +69,26 @@
 	margin: 0;
 	margin-top: -2px;
 	clear: both;
-	border: 1px solid @colorGray12;
-	background-color: @colorGray15;
+	border: solid 1px #ccc;
+	background-color: #fafafa;
 
 	fieldset {
-		border: 0;
-		border-top: 1px solid @colorGray12;
+		border: none;
+		border-top: solid 1px #ccc;
 	}
 
-	> fieldset {
-		border: 0;
+	>fieldset {
+		border: none;
 		padding: 0;
 		margin: 1em;
 
-		> legend {
+		>legend {
 			display: none;
 		}
 	}
 
 	legend {
-		color: @colorGray5;
+		color: #666;
 	}
 
 	td {
@@ -107,6 +107,6 @@
 
 .htmlform-tip {
 	font-size: x-small;
-	padding: 0.2em 2em;
-	color: @colorGray5;
+	padding: .2em 2em;
+	color: #666;
 }

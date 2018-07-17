@@ -4,18 +4,20 @@
  * @package SyntaxHighlight_GeSHi
  */
 
-/* eslint-env node, es6 */
+/*jshint node:true */
 module.exports = function ( grunt ) {
-	var conf = grunt.file.readJSON( 'extension.json' );
-
 	grunt.loadNpmTasks( 'grunt-banana-checker' );
+	grunt.loadNpmTasks( 'grunt-contrib-csslint' );
+	grunt.loadNpmTasks( 'grunt-contrib-jshint' );
 	grunt.loadNpmTasks( 'grunt-contrib-watch' );
-	grunt.loadNpmTasks( 'grunt-eslint' );
+	grunt.loadNpmTasks( 'grunt-jscs' );
 	grunt.loadNpmTasks( 'grunt-jsonlint' );
-	grunt.loadNpmTasks( 'grunt-stylelint' );
 
 	grunt.initConfig( {
-		eslint: {
+		jshint: {
+			options: {
+				jshintrc: true
+			},
 			all: [
 				'*.js',
 				'modules/**/*.js'
@@ -28,25 +30,31 @@ module.exports = function ( grunt ) {
 				'modules/**/*.json'
 			]
 		},
-		stylelint: {
-			all: [
-				'**/*.css',
-				'!**/*.generated.css',
-				'!vendor/**',
-				'!node_modules/**'
-			]
+		jscs: {
+			src: '<%= jshint.all %>'
 		},
-		banana: conf.MessagesDirs,
+		csslint: {
+			options: {
+				csslintrc: '.csslintrc'
+			},
+			all: 'modules/**/*.css'
+		},
+		banana: {
+			options: {
+				disallowDuplicateTranslations: false
+			},
+			all: 'i18n/'
+		},
 		watch: {
 			files: [
-				'<%= eslint.all %>',
-				'<%= jsonlint.all %>',
-				'<%= stylelint.all %>'
+				'.{csslintrc,jscsrc,jshintignore,jshintrc}',
+				'<%= jshint.all %>',
+				'<%= csslint.all %>'
 			],
 			tasks: 'test'
 		}
 	} );
 
-	grunt.registerTask( 'test', [ 'eslint', 'jsonlint', 'stylelint', 'banana' ] );
+	grunt.registerTask( 'test', [ 'jshint', 'jsonlint', 'jscs', 'csslint', 'banana' ] );
 	grunt.registerTask( 'default', 'test' );
 };

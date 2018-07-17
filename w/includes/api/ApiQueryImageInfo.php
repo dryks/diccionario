@@ -1,5 +1,9 @@
 <?php
 /**
+ *
+ *
+ * Created on July 6, 2007
+ *
  * Copyright © 2006 Yuri Astrakhan "<Firstname><Lastname>@gmail.com"
  *
  * This program is free software; you can redistribute it and/or modify
@@ -54,15 +58,6 @@ class ApiQueryImageInfo extends ApiQueryBase {
 			'revdelUser' => $this->getUser(),
 		];
 
-		if ( isset( $params['badfilecontexttitle'] ) ) {
-			$badFileContextTitle = Title::newFromText( $params['badfilecontexttitle'] );
-			if ( !$badFileContextTitle ) {
-				$this->dieUsage( 'Invalid title in badfilecontexttitle parameter', 'invalid-title' );
-			}
-		} else {
-			$badFileContextTitle = false;
-		}
-
 		$pageIds = $this->getPageSet()->getGoodAndMissingTitlesByNamespace();
 		if ( !empty( $pageIds[NS_FILE] ) ) {
 			$titles = array_keys( $pageIds[NS_FILE] );
@@ -100,16 +95,13 @@ class ApiQueryImageInfo extends ApiQueryBase {
 
 			$result = $this->getResult();
 			foreach ( $titles as $title ) {
-				$info = [];
 				$pageId = $pageIds[NS_FILE][$title];
 				$start = $title === $fromTitle ? $fromTimestamp : $params['start'];
 
 				if ( !isset( $images[$title] ) ) {
-					if ( isset( $prop['uploadwarning'] ) || isset( $prop['badfile'] ) ) {
-						// uploadwarning and badfile need info about non-existing files
+					if ( isset( $prop['uploadwarning'] ) ) {
+						// Uploadwarning needs info about non-existing files
 						$images[$title] = wfLocalFile( $title );
-						// Doesn't exist, so set an empty image repository
-						$info['imagerepository'] = '';
 					} else {
 						$result->addValue(
 							[ 'query', 'pages', intval( $pageId ) ],
@@ -120,7 +112,7 @@ class ApiQueryImageInfo extends ApiQueryBase {
 					}
 				}
 
-				/** @var File $img */
+				/** @var $img File */
 				$img = $images[$title];
 
 				if ( self::getTransformCount() >= self::TRANSFORM_LIMIT ) {
@@ -136,14 +128,10 @@ class ApiQueryImageInfo extends ApiQueryBase {
 					break;
 				}
 
-				if ( !isset( $info['imagerepository'] ) ) {
-					$info['imagerepository'] = $img->getRepoName();
-				}
-				if ( isset( $prop['badfile'] ) ) {
-					$info['badfile'] = (bool)wfIsBadImage( $title, $badFileContextTitle );
-				}
-
-				$fit = $result->addValue( [ 'query', 'pages' ], intval( $pageId ), $info );
+				$fit = $result->addValue(
+					[ 'query', 'pages', intval( $pageId ) ],
+					'imagerepository', $img->getRepoName()
+				);
 				if ( !$fit ) {
 					if ( count( $pageIds[NS_FILE] ) == 1 ) {
 						// The user is screwed. imageinfo can't be solely
@@ -195,7 +183,7 @@ class ApiQueryImageInfo extends ApiQueryBase {
 				// Get one more to facilitate query-continue functionality
 				$count = ( $gotOne ? 1 : 0 );
 				$oldies = $img->getHistory( $params['limit'] - $count + 1, $start, $params['end'] );
-				/** @var File $oldie */
+				/** @var $oldie File */
 				foreach ( $oldies as $oldie ) {
 					if ( ++$count > $params['limit'] ) {
 						// We've reached the extra one which shows that there are
@@ -292,7 +280,8 @@ class ApiQueryImageInfo extends ApiQueryBase {
 
 		$h = $image->getHandler();
 		if ( !$h ) {
-			$this->addWarning( [ 'apiwarn-nothumb-noimagehandler', wfEscapeWikiText( $image->getName() ) ] );
+			$this->setWarning( 'Could not create thumbnail because ' .
+				$image->getName() . ' does not have an associated image handler' );
 
 			return $thumbParams;
 		}
@@ -303,24 +292,23 @@ class ApiQueryImageInfo extends ApiQueryBase {
 			// we could still render the image using width and height parameters,
 			// and this type of thing could happen between different versions of
 			// handlers.
-			$this->addWarning( [ 'apiwarn-badurlparam', $p, wfEscapeWikiText( $image->getName() ) ] );
+			$this->setWarning( "Could not parse {$p}urlparam for " . $image->getName()
+				. '. Using only width and height' );
 			$this->checkParameterNormalise( $image, $thumbParams );
 			return $thumbParams;
 		}
 
 		if ( isset( $paramList['width'] ) && isset( $thumbParams['width'] ) ) {
 			if ( intval( $paramList['width'] ) != intval( $thumbParams['width'] ) ) {
-				$this->addWarning(
-					[ 'apiwarn-urlparamwidth', $p, $paramList['width'], $thumbParams['width'] ]
-				);
+				$this->setWarning( "Ignoring width value set in {$p}urlparam ({$paramList['width']}) "
+					. "in favor of width value derived from {$p}urlwidth/{$p}urlheight "
+					. "({$thumbParams['width']})" );
 			}
 		}
 
 		foreach ( $paramList as $name => $value ) {
 			if ( !$h->validateParam( $name, $value ) ) {
-				$this->dieWithError(
-					[ 'apierror-invalidurlparam', $p, wfEscapeWikiText( $name ), wfEscapeWikiText( $value ) ]
-				);
+				$this->dieUsage( "Invalid value for {$p}urlparam ($name=$value)", 'urlparam' );
 			}
 		}
 
@@ -349,7 +337,8 @@ class ApiQueryImageInfo extends ApiQueryBase {
 		// in the actual normalised version, only if we can actually normalise them,
 		// so we use the functions scope to throw away the normalisations.
 		if ( !$h->normaliseParams( $image, $finalParams ) ) {
-			$this->dieWithError( [ 'apierror-urlparamnormal', wfEscapeWikiText( $image->getName() ) ] );
+			$this->dieUsage( 'Could not normalise image parameters for ' .
+				$image->getName(), 'urlparamnormal' );
 		}
 	}
 
@@ -499,36 +488,32 @@ class ApiQueryImageInfo extends ApiQueryBase {
 		}
 
 		if ( $url ) {
-			if ( $file->exists() ) {
-				if ( !is_null( $thumbParams ) ) {
-					$mto = $file->transform( $thumbParams );
-					self::$transformCount++;
-					if ( $mto && !$mto->isError() ) {
-						$vals['thumburl'] = wfExpandUrl( $mto->getUrl(), PROTO_CURRENT );
+			if ( !is_null( $thumbParams ) ) {
+				$mto = $file->transform( $thumbParams );
+				self::$transformCount++;
+				if ( $mto && !$mto->isError() ) {
+					$vals['thumburl'] = wfExpandUrl( $mto->getUrl(), PROTO_CURRENT );
 
-						// T25834 - If the URLs are the same, we haven't resized it, so shouldn't give the wanted
-						// thumbnail sizes for the thumbnail actual size
-						if ( $mto->getUrl() !== $file->getUrl() ) {
-							$vals['thumbwidth'] = intval( $mto->getWidth() );
-							$vals['thumbheight'] = intval( $mto->getHeight() );
-						} else {
-							$vals['thumbwidth'] = intval( $file->getWidth() );
-							$vals['thumbheight'] = intval( $file->getHeight() );
-						}
-
-						if ( isset( $prop['thumbmime'] ) && $file->getHandler() ) {
-							list( , $mime ) = $file->getHandler()->getThumbType(
-								$mto->getExtension(), $file->getMimeType(), $thumbParams );
-							$vals['thumbmime'] = $mime;
-						}
-					} elseif ( $mto && $mto->isError() ) {
-						$vals['thumberror'] = $mto->toText();
+					// bug 23834 - If the URL's are the same, we haven't resized it, so shouldn't give the wanted
+					// thumbnail sizes for the thumbnail actual size
+					if ( $mto->getUrl() !== $file->getUrl() ) {
+						$vals['thumbwidth'] = intval( $mto->getWidth() );
+						$vals['thumbheight'] = intval( $mto->getHeight() );
+					} else {
+						$vals['thumbwidth'] = intval( $file->getWidth() );
+						$vals['thumbheight'] = intval( $file->getHeight() );
 					}
+
+					if ( isset( $prop['thumbmime'] ) && $file->getHandler() ) {
+						list( , $mime ) = $file->getHandler()->getThumbType(
+							$mto->getExtension(), $file->getMimeType(), $thumbParams );
+						$vals['thumbmime'] = $mime;
+					}
+				} elseif ( $mto && $mto->isError() ) {
+					$vals['thumberror'] = $mto->toText();
 				}
-				$vals['url'] = wfExpandUrl( $file->getFullUrl(), PROTO_CURRENT );
-			} else {
-				$vals['filemissing'] = true;
 			}
+			$vals['url'] = wfExpandUrl( $file->getFullUrl(), PROTO_CURRENT );
 			$vals['descriptionurl'] = wfExpandUrl( $file->getDescriptionUrl(), PROTO_CURRENT );
 
 			$shortDescriptionUrl = $file->getDescriptionShortUrl();
@@ -542,9 +527,9 @@ class ApiQueryImageInfo extends ApiQueryBase {
 		}
 
 		if ( $meta ) {
-			Wikimedia\suppressWarnings();
+			MediaWiki\suppressWarnings();
 			$metadata = unserialize( $file->getMetadata() );
-			Wikimedia\restoreWarnings();
+			MediaWiki\restoreWarnings();
 			if ( $metadata && $version !== 'latest' ) {
 				$metadata = $file->convertMetadataVersion( $metadata, $version );
 			}
@@ -677,7 +662,7 @@ class ApiQueryImageInfo extends ApiQueryBase {
 				ApiBase::PARAM_DFLT => -1,
 				ApiBase::PARAM_HELP_MSG => [
 					'apihelp-query+imageinfo-param-urlwidth',
-					self::TRANSFORM_LIMIT,
+					ApiQueryImageInfo::TRANSFORM_LIMIT,
 				],
 			],
 			'urlheight' => [
@@ -702,9 +687,6 @@ class ApiQueryImageInfo extends ApiQueryBase {
 			],
 			'urlparam' => [
 				ApiBase::PARAM_DFLT => '',
-				ApiBase::PARAM_TYPE => 'string',
-			],
-			'badfilecontexttitle' => [
 				ApiBase::PARAM_TYPE => 'string',
 			],
 			'continue' => [
@@ -752,7 +734,6 @@ class ApiQueryImageInfo extends ApiQueryBase {
 				'archivename' => 'apihelp-query+imageinfo-paramvalue-prop-archivename',
 				'bitdepth' => 'apihelp-query+imageinfo-paramvalue-prop-bitdepth',
 				'uploadwarning' => 'apihelp-query+imageinfo-paramvalue-prop-uploadwarning',
-				'badfile' => 'apihelp-query+imageinfo-paramvalue-prop-badfile',
 			],
 			array_flip( $filter )
 		);
@@ -767,30 +748,30 @@ class ApiQueryImageInfo extends ApiQueryBase {
 	 */
 	private static function getProperties( $modulePrefix = '' ) {
 		return [
-			'timestamp' => ' timestamp     - Adds timestamp for the uploaded version',
-			'user' => ' user          - Adds the user who uploaded the image version',
-			'userid' => ' userid        - Add the user ID that uploaded the image version',
-			'comment' => ' comment       - Comment on the version',
-			'parsedcomment' => ' parsedcomment - Parse the comment on the version',
+			'timestamp' =>      ' timestamp     - Adds timestamp for the uploaded version',
+			'user' =>           ' user          - Adds the user who uploaded the image version',
+			'userid' =>         ' userid        - Add the user ID that uploaded the image version',
+			'comment' =>        ' comment       - Comment on the version',
+			'parsedcomment' =>  ' parsedcomment - Parse the comment on the version',
 			'canonicaltitle' => ' canonicaltitle - Adds the canonical title of the image file',
-			'url' => ' url           - Gives URL to the image and the description page',
-			'size' => ' size          - Adds the size of the image in bytes, ' .
+			'url' =>            ' url           - Gives URL to the image and the description page',
+			'size' =>           ' size          - Adds the size of the image in bytes, ' .
 				'its height and its width. Page count and duration are added if applicable',
-			'dimensions' => ' dimensions    - Alias for size', // B/C with Allimages
-			'sha1' => ' sha1          - Adds SHA-1 hash for the image',
-			'mime' => ' mime          - Adds MIME type of the image',
-			'thumbmime' => ' thumbmime     - Adds MIME type of the image thumbnail' .
+			'dimensions' =>     ' dimensions    - Alias for size', // B/C with Allimages
+			'sha1' =>           ' sha1          - Adds SHA-1 hash for the image',
+			'mime' =>           ' mime          - Adds MIME type of the image',
+			'thumbmime' =>      ' thumbmime     - Adds MIME type of the image thumbnail' .
 				' (requires url and param ' . $modulePrefix . 'urlwidth)',
-			'mediatype' => ' mediatype     - Adds the media type of the image',
-			'metadata' => ' metadata      - Lists Exif metadata for the version of the image',
+			'mediatype' =>      ' mediatype     - Adds the media type of the image',
+			'metadata' =>       ' metadata      - Lists Exif metadata for the version of the image',
 			'commonmetadata' => ' commonmetadata - Lists file format generic metadata ' .
 				'for the version of the image',
-			'extmetadata' => ' extmetadata   - Lists formatted metadata combined ' .
+			'extmetadata' =>    ' extmetadata   - Lists formatted metadata combined ' .
 				'from multiple sources. Results are HTML formatted.',
-			'archivename' => ' archivename   - Adds the file name of the archive ' .
+			'archivename' =>    ' archivename   - Adds the file name of the archive ' .
 				'version for non-latest versions',
-			'bitdepth' => ' bitdepth      - Adds the bit depth of the version',
-			'uploadwarning' => ' uploadwarning - Used by the Special:Upload page to ' .
+			'bitdepth' =>       ' bitdepth      - Adds the bit depth of the version',
+			'uploadwarning' =>  ' uploadwarning - Used by the Special:Upload page to ' .
 				'get information about an existing file. Not intended for use outside MediaWiki core',
 		];
 	}
@@ -821,6 +802,6 @@ class ApiQueryImageInfo extends ApiQueryBase {
 	}
 
 	public function getHelpUrls() {
-		return 'https://www.mediawiki.org/wiki/Special:MyLanguage/API:Imageinfo';
+		return 'https://www.mediawiki.org/wiki/API:Imageinfo';
 	}
 }

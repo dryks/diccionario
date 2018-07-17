@@ -44,6 +44,8 @@ class SearchUpdate implements DeferrableUpdate {
 	private $page;
 
 	/**
+	 * Constructor
+	 *
 	 * @param int $id Page id to update
 	 * @param Title|string $title Title of page to update
 	 * @param Content|string|bool $c Content of the page to update. Default: false.
@@ -106,6 +108,7 @@ class SearchUpdate implements DeferrableUpdate {
 			# Perform the actual update
 			$search->update( $this->id, $normalTitle, $search->normalizeText( $text ) );
 		}
+
 	}
 
 	/**

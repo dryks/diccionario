@@ -35,26 +35,9 @@ use UtfNormal\Validator;
 class MediaWikiPageNameNormalizer {
 
 	/**
-	 * @var Http
-	 */
-	private $http;
-
-	/**
-	 * @param Http|null $http
-	 */
-	public function __construct( Http $http = null ) {
-		if ( !$http ) {
-			$http = new Http();
-		}
-
-		$this->http = $http;
-	}
-
-	/**
 	 * Returns the normalized form of the given page title, using the
 	 * normalization rules of the given site. If the given title is a redirect,
-	 * the redirect will be resolved and the redirect target is returned.
-	 * Only titles of existing pages will be returned.
+	 * the redirect weill be resolved and the redirect target is returned.
 	 *
 	 * @note This actually makes an API request to the remote site, so beware
 	 *   that this function is slow and depends on an external service.
@@ -66,12 +49,11 @@ class MediaWikiPageNameNormalizer {
 	 * @param string $pageName
 	 * @param string $apiUrl
 	 *
-	 * @return string|false The normalized form of the title,
-	 * or false to indicate an invalid title, a missing page,
-	 * or some other kind of error.
+	 * @return string
 	 * @throws \MWException
 	 */
 	public function normalizePageName( $pageName, $apiUrl ) {
+
 		// Check if we have strings as arguments.
 		if ( !is_string( $pageName ) ) {
 			throw new \MWException( '$pageName must be a string' );
@@ -103,7 +85,7 @@ class MediaWikiPageNameNormalizer {
 
 		// Go on call the external site
 		// @todo we need a good way to specify a timeout here.
-		$ret = $this->http->get( $url, [], __METHOD__ );
+		$ret = Http::get( $url, [], __METHOD__ );
 
 		if ( $ret === false ) {
 			wfDebugLog( "MediaWikiSite", "call to external site failed: $url" );

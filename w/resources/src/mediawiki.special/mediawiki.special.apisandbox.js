@@ -1,8 +1,8 @@
+/*global OO */
 ( function ( $, mw, OO ) {
 	'use strict';
 	var ApiSandbox, Util, WidgetMethods, Validators,
 		$content, panel, booklet, oldhash, windowManager, fullscreenButton,
-		formatDropdown,
 		api = new mw.Api(),
 		bookletPages = [],
 		availableFormats = {},
@@ -10,73 +10,7 @@
 		suppressErrors = true,
 		updatingBooklet = false,
 		pages = {},
-		moduleInfoCache = {},
-		baseRequestParams;
-
-	/**
-	 * A wrapper for a widget that provides an enable/disable button
-	 *
-	 * @class
-	 * @private
-	 * @constructor
-	 * @param {OO.ui.Widget} widget
-	 * @param {Object} [config] Configuration options
-	 */
-	function OptionalWidget( widget, config ) {
-		var k;
-
-		config = config || {};
-
-		this.widget = widget;
-		this.$cover = config.$cover ||
-			$( '<div>' ).addClass( 'mw-apisandbox-optionalWidget-cover' );
-		this.checkbox = new OO.ui.CheckboxInputWidget( config.checkbox )
-			.on( 'change', this.onCheckboxChange, [], this );
-
-		OptionalWidget[ 'super' ].call( this, config );
-
-		// Forward most methods for convenience
-		for ( k in this.widget ) {
-			if ( $.isFunction( this.widget[ k ] ) && !this[ k ] ) {
-				this[ k ] = this.widget[ k ].bind( this.widget );
-			}
-		}
-
-		this.$cover.on( 'click', this.onOverlayClick.bind( this ) );
-
-		this.$element
-			.addClass( 'mw-apisandbox-optionalWidget' )
-			.append(
-				this.$cover,
-				$( '<div>' ).addClass( 'mw-apisandbox-optionalWidget-fields' ).append(
-					$( '<div>' ).addClass( 'mw-apisandbox-optionalWidget-widget' ).append(
-						widget.$element
-					),
-					$( '<div>' ).addClass( 'mw-apisandbox-optionalWidget-checkbox' ).append(
-						this.checkbox.$element
-					)
-				)
-			);
-
-		this.setDisabled( widget.isDisabled() );
-	}
-	OO.inheritClass( OptionalWidget, OO.ui.Widget );
-	OptionalWidget.prototype.onCheckboxChange = function ( checked ) {
-		this.setDisabled( !checked );
-	};
-	OptionalWidget.prototype.onOverlayClick = function () {
-		this.setDisabled( false );
-		if ( $.isFunction( this.widget.focus ) ) {
-			this.widget.focus();
-		}
-	};
-	OptionalWidget.prototype.setDisabled = function ( disabled ) {
-		OptionalWidget[ 'super' ].prototype.setDisabled.call( this, disabled );
-		this.widget.setDisabled( this.isDisabled() );
-		this.checkbox.setSelected( !this.isDisabled() );
-		this.$cover.toggle( this.isDisabled() );
-		return this;
-	};
+		moduleInfoCache = {};
 
 	WidgetMethods = {
 		textInputWidget: {
@@ -91,11 +25,7 @@
 			},
 			apiCheckValid: function () {
 				var that = this;
-				return this.getValidity().then( function () {
-					return $.Deferred().resolve( true ).promise();
-				}, function () {
-					return $.Deferred().resolve( false ).promise();
-				} ).done( function ( ok ) {
+				return this.isValid().done( function ( ok ) {
 					ok = ok || suppressErrors;
 					that.setIcon( ok ? null : 'alert' );
 					that.setIconTitle( ok ? '' : mw.message( 'apisandbox-alert-field' ).plain() );
@@ -104,19 +34,18 @@
 		},
 
 		dateTimeInputWidget: {
-			getValidity: function () {
-				if ( !Util.apiBool( this.paramInfo.required ) || this.getApiValue() !== '' ) {
-					return $.Deferred().resolve().promise();
-				} else {
-					return $.Deferred().reject().promise();
-				}
+			isValid: function () {
+				var ok = !Util.apiBool( this.paramInfo.required ) || this.getApiValue() !== '';
+				return $.Deferred().resolve( ok ).promise();
 			}
 		},
 
 		tokenWidget: {
 			alertTokenError: function ( code, error ) {
 				windowManager.openWindow( 'errorAlert', {
-					title: Util.parseMsg( 'apisandbox-results-fixtoken-fail', this.paramInfo.tokentype ),
+					title: mw.message(
+						'apisandbox-results-fixtoken-fail', this.paramInfo.tokentype
+					).parse(),
 					message: error,
 					actions: [
 						{
@@ -162,7 +91,7 @@
 
 		dropdownWidget: {
 			getApiValue: function () {
-				var item = this.getMenu().findSelectedItem();
+				var item = this.getMenu().getSelectedItem();
 				return item === null ? undefined : item.getData();
 			},
 			setApiValue: function ( v ) {
@@ -185,51 +114,18 @@
 			}
 		},
 
-		tagWidget: {
+		capsuleWidget: {
 			getApiValue: function () {
-				var items = this.getValue();
-				if ( items.join( '' ).indexOf( '|' ) === -1 ) {
-					return items.join( '|' );
-				} else {
-					return '\x1f' + items.join( '\x1f' );
-				}
+				return this.getItemsData().join( '|' );
 			},
 			setApiValue: function ( v ) {
-				if ( v === undefined || v === '' || v === '\x1f' ) {
-					this.setValue( [] );
-				} else {
-					v = String( v );
-					if ( v.indexOf( '\x1f' ) !== 0 ) {
-						this.setValue( v.split( '|' ) );
-					} else {
-						this.setValue( v.substr( 1 ).split( '\x1f' ) );
-					}
-				}
+				this.setItemsFromData( v === undefined || v === '' ? [] : String( v ).split( '|' ) );
 			},
 			apiCheckValid: function () {
-				var ok = true,
-					pi = this.paramInfo;
-
-				if ( !suppressErrors ) {
-					ok = this.getApiValue() !== undefined && !(
-						pi.allspecifier !== undefined &&
-						this.getValue().length > 1 &&
-						this.getValue().indexOf( pi.allspecifier ) !== -1
-					);
-				}
-
+				var ok = this.getApiValue() !== undefined || suppressErrors;
 				this.setIcon( ok ? null : 'alert' );
 				this.setIconTitle( ok ? '' : mw.message( 'apisandbox-alert-field' ).plain() );
 				return $.Deferred().resolve( ok ).promise();
-			},
-			createTagItemWidget: function ( data, label ) {
-				var item = OO.ui.TagMultiselectWidget.prototype.createTagItemWidget.call( this, data, label );
-				if ( this.paramInfo.deprecatedvalues &&
-					this.paramInfo.deprecatedvalues.indexOf( data ) >= 0
-				) {
-					item.$element.addClass( 'apihelp-deprecated-value' );
-				}
-				return item;
 			}
 		},
 
@@ -258,7 +154,7 @@
 			multi: function () {
 				var map = this.paramInfo.submodules,
 					v = this.isDisabled() ? this.paramInfo[ 'default' ] : this.getApiValue();
-				return v === undefined || v === '' ? [] : String( v ).split( '|' ).map( function ( v ) {
+				return v === undefined || v === '' ? [] : $.map( String( v ).split( '|' ), function ( v ) {
 					return { value: v, path: map[ v ] };
 				} );
 			}
@@ -290,7 +186,7 @@
 	};
 
 	/**
-	 * @class mw.special.ApiSandbox.Util
+	 * @class mw.special.ApiSandbox.Utils
 	 * @private
 	 */
 	Util = {
@@ -384,10 +280,8 @@
 		 * @return {OO.ui.Widget}
 		 */
 		createWidgetForParameter: function ( pi, opts ) {
-			var widget, innerWidget, finalWidget, items, $content, func,
-				multiModeButton = null,
-				multiModeInput = null,
-				multiModeAllowed = false;
+			var widget, innerWidget, finalWidget, items, $button, $content, func,
+				multiMode = 'none';
 
 			opts = opts || {};
 
@@ -401,14 +295,20 @@
 
 				case 'string':
 				case 'user':
-					if ( Util.apiBool( pi.multi ) ) {
-						widget = new OO.ui.TagMultiselectWidget( {
-							allowArbitrary: true,
-							allowDuplicates: Util.apiBool( pi.allowsduplicates ),
-							$overlay: true
+					if ( pi.tokentype ) {
+						widget = new TextInputWithIndicatorWidget( {
+							input: {
+								indicator: 'previous',
+								indicatorTitle: mw.message( 'apisandbox-fetch-token' ).text(),
+								required: Util.apiBool( pi.required )
+							}
+						} );
+					} else if ( Util.apiBool( pi.multi ) ) {
+						widget = new OO.ui.CapsuleMultiSelectWidget( {
+							allowArbitrary: true
 						} );
 						widget.paramInfo = pi;
-						$.extend( widget, WidgetMethods.tagWidget );
+						$.extend( widget, WidgetMethods.capsuleWidget );
 					} else {
 						widget = new OO.ui.TextInputWidget( {
 							required: Util.apiBool( pi.required )
@@ -420,14 +320,17 @@
 						widget.setValidation( Validators.generic );
 					}
 					if ( pi.tokentype ) {
-						widget.paramInfo = pi;
-						$.extend( widget, WidgetMethods.textInputWidget );
 						$.extend( widget, WidgetMethods.tokenWidget );
+						widget.input.paramInfo = pi;
+						$.extend( widget.input, WidgetMethods.textInputWidget );
+						$.extend( widget.input, WidgetMethods.tokenWidget );
+						widget.on( 'indicator', widget.fetchToken, [], widget );
 					}
 					break;
 
 				case 'text':
-					widget = new OO.ui.MultilineTextInputWidget( {
+					widget = new OO.ui.TextInputWidget( {
+						multiline: true,
 						required: Util.apiBool( pi.required )
 					} );
 					widget.paramInfo = pi;
@@ -444,8 +347,7 @@
 					$.extend( widget, WidgetMethods.textInputWidget );
 					$.extend( widget, WidgetMethods.passwordWidget );
 					widget.setValidation( Validators.generic );
-					multiModeAllowed = true;
-					multiModeInput = widget;
+					multiMode = 'enter';
 					break;
 
 				case 'integer':
@@ -455,38 +357,30 @@
 					} );
 					widget.setIcon = widget.input.setIcon.bind( widget.input );
 					widget.setIconTitle = widget.input.setIconTitle.bind( widget.input );
-					widget.getValidity = widget.input.getValidity.bind( widget.input );
+					widget.isValid = widget.input.isValid.bind( widget.input );
 					widget.paramInfo = pi;
 					$.extend( widget, WidgetMethods.textInputWidget );
 					if ( Util.apiBool( pi.enforcerange ) ) {
 						widget.setRange( pi.min || -Infinity, pi.max || Infinity );
 					}
-					multiModeAllowed = true;
-					multiModeInput = widget;
+					multiMode = 'enter';
 					break;
 
 				case 'limit':
-					widget = new OO.ui.TextInputWidget( {
-						required: Util.apiBool( pi.required )
+					widget = new OO.ui.NumberInputWidget( {
+						required: Util.apiBool( pi.required ),
+						isInteger: true
 					} );
-					widget.setValidation( function ( value ) {
-						var n, pi = this.paramInfo;
-
-						if ( value === 'max' ) {
-							return true;
-						} else {
-							n = +value;
-							return !isNaN( n ) && isFinite( n ) &&
-								Math.floor( n ) === n &&
-								n >= pi.min && n <= pi.apiSandboxMax;
-						}
+					widget.setIcon = widget.input.setIcon.bind( widget.input );
+					widget.setIconTitle = widget.input.setIconTitle.bind( widget.input );
+					widget.isValid = widget.input.isValid.bind( widget.input );
+					widget.input.setValidation( function ( value ) {
+						return value === 'max' || widget.validateNumber( value );
 					} );
-					pi.min = pi.min || 0;
-					pi.apiSandboxMax = mw.config.get( 'apihighlimits' ) ? pi.highmax : pi.max;
 					widget.paramInfo = pi;
 					$.extend( widget, WidgetMethods.textInputWidget );
-					multiModeAllowed = true;
-					multiModeInput = widget;
+					widget.setRange( pi.min || 0, mw.config.get( 'apihighlimits' ) ? pi.highmax : pi.max );
+					multiMode = 'enter';
 					break;
 
 				case 'timestamp':
@@ -500,7 +394,7 @@
 					widget.paramInfo = pi;
 					$.extend( widget, WidgetMethods.textInputWidget );
 					$.extend( widget, WidgetMethods.dateTimeInputWidget );
-					multiModeAllowed = true;
+					multiMode = 'indicator';
 					break;
 
 				case 'upload':
@@ -519,23 +413,14 @@
 						return a.data - b.data;
 					} );
 					if ( Util.apiBool( pi.multi ) ) {
-						if ( pi.allspecifier !== undefined ) {
-							items.unshift( new OO.ui.MenuOptionWidget( {
-								data: pi.allspecifier,
-								label: mw.message( 'apisandbox-multivalue-all-namespaces', pi.allspecifier ).text()
-							} ) );
-						}
-
-						widget = new OO.ui.MenuTagMultiselectWidget( {
-							menu: { items: items },
-							$overlay: true
+						widget = new OO.ui.CapsuleMultiSelectWidget( {
+							menu: { items: items }
 						} );
 						widget.paramInfo = pi;
-						$.extend( widget, WidgetMethods.tagWidget );
+						$.extend( widget, WidgetMethods.capsuleWidget );
 					} else {
 						widget = new OO.ui.DropdownWidget( {
-							menu: { items: items },
-							$overlay: true
+							menu: { items: items }
 						} );
 						widget.paramInfo = pi;
 						$.extend( widget, WidgetMethods.dropdownWidget );
@@ -543,100 +428,95 @@
 					break;
 
 				default:
-					if ( !Array.isArray( pi.type ) ) {
+					if ( !$.isArray( pi.type ) ) {
 						throw new Error( 'Unknown parameter type ' + pi.type );
 					}
 
-					items = pi.type.map( function ( v ) {
-						var config = {
-							data: String( v ),
-							label: String( v ),
-							classes: []
-						};
-						if ( pi.deprecatedvalues && pi.deprecatedvalues.indexOf( v ) >= 0 ) {
-							config.classes.push( 'apihelp-deprecated-value' );
-						}
-						return new OO.ui.MenuOptionWidget( config );
+					items = $.map( pi.type, function ( v ) {
+						return new OO.ui.MenuOptionWidget( { data: String( v ), label: String( v ) } );
 					} );
 					if ( Util.apiBool( pi.multi ) ) {
-						if ( pi.allspecifier !== undefined ) {
-							items.unshift( new OO.ui.MenuOptionWidget( {
-								data: pi.allspecifier,
-								label: mw.message( 'apisandbox-multivalue-all-values', pi.allspecifier ).text()
-							} ) );
-						}
-
-						widget = new OO.ui.MenuTagMultiselectWidget( {
-							menu: { items: items },
-							$overlay: true
+						widget = new OO.ui.CapsuleMultiSelectWidget( {
+							menu: { items: items }
 						} );
 						widget.paramInfo = pi;
-						$.extend( widget, WidgetMethods.tagWidget );
+						$.extend( widget, WidgetMethods.capsuleWidget );
 						if ( Util.apiBool( pi.submodules ) ) {
 							widget.getSubmodules = WidgetMethods.submoduleWidget.multi;
 							widget.on( 'change', ApiSandbox.updateUI );
 						}
 					} else {
 						widget = new OO.ui.DropdownWidget( {
-							menu: { items: items },
-							$overlay: true
+							menu: { items: items }
 						} );
 						widget.paramInfo = pi;
 						$.extend( widget, WidgetMethods.dropdownWidget );
 						if ( Util.apiBool( pi.submodules ) ) {
 							widget.getSubmodules = WidgetMethods.submoduleWidget.single;
-							widget.getMenu().on( 'select', ApiSandbox.updateUI );
-						}
-						if ( pi.deprecatedvalues ) {
-							widget.getMenu().on( 'select', function ( item ) {
-								this.$element.toggleClass(
-									'apihelp-deprecated-value',
-									pi.deprecatedvalues.indexOf( item.data ) >= 0
-								);
-							}, [], widget );
+							widget.getMenu().on( 'choose', ApiSandbox.updateUI );
 						}
 					}
 
 					break;
 			}
 
-			if ( Util.apiBool( pi.multi ) && multiModeAllowed ) {
+			if ( Util.apiBool( pi.multi ) && multiMode !== 'none' ) {
 				innerWidget = widget;
+				switch ( multiMode ) {
+					case 'enter':
+						$content = innerWidget.$element;
+						break;
 
-				multiModeButton = new OO.ui.ButtonWidget( {
-					label: mw.message( 'apisandbox-add-multi' ).text()
-				} );
-				$content = innerWidget.$element.add( multiModeButton.$element );
+					case 'indicator':
+						$button = innerWidget.$indicator;
+						$button.css( 'cursor', 'pointer' );
+						$button.attr( 'tabindex', 0 );
+						$button.parent().append( $button );
+						innerWidget.setIndicator( 'next' );
+						$content = innerWidget.$element;
+						break;
 
-				widget = new OO.ui.PopupTagMultiselectWidget( {
+					default:
+						throw new Error( 'Unknown multiMode "' + multiMode + '"' );
+				}
+
+				widget = new OO.ui.CapsuleMultiSelectWidget( {
 					allowArbitrary: true,
-					allowDuplicates: Util.apiBool( pi.allowsduplicates ),
-					$overlay: true,
 					popup: {
 						classes: [ 'mw-apisandbox-popup' ],
-						padded: true,
 						$content: $content
 					}
 				} );
 				widget.paramInfo = pi;
-				$.extend( widget, WidgetMethods.tagWidget );
+				$.extend( widget, WidgetMethods.capsuleWidget );
 
 				func = function () {
 					if ( !innerWidget.isDisabled() ) {
 						innerWidget.apiCheckValid().done( function ( ok ) {
 							if ( ok ) {
-								widget.addTag( innerWidget.getApiValue() );
+								widget.addItemsFromData( [ innerWidget.getApiValue() ] );
 								innerWidget.setApiValue( undefined );
 							}
 						} );
 						return false;
 					}
 				};
+				switch ( multiMode ) {
+					case 'enter':
+						innerWidget.connect( null, { enter: func } );
+						break;
 
-				if ( multiModeInput ) {
-					multiModeInput.on( 'enter', func );
+					case 'indicator':
+						$button.on( {
+							click: func,
+							keypress: function ( e ) {
+								if ( e.which === OO.ui.Keys.SPACE || e.which === OO.ui.Keys.ENTER ) {
+									func();
+								}
+							}
+						} );
+						break;
 				}
-				multiModeButton.on( 'click', func );
 			}
 
 			if ( Util.apiBool( pi.required ) || opts.nooptional ) {
@@ -658,105 +538,17 @@
 		},
 
 		/**
-		 * Parse an HTML string and call Util.fixupHTML()
+		 * Parse an HTML string, adding target="_blank" to any links
 		 *
 		 * @param {string} html HTML to parse
 		 * @return {jQuery}
 		 */
 		parseHTML: function ( html ) {
 			var $ret = $( $.parseHTML( html ) );
-			return Util.fixupHTML( $ret );
-		},
-
-		/**
-		 * Parse an i18n message and call Util.fixupHTML()
-		 *
-		 * @param {string} key Key of message to get
-		 * @param {...Mixed} parameters Values for $N replacements
-		 * @return {jQuery}
-		 */
-		parseMsg: function () {
-			var $ret = mw.message.apply( mw.message, arguments ).parseDom();
-			return Util.fixupHTML( $ret );
-		},
-
-		/**
-		 * Fix HTML for ApiSandbox display
-		 *
-		 * Fixes are:
-		 * - Add target="_blank" to any links
-		 *
-		 * @param {jQuery} $html DOM to process
-		 * @return {jQuery}
-		 */
-		fixupHTML: function ( $html ) {
-			$html.filter( 'a' ).add( $html.find( 'a' ) )
+			$ret.filter( 'a' ).add( $ret.find( 'a' ) )
 				.filter( '[href]:not([target])' )
 				.attr( 'target', '_blank' );
-			return $html;
-		},
-
-		/**
-		 * Format a request and return a bunch of menu option widgets
-		 *
-		 * @param {Object} displayParams Query parameters, sanitized for display.
-		 * @param {Object} rawParams Query parameters. You should probably use displayParams instead.
-		 * @return {OO.ui.MenuOptionWidget[]} Each item's data should be an OO.ui.FieldLayout
-		 */
-		formatRequest: function ( displayParams, rawParams ) {
-			var jsonInput,
-				items = [
-					new OO.ui.MenuOptionWidget( {
-						label: Util.parseMsg( 'apisandbox-request-format-url-label' ),
-						data: new OO.ui.FieldLayout(
-							new OO.ui.TextInputWidget( {
-								readOnly: true,
-								value: mw.util.wikiScript( 'api' ) + '?' + $.param( displayParams )
-							} ), {
-								label: Util.parseMsg( 'apisandbox-request-url-label' )
-							}
-						)
-					} ),
-					new OO.ui.MenuOptionWidget( {
-						label: Util.parseMsg( 'apisandbox-request-format-json-label' ),
-						data: new OO.ui.FieldLayout(
-							jsonInput = new OO.ui.MultilineTextInputWidget( {
-								classes: [ 'mw-apisandbox-textInputCode' ],
-								readOnly: true,
-								autosize: true,
-								maxRows: 6,
-								value: JSON.stringify( displayParams, null, '\t' )
-							} ), {
-								label: Util.parseMsg( 'apisandbox-request-json-label' )
-							}
-						).on( 'toggle', function ( visible ) {
-							if ( visible ) {
-								// Call updatePosition instead of adjustSize
-								// because the latter has weird caching
-								// behavior and the former bypasses it.
-								jsonInput.updatePosition();
-							}
-						} )
-					} )
-				];
-
-			mw.hook( 'apisandbox.formatRequest' ).fire( items, displayParams, rawParams );
-
-			return items;
-		},
-
-		/**
-		 * Event handler for when formatDropdown's selection changes
-		 */
-		onFormatDropdownChange: function () {
-			var i,
-				menu = formatDropdown.getMenu(),
-				items = menu.getItems(),
-				selectedField = menu.findSelectedItem() ? menu.findSelectedItem().getData() : null;
-
-			for ( i = 0; i < items.length; i++ ) {
-				items[ i ].getData().toggle( items[ i ].getData() === selectedField );
-			}
+			return $ret;
 		}
 	};
 
@@ -765,7 +557,7 @@
 	*
 	* @class mw.special.ApiSandbox
 	*/
-	ApiSandbox = {
+	mw.special.ApiSandbox = ApiSandbox = {
 		/**
 		 * Initialize the UI
 		 *
@@ -773,8 +565,6 @@
 		 */
 		init: function () {
 			var $toolbar;
-
-			ApiSandbox.isFullscreen = false;
 
 			$content = $( '#mw-apisandbox' );
 
@@ -795,7 +585,7 @@
 					fullscreenButton.$element,
 					new OO.ui.ButtonWidget( {
 						label: mw.message( 'apisandbox-submit' ).text(),
-						flags: [ 'primary', 'progressive' ]
+						flags: [ 'primary', 'constructive' ]
 					} ).on( 'click', ApiSandbox.sendRequest ).$element,
 					new OO.ui.ButtonWidget( {
 						label: mw.message( 'apisandbox-reset' ).text(),
@@ -838,9 +628,9 @@
 
 			$content
 				.empty()
-				.append( $( '<p>' ).append( Util.parseMsg( 'apisandbox-intro' ) ) )
+				.append( $( '<p>' ).append( mw.message( 'apisandbox-intro' ).parse() ) )
 				.append(
-					$( '<div>' ).attr( 'id', 'mw-apisandbox-ui' )
+					$( '<div>', { id: 'mw-apisandbox-ui' } )
 						.append( $toolbar )
 						.append( panel.$element )
 				);
@@ -854,21 +644,17 @@
 		 * Toggle "fullscreen" mode
 		 */
 		toggleFullscreen: function () {
-			var $body = $( document.body ),
-				$ui = $( '#mw-apisandbox-ui' );
+			var $body = $( document.body );
 
-			ApiSandbox.isFullscreen = !ApiSandbox.isFullscreen;
-
-			$body.toggleClass( 'mw-apisandbox-fullscreen', ApiSandbox.isFullscreen );
-			$ui.toggleClass( 'mw-body-content', ApiSandbox.isFullscreen );
-			if ( ApiSandbox.isFullscreen ) {
+			$body.toggleClass( 'mw-apisandbox-fullscreen' );
+			if ( $body.hasClass( 'mw-apisandbox-fullscreen' ) ) {
 				fullscreenButton.setLabel( mw.message( 'apisandbox-unfullscreen' ).text() );
 				fullscreenButton.setTitle( mw.message( 'apisandbox-unfullscreen-tooltip' ).text() );
-				OO.ui.getDefaultOverlay().prepend( $ui );
+				$body.append( $( '#mw-apisandbox-ui' ) );
 			} else {
 				fullscreenButton.setLabel( mw.message( 'apisandbox-fullscreen' ).text() );
 				fullscreenButton.setTitle( mw.message( 'apisandbox-fullscreen-tooltip' ).text() );
-				$content.append( $ui );
+				$content.append( $( '#mw-apisandbox-ui' ) );
 			}
 			ApiSandbox.resizePanel();
 		},
@@ -880,7 +666,7 @@
 			var height = $( window ).height(),
 				contentTop = $content.offset().top;
 
-			if ( ApiSandbox.isFullscreen ) {
+			if ( $( document.body ).hasClass( 'mw-apisandbox-fullscreen' ) ) {
 				height -= panel.$element.offset().top - $( '#mw-apisandbox-ui' ).offset().top;
 				panel.$element.height( height - 1 );
 			} else {
@@ -894,8 +680,6 @@
 
 		/**
 		 * Update the current query when the page hash changes
-		 *
-		 * @return {boolean} Successful
 		 */
 		loadFromHash: function () {
 			var params, m, re,
@@ -1005,15 +789,12 @@
 
 		/**
 		 * Submit button handler
-		 *
-		 * @param {Object} [params] Use this set of params instead of those in the form fields.
-		 *   The form fields will be updated to match.
 		 */
-		sendRequest: function ( params ) {
+		sendRequest: function () {
 			var page, subpages, i, query, $result, $focus,
 				progress, $progressText, progressLoading,
 				deferreds = [],
-				paramsAreForced = !!params,
+				params = {},
 				displayParams = {},
 				checkPages = [ pages.main ];
 
@@ -1026,11 +807,6 @@
 
 			suppressErrors = false;
 
-			// save widget state in params (or load from it if we are forced)
-			if ( paramsAreForced ) {
-				ApiSandbox.updateUI( params );
-			}
-			params = {};
 			while ( checkPages.length ) {
 				page = checkPages.shift();
 				deferreds.push( page.apiCheckValid() );
@@ -1043,18 +819,11 @@
 				}
 			}
 
-			if ( !paramsAreForced ) {
-				// forced params means we are continuing a query; the base query should be preserved
-				baseRequestParams = $.extend( {}, params );
-			}
-
 			$.when.apply( $, deferreds ).done( function () {
-				var formatItems, menu, selectedLabel;
-
 				if ( $.inArray( false, arguments ) !== -1 ) {
 					windowManager.openWindow( 'errorAlert', {
-						title: Util.parseMsg( 'apisandbox-submit-invalid-fields-title' ),
-						message: Util.parseMsg( 'apisandbox-submit-invalid-fields-message' ),
+						title: mw.message( 'apisandbox-submit-invalid-fields-title' ).parse(),
+						message: mw.message( 'apisandbox-submit-invalid-fields-message' ).parse(),
 						actions: [
 							{
 								action: 'accept',
@@ -1067,8 +836,6 @@
 				}
 
 				query = $.param( displayParams );
-
-				formatItems = Util.formatRequest( displayParams, params );
 
 				// Force a 'fm' format with wrappedhtml=1, if available
 				if ( params.format !== undefined ) {
@@ -1094,36 +861,16 @@
 				page.setupOutlineItem = function () {
 					this.outlineItem.setLabel( mw.message( 'apisandbox-results' ).text() );
 				};
-
-				if ( !formatDropdown ) {
-					formatDropdown = new OO.ui.DropdownWidget( {
-						menu: { items: [] },
-						$overlay: true
-					} );
-					formatDropdown.getMenu().on( 'select', Util.onFormatDropdownChange );
-				}
-
-				menu = formatDropdown.getMenu();
-				selectedLabel = menu.findSelectedItem() ? menu.findSelectedItem().getLabel() : '';
-				if ( typeof selectedLabel !== 'string' ) {
-					selectedLabel = selectedLabel.text();
-				}
-				menu.clearItems().addItems( formatItems );
-				menu.chooseItem( menu.getItemFromLabel( selectedLabel ) || menu.findFirstSelectableItem() );
-
-				// Fire the event to update field visibilities
-				Util.onFormatDropdownChange();
-
 				page.$element.empty()
 					.append(
 						new OO.ui.FieldLayout(
-							formatDropdown, {
-								label: Util.parseMsg( 'apisandbox-request-selectformat-label' )
+							new OO.ui.TextInputWidget( {
+								readOnly: true,
+								value: mw.util.wikiScript( 'api' ) + '?' + query
+							} ), {
+								label: mw.message( 'apisandbox-request-url-label' ).parse()
 							}
 						).$element,
-						formatItems.map( function ( item ) {
-							return item.getData().$element;
-						} ),
 						$result
 					);
 				ApiSandbox.updateUI();
@@ -1159,40 +906,34 @@
 						return xhr;
 					}
 				} )
-					.catch( function ( code, data, result, jqXHR ) {
-						var deferred = $.Deferred();
-
+					.then( null, function ( code, data, result, jqXHR ) {
 						if ( code !== 'http' ) {
 							// Not really an error, work around mw.Api thinking it is.
-							deferred.resolve( result, jqXHR );
-						} else {
-							// Just forward it.
-							deferred.reject.apply( deferred, arguments );
+							return $.Deferred()
+								.resolve( result, jqXHR )
+								.promise();
 						}
-						return deferred.promise();
+						return this;
 					} )
-					.then( function ( data, jqXHR ) {
-						var m, loadTime, button, clear,
-							ct = jqXHR.getResponseHeader( 'Content-Type' ),
-							loginSuppressed = jqXHR.getResponseHeader( 'MediaWiki-Login-Suppressed' ) || 'false';
+					.fail( function ( code, data ) {
+						var details = 'HTTP error: ' + data.exception;
+						$result.empty()
+							.append(
+								new OO.ui.LabelWidget( {
+									label: mw.message( 'apisandbox-results-error', details ).text(),
+									classes: [ 'error' ]
+								} ).$element
+							);
+					} )
+					.done( function ( data, jqXHR ) {
+						var m, loadTime, button,
+							ct = jqXHR.getResponseHeader( 'Content-Type' );
 
 						$result.empty();
-						if ( loginSuppressed !== 'false' ) {
-							$( '<div>' )
-								.addClass( 'warning' )
-								.append( Util.parseMsg( 'apisandbox-results-login-suppressed' ) )
-								.appendTo( $result );
-						}
 						if ( /^text\/mediawiki-api-prettyprint-wrapped(?:;|$)/.test( ct ) ) {
-							data = JSON.parse( data );
+							data = $.parseJSON( data );
 							if ( data.modules.length ) {
 								mw.loader.load( data.modules );
-							}
-							if ( data.status && data.status !== 200 ) {
-								$( '<div>' )
-									.addClass( 'api-pretty-header api-pretty-status' )
-									.append( Util.parseMsg( 'api-format-prettyprint-status', data.status, data.statustext ) )
-									.appendTo( $result );
 							}
 							$result.append( Util.parseHTML( data.html ) );
 							loadTime = data.time;
@@ -1206,34 +947,6 @@
 								.addClass( 'api-pretty-content' )
 								.text( data )
 								.appendTo( $result );
-						}
-						if ( paramsAreForced || data[ 'continue' ] ) {
-							$result.append(
-								$( '<div>' ).append(
-									new OO.ui.ButtonWidget( {
-										label: mw.message( 'apisandbox-continue' ).text()
-									} ).on( 'click', function () {
-										ApiSandbox.sendRequest( $.extend( {}, baseRequestParams, data[ 'continue' ] ) );
-									} ).setDisabled( !data[ 'continue' ] ).$element,
-									( clear = new OO.ui.ButtonWidget( {
-										label: mw.message( 'apisandbox-continue-clear' ).text()
-									} ).on( 'click', function () {
-										ApiSandbox.updateUI( baseRequestParams );
-										clear.setDisabled( true );
-										booklet.setPage( '|results|' );
-									} ).setDisabled( !paramsAreForced ) ).$element,
-									new OO.ui.PopupButtonWidget( {
-										$overlay: true,
-										framed: false,
-										icon: 'info',
-										popup: {
-											$content: $( '<div>' ).append( Util.parseMsg( 'apisandbox-continue-help' ) ),
-											padded: true,
-											width: 'auto'
-										}
-									} ).$element
-								)
-							);
 						}
 						if ( typeof loadTime === 'number' ) {
 							$result.append(
@@ -1255,15 +968,6 @@
 								.on( 'click', button.setDisabled, [ true ], button )
 								.$element.appendTo( $result );
 						}
-					}, function ( code, data ) {
-						var details = 'HTTP error: ' + data.exception;
-						$result.empty()
-							.append(
-								new OO.ui.LabelWidget( {
-									label: mw.message( 'apisandbox-results-error', details ).text(),
-									classes: [ 'error' ]
-								} ).$element
-							);
 					} );
 			} );
 		},
@@ -1295,8 +999,7 @@
 
 				if ( page.tokenWidget ) {
 					k = page.apiModule + page.tokenWidget.paramInfo.name;
-					tokenWait[ k ] = page.tokenWidget.fetchToken();
-					tokenWait[ k ]
+					tokenWait[ k ] = page.tokenWidget.fetchToken()
 						.done( success.bind( page.tokenWidget, k ) )
 						.fail( failure.bind( page.tokenWidget, k ) );
 				}
@@ -1387,7 +1090,9 @@
 
 				if ( that.widgets[ name ] !== undefined ) {
 					windowManager.openWindow( 'errorAlert', {
-						title: Util.parseMsg( 'apisandbox-dynamic-error-exists', name ),
+						title: mw.message(
+							'apisandbox-dynamic-error-exists', name
+						).parse(),
 						actions: [
 							{
 								action: 'accept',
@@ -1407,7 +1112,7 @@
 					nooptional: true
 				} );
 				button = new OO.ui.ButtonWidget( {
-					icon: 'trash',
+					icon: 'remove',
 					flags: 'destructive'
 				} );
 				layout = new OO.ui.ActionFieldLayout(
@@ -1434,7 +1139,7 @@
 
 		Util.fetchModuleInfo( this.apiModule )
 			.done( function ( pi ) {
-				var prefix, i, j, descriptionContainer, widget, layoutConfig, button, widgetField, helpField, tmp, flag, count,
+				var prefix, i, j, dl, widget, $widgetLabel, widgetField, helpField, tmp, flag, count,
 					items = [],
 					deprecatedItems = [],
 					buttons = [],
@@ -1450,7 +1155,8 @@
 						if ( $.isFunction( f.focus ) ) {
 							f.focus();
 						}
-					};
+					},
+					doNothing = function () {};
 
 				// This is something of a hack. We always want the 'format' and
 				// 'action' parameters from the main module to be specified,
@@ -1467,7 +1173,7 @@
 							for ( j = 0; j < tmp.length; j++ ) {
 								availableFormats[ tmp[ j ] ] = true;
 							}
-							pi.parameters[ i ].type = tmp.filter( filterFmModules );
+							pi.parameters[ i ].type = $.grep( tmp, filterFmModules );
 							pi.parameters[ i ][ 'default' ] = 'json';
 							pi.parameters[ i ].required = true;
 						}
@@ -1476,7 +1182,7 @@
 
 				// Hide the 'wrappedhtml' parameter on format modules
 				if ( pi.group === 'format' ) {
-					pi.parameters = pi.parameters.filter( function ( p ) {
+					pi.parameters = $.grep( pi.parameters, function ( p ) {
 						return p.name !== 'wrappedhtml';
 					} );
 				}
@@ -1492,17 +1198,15 @@
 
 				if ( pi.helpurls.length ) {
 					buttons.push( new OO.ui.PopupButtonWidget( {
-						$overlay: true,
 						label: mw.message( 'apisandbox-helpurls' ).text(),
 						icon: 'help',
 						popup: {
-							width: 'auto',
-							padded: true,
-							$content: $( '<ul>' ).append( pi.helpurls.map( function ( link ) {
-								return $( '<li>' ).append( $( '<a>' )
-									.attr( { href: link, target: '_blank' } )
-									.text( link )
-								);
+							$content: $( '<ul>' ).append( $.map( pi.helpurls, function ( link ) {
+								return $( '<li>' ).append( $( '<a>', {
+									href: link,
+									target: '_blank',
+									text: link
+								} ) );
 							} ) )
 						}
 					} ) );
@@ -1510,16 +1214,14 @@
 
 				if ( pi.examples.length ) {
 					buttons.push( new OO.ui.PopupButtonWidget( {
-						$overlay: true,
 						label: mw.message( 'apisandbox-examples' ).text(),
 						icon: 'code',
 						popup: {
-							width: 'auto',
-							padded: true,
-							$content: $( '<ul>' ).append( pi.examples.map( function ( example ) {
-								var a = $( '<a>' )
-									.attr( 'href', '#' + example.query )
-									.html( example.description );
+							$content: $( '<ul>' ).append( $.map( pi.examples, function ( example ) {
+								var a = $( '<a>', {
+									href: '#' + example.query,
+									html: example.description
+								} );
 								a.find( 'a' ).contents().unwrap(); // Can't nest links
 								return $( '<li>' ).append( a );
 							} ) )
@@ -1544,23 +1246,17 @@
 							that.tokenWidget = widget;
 						}
 
-						descriptionContainer = $( '<div>' );
-
-						tmp = Util.parseHTML( pi.parameters[ i ].description );
-						tmp.filter( 'dl' ).makeCollapsible( {
-							collapsed: true
-						} ).children( '.mw-collapsible-toggle' ).each( function () {
-							var $this = $( this );
-							$this.parent().prev( 'p' ).append( $this );
-						} );
-						descriptionContainer.append( $( '<div>' ).addClass( 'description' ).append( tmp ) );
-
+						dl = $( '<dl>' );
+						dl.append( $( '<dd>', {
+							addClass: 'description',
+							append: Util.parseHTML( pi.parameters[ i ].description )
+						} ) );
 						if ( pi.parameters[ i ].info && pi.parameters[ i ].info.length ) {
 							for ( j = 0; j < pi.parameters[ i ].info.length; j++ ) {
-								descriptionContainer.append( $( '<div>' )
-									.addClass( 'info' )
-									.append( Util.parseHTML( pi.parameters[ i ].info[ j ] ) )
-								);
+								dl.append( $( '<dd>', {
+									addClass: 'info',
+									append: Util.parseHTML( pi.parameters[ i ].info[ j ] )
+								} ) );
 							}
 						}
 						flag = true;
@@ -1573,25 +1269,19 @@
 
 							case 'limit':
 								if ( pi.parameters[ i ].highmax !== undefined ) {
-									descriptionContainer.append( $( '<div>' )
-										.addClass( 'info' )
-										.append(
-											Util.parseMsg(
-												'api-help-param-limit2', pi.parameters[ i ].max, pi.parameters[ i ].highmax
-											),
-											' ',
-											Util.parseMsg( 'apisandbox-param-limit' )
-										)
-									);
+									dl.append( $( '<dd>', {
+										addClass: 'info',
+										append: Util.parseHTML( mw.message(
+											'api-help-param-limit2', pi.parameters[ i ].max, pi.parameters[ i ].highmax
+										).parse() )
+									} ) );
 								} else {
-									descriptionContainer.append( $( '<div>' )
-										.addClass( 'info' )
-										.append(
-											Util.parseMsg( 'api-help-param-limit', pi.parameters[ i ].max ),
-											' ',
-											Util.parseMsg( 'apisandbox-param-limit' )
-										)
-									);
+									dl.append( $( '<dd>', {
+										addClass: 'info',
+										append: Util.parseHTML( mw.message(
+											'api-help-param-limit', pi.parameters[ i ].max
+										).parse() )
+									} ) );
 								}
 								break;
 
@@ -1604,19 +1294,19 @@
 									tmp += 'max';
 								}
 								if ( tmp !== '' ) {
-									descriptionContainer.append( $( '<div>' )
-										.addClass( 'info' )
-										.append( Util.parseMsg(
+									dl.append( $( '<dd>', {
+										addClass: 'info',
+										append: Util.parseHTML( mw.message(
 											'api-help-param-integer-' + tmp,
 											Util.apiBool( pi.parameters[ i ].multi ) ? 2 : 1,
 											pi.parameters[ i ].min, pi.parameters[ i ].max
-										) )
-									);
+										).parse() )
+									} ) );
 								}
 								break;
 
 							default:
-								if ( Array.isArray( pi.parameters[ i ].type ) ) {
+								if ( $.isArray( pi.parameters[ i ].type ) ) {
 									flag = false;
 									count = pi.parameters[ i ].type.length;
 								}
@@ -1624,10 +1314,10 @@
 						}
 						if ( Util.apiBool( pi.parameters[ i ].multi ) ) {
 							tmp = [];
-							if ( flag && !( widget instanceof OO.ui.TagMultiselectWidget ) &&
+							if ( flag && !( widget instanceof OO.ui.CapsuleMultiSelectWidget ) &&
 								!(
 									widget instanceof OptionalWidget &&
-									widget.widget instanceof OO.ui.TagMultiselectWidget
+									widget.widget instanceof OO.ui.CapsuleMultiSelectWidget
 								)
 							) {
 								tmp.push( mw.message( 'api-help-param-multi-separate' ).parse() );
@@ -1640,23 +1330,11 @@
 								);
 							}
 							if ( tmp.length ) {
-								descriptionContainer.append( $( '<div>' )
-									.addClass( 'info' )
-									.append( Util.parseHTML( tmp.join( ' ' ) ) )
-								);
+								dl.append( $( '<dd>', {
+									addClass: 'info',
+									append: Util.parseHTML( tmp.join( ' ' ) )
+								} ) );
 							}
-						}
-						if ( 'maxbytes' in pi.parameters[ i ] ) {
-							descriptionContainer.append( $( '<div>' )
-								.addClass( 'info' )
-								.append( Util.parseMsg( 'api-help-param-maxbytes', pi.parameters[ i ].maxbytes ) )
-							);
-						}
-						if ( 'maxchars' in pi.parameters[ i ] ) {
-							descriptionContainer.append( $( '<div>' )
-								.addClass( 'info' )
-								.append( Util.parseMsg( 'api-help-param-maxchars', pi.parameters[ i ].maxchars ) )
-							);
 						}
 						helpField = new OO.ui.FieldLayout(
 							new OO.ui.Widget( {
@@ -1665,36 +1343,29 @@
 							} ), {
 								align: 'inline',
 								classes: [ 'mw-apisandbox-help-field' ],
-								label: descriptionContainer
+								label: dl
 							}
 						);
 
-						layoutConfig = {
-							align: 'left',
-							classes: [ 'mw-apisandbox-widget-field' ],
-							label: prefix + pi.parameters[ i ].name
-						};
+						$widgetLabel = $( '<span>' );
+						widgetField = new OO.ui.FieldLayout(
+							widget,
+							{
+								align: 'left',
+								classes: [ 'mw-apisandbox-widget-field' ],
+								label: prefix + pi.parameters[ i ].name,
+								$label: $widgetLabel
+							}
+						);
 
-						if ( pi.parameters[ i ].tokentype ) {
-							button = new OO.ui.ButtonWidget( {
-								label: mw.message( 'apisandbox-fetch-token' ).text()
-							} );
-							button.on( 'click', widget.fetchToken, [], widget );
-
-							widgetField = new OO.ui.ActionFieldLayout( widget, button, layoutConfig );
-						} else {
-							widgetField = new OO.ui.FieldLayout( widget, layoutConfig );
-						}
-
-						// We need our own click handler on the widget label to
-						// turn off the disablement.
-						widgetField.$label.on( 'click', widgetLabelOnClick.bind( widgetField ) );
+						// FieldLayout only does click for InputElement
+						// widgets. So supply our own click handler.
+						$widgetLabel.on( 'click', widgetLabelOnClick.bind( widgetField ) );
 
 						// Don't grey out the label when the field is disabled,
 						// it makes it too hard to read and our "disabled"
 						// isn't really disabled.
-						widgetField.onFieldDisable( false );
-						widgetField.onFieldDisable = $.noop;
+						widgetField.onFieldDisable = doNothing;
 
 						if ( Util.apiBool( pi.parameters[ i ].deprecated ) ) {
 							deprecatedItems.push( widgetField, helpField );
@@ -1708,7 +1379,7 @@
 					items.push( new OO.ui.FieldLayout(
 						new OO.ui.Widget( {} ).toggle( false ), {
 							align: 'top',
-							label: Util.parseMsg( 'apisandbox-no-parameters' )
+							label: Util.parseHTML( mw.message( 'apisandbox-no-parameters' ).parse() )
 						}
 					) );
 				}
@@ -1736,7 +1407,7 @@
 							dynamicParamNameWidget,
 							new OO.ui.ButtonWidget( {
 								icon: 'add',
-								flags: 'progressive'
+								flags: 'constructive'
 							} ).on( 'click', addDynamicParamWidget ),
 							{
 								label: mw.message( 'apisandbox-dynamic-parameters-add-label' ).text(),
@@ -1876,8 +1547,131 @@
 		return ret;
 	};
 
-	$( ApiSandbox.init );
+	/**
+	 * A text input with a clickable indicator
+	 *
+	 * @class
+	 * @private
+	 * @constructor
+	 * @param {Object} [config] Configuration options
+	 */
+	function TextInputWithIndicatorWidget( config ) {
+		var k;
 
-	module.exports = ApiSandbox;
+		config = config || {};
+		TextInputWithIndicatorWidget[ 'super' ].call( this, config );
+
+		this.$indicator = $( '<span>' ).addClass( 'mw-apisandbox-clickable-indicator' );
+		OO.ui.mixin.TabIndexedElement.call(
+			this, $.extend( {}, config, { $tabIndexed: this.$indicator } )
+		);
+
+		this.input = new OO.ui.TextInputWidget( $.extend( {
+			$indicator: this.$indicator,
+			disabled: this.isDisabled()
+		}, config.input ) );
+
+		// Forward most methods for convenience
+		for ( k in this.input ) {
+			if ( $.isFunction( this.input[ k ] ) && !this[ k ] ) {
+				this[ k ] = this.input[ k ].bind( this.input );
+			}
+		}
+
+		this.$indicator.on( {
+			click: this.onIndicatorClick.bind( this ),
+			keypress: this.onIndicatorKeyPress.bind( this )
+		} );
+
+		this.$element.append( this.input.$element );
+	}
+	OO.inheritClass( TextInputWithIndicatorWidget, OO.ui.Widget );
+	OO.mixinClass( TextInputWithIndicatorWidget, OO.ui.mixin.TabIndexedElement );
+	TextInputWithIndicatorWidget.prototype.onIndicatorClick = function ( e ) {
+		if ( !this.isDisabled() && e.which === 1 ) {
+			this.emit( 'indicator' );
+		}
+		return false;
+	};
+	TextInputWithIndicatorWidget.prototype.onIndicatorKeyPress = function ( e ) {
+		if ( !this.isDisabled() && ( e.which === OO.ui.Keys.SPACE || e.which === OO.ui.Keys.ENTER ) ) {
+			this.emit( 'indicator' );
+			return false;
+		}
+	};
+	TextInputWithIndicatorWidget.prototype.setDisabled = function ( disabled ) {
+		TextInputWithIndicatorWidget[ 'super' ].prototype.setDisabled.call( this, disabled );
+		if ( this.input ) {
+			this.input.setDisabled( this.isDisabled() );
+		}
+		return this;
+	};
+
+	/**
+	 * A wrapper for a widget that provides an enable/disable button
+	 *
+	 * @class
+	 * @private
+	 * @constructor
+	 * @param {OO.ui.Widget} widget
+	 * @param {Object} [config] Configuration options
+	 */
+	function OptionalWidget( widget, config ) {
+		var k;
+
+		config = config || {};
+
+		this.widget = widget;
+		this.$overlay = config.$overlay ||
+			$( '<div>' ).addClass( 'mw-apisandbox-optionalWidget-overlay' );
+		this.checkbox = new OO.ui.CheckboxInputWidget( config.checkbox )
+			.on( 'change', this.onCheckboxChange, [], this );
+
+		OptionalWidget[ 'super' ].call( this, config );
+
+		// Forward most methods for convenience
+		for ( k in this.widget ) {
+			if ( $.isFunction( this.widget[ k ] ) && !this[ k ] ) {
+				this[ k ] = this.widget[ k ].bind( this.widget );
+			}
+		}
+
+		this.$overlay.on( 'click', this.onOverlayClick.bind( this ) );
+
+		this.$element
+			.addClass( 'mw-apisandbox-optionalWidget' )
+			.append(
+				this.$overlay,
+				$( '<div>' ).addClass( 'mw-apisandbox-optionalWidget-fields' ).append(
+					$( '<div>' ).addClass( 'mw-apisandbox-optionalWidget-widget' ).append(
+						widget.$element
+					),
+					$( '<div>' ).addClass( 'mw-apisandbox-optionalWidget-checkbox' ).append(
+						this.checkbox.$element
+					)
+				)
+			);
+
+		this.setDisabled( widget.isDisabled() );
+	}
+	OO.inheritClass( OptionalWidget, OO.ui.Widget );
+	OptionalWidget.prototype.onCheckboxChange = function ( checked ) {
+		this.setDisabled( !checked );
+	};
+	OptionalWidget.prototype.onOverlayClick = function () {
+		this.setDisabled( false );
+		if ( $.isFunction( this.widget.focus ) ) {
+			this.widget.focus();
+		}
+	};
+	OptionalWidget.prototype.setDisabled = function ( disabled ) {
+		OptionalWidget[ 'super' ].prototype.setDisabled.call( this, disabled );
+		this.widget.setDisabled( this.isDisabled() );
+		this.checkbox.setSelected( !this.isDisabled() );
+		this.$overlay.toggle( this.isDisabled() );
+		return this;
+	};
+
+	$( ApiSandbox.init );
 
 }( jQuery, mediaWiki, OO ) );

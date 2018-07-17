@@ -65,19 +65,13 @@ class ThrottlePreAuthenticationProvider extends AbstractPreAuthenticationProvide
 	public function setConfig( Config $config ) {
 		parent::setConfig( $config );
 
-		$accountCreationThrottle = $this->config->get( 'AccountCreationThrottle' );
-		// Handle old $wgAccountCreationThrottle format (number of attempts per 24 hours)
-		if ( !is_array( $accountCreationThrottle ) ) {
-			$accountCreationThrottle = [ [
-				'count' => $accountCreationThrottle,
-				'seconds' => 86400,
-			] ];
-		}
-
 		// @codeCoverageIgnoreStart
 		$this->throttleSettings += [
 		// @codeCoverageIgnoreEnd
-			'accountCreationThrottle' => $accountCreationThrottle,
+			'accountCreationThrottle' => [ [
+				'count' => $this->config->get( 'AccountCreationThrottle' ),
+				'seconds' => 86400,
+			] ],
 			'passwordAttemptThrottle' => $this->config->get( 'PasswordAttemptThrottle' ),
 		];
 
@@ -113,9 +107,7 @@ class ThrottlePreAuthenticationProvider extends AbstractPreAuthenticationProvide
 
 		$result = $this->accountCreationThrottle->increase( null, $ip, __METHOD__ );
 		if ( $result ) {
-			$message = wfMessage( 'acct_creation_throttle_hit' )->params( $result['count'] )
-				->durationParams( $result['wait'] );
-			return \StatusValue::newFatal( $message );
+			return \StatusValue::newFatal( 'acct_creation_throttle_hit', $result['count'] );
 		}
 
 		return \StatusValue::newGood();
@@ -167,9 +159,7 @@ class ThrottlePreAuthenticationProvider extends AbstractPreAuthenticationProvide
 
 		$data = $this->manager->getAuthenticationSessionData( 'LoginThrottle' );
 		if ( !$data ) {
-			// this can occur when login is happening via AuthenticationRequest::$loginRequest
-			// so testForAuthentication is skipped
-			$this->logger->info( 'throttler data not found for {user}', [ 'user' => $user->getName() ] );
+			$this->logger->error( 'throttler data not found for {user}', [ 'user' => $user->getName() ] );
 			return;
 		}
 

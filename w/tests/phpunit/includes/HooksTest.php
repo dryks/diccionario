@@ -54,8 +54,6 @@ class HooksTest extends MediaWikiTestCase {
 	 */
 	public function testOldStyleHooks( $msg, array $hook, $expectedFoo, $expectedBar ) {
 		global $wgHooks;
-
-		$this->hideDeprecated( 'wfRunHooks' );
 		$foo = $bar = 'original';
 
 		$wgHooks['MediaWikiHooksTest001'][] = $hook;
@@ -69,7 +67,6 @@ class HooksTest extends MediaWikiTestCase {
 	 * @dataProvider provideHooks
 	 * @covers Hooks::register
 	 * @covers Hooks::run
-	 * @covers Hooks::callHook
 	 */
 	public function testNewStyleHooks( $msg, $hook, $expectedFoo, $expectedBar ) {
 		$foo = $bar = 'original';
@@ -86,7 +83,6 @@ class HooksTest extends MediaWikiTestCase {
 	 * @covers Hooks::register
 	 * @covers Hooks::getHandlers
 	 * @covers Hooks::run
-	 * @covers Hooks::callHook
 	 */
 	public function testNewStyleHookInteraction() {
 		global $wgHooks;
@@ -126,7 +122,6 @@ class HooksTest extends MediaWikiTestCase {
 	/**
 	 * @expectedException MWException
 	 * @covers Hooks::run
-	 * @covers Hooks::callHook
 	 */
 	public function testUncallableFunction() {
 		Hooks::register( 'MediaWikiHooksTest001', 'ThisFunctionDoesntExist' );
@@ -135,7 +130,6 @@ class HooksTest extends MediaWikiTestCase {
 
 	/**
 	 * @covers Hooks::run
-	 * @covers Hooks::callHook
 	 */
 	public function testFalseReturn() {
 		Hooks::register( 'MediaWikiHooksTest001', function ( &$foo ) {
@@ -148,52 +142,7 @@ class HooksTest extends MediaWikiTestCase {
 		} );
 		$foo = 'original';
 		Hooks::run( 'MediaWikiHooksTest001', [ &$foo ] );
-		$this->assertSame( 'original', $foo, 'Hooks abort after a false return.' );
-	}
-
-	/**
-	 * @covers Hooks::runWithoutAbort
-	 * @covers Hooks::callHook
-	 */
-	public function testRunWithoutAbort() {
-		$list = [];
-		Hooks::register( 'MediaWikiHooksTest001', function ( &$list ) {
-			$list[] = 1;
-			return true; // Explicit true
-		} );
-		Hooks::register( 'MediaWikiHooksTest001', function ( &$list ) {
-			$list[] = 2;
-			return; // Implicit null
-		} );
-		Hooks::register( 'MediaWikiHooksTest001', function ( &$list ) {
-			$list[] = 3;
-			// No return
-		} );
-
-		Hooks::runWithoutAbort( 'MediaWikiHooksTest001', [ &$list ] );
-		$this->assertSame( [ 1, 2, 3 ], $list, 'All hooks ran.' );
-	}
-
-	/**
-	 * @covers Hooks::runWithoutAbort
-	 * @covers Hooks::callHook
-	 */
-	public function testRunWithoutAbortWarning() {
-		Hooks::register( 'MediaWikiHooksTest001', function ( &$foo ) {
-			return false;
-		} );
-		Hooks::register( 'MediaWikiHooksTest001', function ( &$foo ) {
-			$foo = 'test';
-			return true;
-		} );
-		$foo = 'original';
-
-		$this->setExpectedException(
-			UnexpectedValueException::class,
-			'Invalid return from hook-MediaWikiHooksTest001-closure for ' .
-				'unabortable MediaWikiHooksTest001'
-		);
-		Hooks::runWithoutAbort( 'MediaWikiHooksTest001', [ &$foo ] );
+		$this->assertSame( 'original', $foo, 'Hooks continued processing after a false return.' );
 	}
 
 	/**

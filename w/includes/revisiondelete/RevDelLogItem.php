@@ -39,10 +39,6 @@ class RevDelLogItem extends RevDelItem {
 		return 'log_user_text';
 	}
 
-	public function getAuthorActorField() {
-		return 'log_actor';
-	}
-
 	public function canView() {
 		return LogEventsList::userCan( $this->row, Revision::DELETED_RESTRICTED, $this->list->getUser() );
 	}
@@ -75,7 +71,7 @@ class RevDelLogItem extends RevDelItem {
 		$dbw->update( 'recentchanges',
 			[
 				'rc_deleted' => $bits,
-				'rc_patrolled' => RecentChange::PRC_PATROLLED
+				'rc_patrolled' => 1
 			],
 			[
 				'rc_logid' => $this->row->log_id,
@@ -96,9 +92,9 @@ class RevDelLogItem extends RevDelItem {
 		$formatter->setAudience( LogFormatter::FOR_THIS_USER );
 
 		// Log link for this page
-		$loglink = $this->getLinkRenderer()->makeLink(
+		$loglink = Linker::link(
 			SpecialPage::getTitleFor( 'Log' ),
-			$this->list->msg( 'log' )->text(),
+			$this->list->msg( 'log' )->escaped(),
 			[],
 			[ 'page' => $title->getPrefixedText() ]
 		);
@@ -106,9 +102,8 @@ class RevDelLogItem extends RevDelItem {
 		// User links and action text
 		$action = $formatter->getActionText();
 		// Comment
-		$comment = CommentStore::getStore()->getComment( 'log_comment', $this->row )->text;
 		$comment = $this->list->getLanguage()->getDirMark()
-			. Linker::commentBlock( $comment );
+			. Linker::commentBlock( $this->row->log_comment );
 
 		if ( LogEventsList::isDeleted( $this->row, LogPage::DELETED_COMMENT ) ) {
 			$comment = '<span class="history-deleted">' . $comment . '</span>';
@@ -124,10 +119,16 @@ class RevDelLogItem extends RevDelItem {
 			'id' => $logEntry->getId(),
 			'type' => $logEntry->getType(),
 			'action' => $logEntry->getSubtype(),
-			'userhidden' => (bool)$logEntry->isDeleted( LogPage::DELETED_USER ),
-			'commenthidden' => (bool)$logEntry->isDeleted( LogPage::DELETED_COMMENT ),
-			'actionhidden' => (bool)$logEntry->isDeleted( LogPage::DELETED_ACTION ),
 		];
+		$ret += $logEntry->isDeleted( LogPage::DELETED_USER )
+			? [ 'userhidden' => '' ]
+			: [];
+		$ret += $logEntry->isDeleted( LogPage::DELETED_COMMENT )
+			? [ 'commenthidden' => '' ]
+			: [];
+		$ret += $logEntry->isDeleted( LogPage::DELETED_ACTION )
+			? [ 'actionhidden' => '' ]
+			: [];
 
 		if ( LogEventsList::userCan( $this->row, LogPage::DELETED_ACTION, $user ) ) {
 			$ret['params'] = LogFormatter::newFromEntry( $logEntry )->formatParametersForApi();
@@ -140,8 +141,7 @@ class RevDelLogItem extends RevDelItem {
 		}
 		if ( LogEventsList::userCan( $this->row, LogPage::DELETED_COMMENT, $user ) ) {
 			$ret += [
-				'comment' => CommentStore::getStore()->getComment( 'log_comment', $this->row )
-					->text,
+				'comment' => $this->row->log_comment,
 			];
 		}
 

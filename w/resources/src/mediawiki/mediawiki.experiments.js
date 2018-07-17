@@ -1,3 +1,4 @@
+/* jshint bitwise:false */
 ( function ( mw, $ ) {
 
 	var CONTROL_BUCKET = 'control',
@@ -6,17 +7,16 @@
 	/**
 	 * An implementation of Jenkins' one-at-a-time hash.
 	 *
-	 * @see https://en.wikipedia.org/wiki/Jenkins_hash_function
+	 * @see http://en.wikipedia.org/wiki/Jenkins_hash_function
 	 *
 	 * @param {string} string String to hash
 	 * @return {number} The hash as a 32-bit unsigned integer
 	 * @ignore
 	 *
 	 * @author Ori Livneh <ori@wikimedia.org>
-	 * @see https://jsbin.com/kejewi/4/watch?js,console
+	 * @see http://jsbin.com/kejewi/4/watch?js,console
 	 */
 	function hashString( string ) {
-		/* eslint-disable no-bitwise */
 		var hash = 0,
 			i = string.length;
 
@@ -30,7 +30,6 @@
 		hash += ( hash << 15 );
 
 		return hash >>> 0;
-		/* eslint-enable no-bitwise */
 	}
 
 	/**
@@ -65,6 +64,8 @@
 		 * chance of being assigned to the control bucket, and a 25% chance of being
 		 * assigned to either the A or B buckets. If the experiment were disabled,
 		 * then the user would always be assigned to the control bucket.
+		 *
+		 * This function is based on the deprecated `mw.user.bucket` function.
 		 *
 		 * @param {Object} experiment
 		 * @param {string} experiment.name The name of the experiment

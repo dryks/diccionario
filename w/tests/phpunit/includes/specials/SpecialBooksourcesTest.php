@@ -1,5 +1,5 @@
 <?php
-class SpecialBooksourcesTest extends SpecialPageTestBase {
+class SpecialBooksourcesTest extends MediaWikiTestCase {
 	public static function provideISBNs() {
 		return [
 			[ '978-0-300-14424-6', true ],
@@ -14,7 +14,7 @@ class SpecialBooksourcesTest extends SpecialPageTestBase {
 			[ '9780136091817', false ],
 			[ '123456789X', true ],
 
-			// T69021
+			// Bug 67021
 			[ '1413304541', false ],
 			[ '141330454X', false ],
 			[ '1413304540', true ],
@@ -32,20 +32,5 @@ class SpecialBooksourcesTest extends SpecialPageTestBase {
 	 */
 	public function testIsValidISBN( $isbn, $isValid ) {
 		$this->assertSame( $isValid, SpecialBookSources::isValidISBN( $isbn ) );
-	}
-
-	protected function newSpecialPage() {
-		return new SpecialBookSources();
-	}
-
-	/**
-	 * @covers SpecialBookSources::execute
-	 */
-	public function testExecute() {
-		list( $html, ) = $this->executeSpecialPage( 'Invalid', null, 'qqx' );
-		$this->assertContains( '(booksources-invalid-isbn)', $html );
-		list( $html, ) = $this->executeSpecialPage( '0-7475-3269-9', null, 'qqx' );
-		$this->assertNotContains( '(booksources-invalid-isbn)', $html );
-		$this->assertContains( '(booksources-text)', $html );
 	}
 }

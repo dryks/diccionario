@@ -6,7 +6,7 @@ $IP = strval( getenv( 'MW_INSTALL_PATH' ) ) !== ''
 
 require "$IP/maintenance/Maintenance.php";
 
-class Update extends Maintenance {
+class LU extends Maintenance {
 	public function __construct() {
 		parent::__construct();
 		$this->mDescription = 'Fetches translation updates to MediaWiki core, skins and extensions.';
@@ -16,8 +16,6 @@ class Update extends Maintenance {
 			false, /*required*/
 			true /*has arg*/
 		);
-
-		$this->requireExtension( 'LocalisationUpdate' );
 	}
 
 	public function execute() {
@@ -26,7 +24,9 @@ class Update extends Maintenance {
 		ini_set( "max_execution_time", 0 );
 		ini_set( 'memory_limit', -1 );
 
+		// @codingStandardsIgnoreStart Ignore MediaWiki.NamingConventions.ValidGlobalName.wgPrefix
 		global $IP;
+		// @codingStandardsIgnoreEnd
 		global $wgExtensionMessagesFiles;
 		global $wgLocalisationUpdateRepositories;
 		global $wgLocalisationUpdateRepository;
@@ -76,5 +76,5 @@ class Update extends Maintenance {
 	}
 }
 
-$maintClass = Update::class;
+$maintClass = 'LU';
 require_once RUN_MAINTENANCE_IF_MAIN;

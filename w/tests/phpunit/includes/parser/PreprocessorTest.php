@@ -1,29 +1,5 @@
 <?php
 
-/**
- * @covers Preprocessor
- *
- * @covers Preprocessor_DOM
- * @covers PPDStack
- * @covers PPDStackElement
- * @covers PPDPart
- * @covers PPFrame_DOM
- * @covers PPTemplateFrame_DOM
- * @covers PPCustomFrame_DOM
- * @covers PPNode_DOM
- *
- * @covers Preprocessor_Hash
- * @covers PPDStack_Hash
- * @covers PPDStackElement_Hash
- * @covers PPDPart_Hash
- * @covers PPFrame_Hash
- * @covers PPTemplateFrame_Hash
- * @covers PPCustomFrame_Hash
- * @covers PPNode_Hash_Tree
- * @covers PPNode_Hash_Text
- * @covers PPNode_Hash_Array
- * @covers PPNode_Hash_Attr
- */
 class PreprocessorTest extends MediaWikiTestCase {
 	protected $mTitle = 'Page title';
 	protected $mPPNodeCount = 0;
@@ -32,44 +8,28 @@ class PreprocessorTest extends MediaWikiTestCase {
 	 */
 	protected $mOptions;
 	/**
-	 * @var array
+	 * @var Preprocessor
 	 */
-	protected $mPreprocessors;
-
-	protected static $classNames = [
-		Preprocessor_DOM::class,
-		Preprocessor_Hash::class
-	];
+	protected $mPreprocessor;
 
 	protected function setUp() {
-		global $wgContLang;
+		global $wgParserConf, $wgContLang;
 		parent::setUp();
 		$this->mOptions = ParserOptions::newFromUserAndLang( new User, $wgContLang );
+		$name = isset( $wgParserConf['preprocessorClass'] )
+			? $wgParserConf['preprocessorClass']
+			: 'Preprocessor_DOM';
 
-		$this->mPreprocessors = [];
-		foreach ( self::$classNames as $className ) {
-			$this->mPreprocessors[$className] = new $className( $this );
-		}
+		$this->mPreprocessor = new $name( $this );
 	}
 
 	function getStripList() {
 		return [ 'gallery', 'display map' /* Used by Maps, see r80025 CR */, '/foo' ];
 	}
 
-	protected static function addClassArg( $testCases ) {
-		$newTestCases = [];
-		foreach ( self::$classNames as $className ) {
-			foreach ( $testCases as $testCase ) {
-				array_unshift( $testCase, $className );
-				$newTestCases[] = $testCase;
-			}
-		}
-		return $newTestCases;
-	}
-
 	public static function provideCases() {
-		// phpcs:disable Generic.Files.LineLength
-		return self::addClassArg( [
+		// @codingStandardsIgnoreStart Ignore Generic.Files.LineLength.TooLong
+		return [
 			[ "Foo", "<root>Foo</root>" ],
 			[ "<!-- Foo -->", "<root><comment>&lt;!-- Foo --&gt;</comment></root>" ],
 			[ "<!-- Foo --><!-- Bar -->", "<root><comment>&lt;!-- Foo --&gt;</comment><comment>&lt;!-- Bar --&gt;</comment></root>" ],
@@ -155,25 +115,23 @@ class PreprocessorTest extends MediaWikiTestCase {
 			[ "{{Foo|} Bar=", "<root>{{Foo|} Bar=</root>" ],
 			[ "{{Foo|} Bar=}}", "<root><template><title>Foo</title><part><name>} Bar</name>=<value></value></part></template></root>" ],
 			/* [ file_get_contents( __DIR__ . '/QuoteQuran.txt' ], file_get_contents( __DIR__ . '/QuoteQuranExpanded.txt' ) ], */
-		] );
-		// phpcs:enable
+		];
+		// @codingStandardsIgnoreEnd
 	}
 
 	/**
 	 * Get XML preprocessor tree from the preprocessor (which may not be the
 	 * native XML-based one).
 	 *
-	 * @param string $className
 	 * @param string $wikiText
 	 * @return string
 	 */
-	protected function preprocessToXml( $className, $wikiText ) {
-		$preprocessor = $this->mPreprocessors[$className];
-		if ( method_exists( $preprocessor, 'preprocessToXml' ) ) {
-			return $this->normalizeXml( $preprocessor->preprocessToXml( $wikiText ) );
+	protected function preprocessToXml( $wikiText ) {
+		if ( method_exists( $this->mPreprocessor, 'preprocessToXml' ) ) {
+			return $this->normalizeXml( $this->mPreprocessor->preprocessToXml( $wikiText ) );
 		}
 
-		$dom = $preprocessor->preprocessToObj( $wikiText );
+		$dom = $this->mPreprocessor->preprocessToObj( $wikiText );
 		if ( is_callable( [ $dom, 'saveXML' ] ) ) {
 			return $dom->saveXML();
 		} else {
@@ -188,44 +146,40 @@ class PreprocessorTest extends MediaWikiTestCase {
 	 * @return string
 	 */
 	protected function normalizeXml( $xml ) {
-		// Normalize self-closing tags
-		$xml = preg_replace( '!<([a-z]+)/>!', '<$1></$1>', str_replace( ' />', '/>', $xml ) );
-		// Remove <equals> tags, which only occur in Preprocessor_Hash and
-		// have no semantic value
-		$xml = preg_replace( '!</?equals>!', '', $xml );
-		return $xml;
+		return preg_replace( '!<([a-z]+)/>!', '<$1></$1>', str_replace( ' />', '/>', $xml ) );
 	}
 
 	/**
 	 * @dataProvider provideCases
+	 * @covers Preprocessor_DOM::preprocessToXml
 	 */
-	public function testPreprocessorOutput( $className, $wikiText, $expectedXml ) {
-		$this->assertEquals( $this->normalizeXml( $expectedXml ),
-			$this->preprocessToXml( $className, $wikiText ) );
+	public function testPreprocessorOutput( $wikiText, $expectedXml ) {
+		$this->assertEquals( $this->normalizeXml( $expectedXml ), $this->preprocessToXml( $wikiText ) );
 	}
 
 	/**
 	 * These are more complex test cases taken out of wiki articles.
 	 */
 	public static function provideFiles() {
-		// phpcs:disable Generic.Files.LineLength
-		return self::addClassArg( [
-			[ "QuoteQuran" ], # https://en.wikipedia.org/w/index.php?title=Template:QuoteQuran/sandbox&oldid=237348988 GFDL + CC BY-SA by Striver
-			[ "Factorial" ], # https://en.wikipedia.org/w/index.php?title=Template:Factorial&oldid=98548758 GFDL + CC BY-SA by Polonium
-			[ "All_system_messages" ], # https://tl.wiktionary.org/w/index.php?title=Suleras:All_system_messages&oldid=2765 GPL text generated by MediaWiki
-			[ "Fundraising" ], # https://tl.wiktionary.org/w/index.php?title=MediaWiki:Sitenotice&oldid=5716 GFDL + CC BY-SA, copied there by Sky Harbor.
-			[ "NestedTemplates" ], # T29936
-		] );
-		// phpcs:enable
+		// @codingStandardsIgnoreStart Ignore Generic.Files.LineLength.TooLong
+		return [
+			[ "QuoteQuran" ], # http://en.wikipedia.org/w/index.php?title=Template:QuoteQuran/sandbox&oldid=237348988 GFDL + CC BY-SA by Striver
+			[ "Factorial" ], # http://en.wikipedia.org/w/index.php?title=Template:Factorial&oldid=98548758 GFDL + CC BY-SA by Polonium
+			[ "All_system_messages" ], # http://tl.wiktionary.org/w/index.php?title=Suleras:All_system_messages&oldid=2765 GPL text generated by MediaWiki
+			[ "Fundraising" ], # http://tl.wiktionary.org/w/index.php?title=MediaWiki:Sitenotice&oldid=5716 GFDL + CC BY-SA, copied there by Sky Harbor.
+			[ "NestedTemplates" ], # bug 27936
+		];
+		// @codingStandardsIgnoreEnd
 	}
 
 	/**
 	 * @dataProvider provideFiles
+	 * @covers Preprocessor_DOM::preprocessToXml
 	 */
-	public function testPreprocessorOutputFiles( $className, $filename ) {
+	public function testPreprocessorOutputFiles( $filename ) {
 		$folder = __DIR__ . "/../../../parser/preprocess";
 		$wikiText = file_get_contents( "$folder/$filename.txt" );
-		$output = $this->preprocessToXml( $className, $wikiText );
+		$output = $this->preprocessToXml( $wikiText );
 
 		$expectedFilename = "$folder/$filename.expected";
 		if ( file_exists( $expectedFilename ) ) {
@@ -242,9 +196,8 @@ class PreprocessorTest extends MediaWikiTestCase {
 	 * Tests from T30642 · https://phabricator.wikimedia.org/T30642
 	 */
 	public static function provideHeadings() {
-		// phpcs:disable Generic.Files.LineLength
-		return self::addClassArg( [
-			/* These should become headings: */
+		// @codingStandardsIgnoreStart Ignore Generic.Files.LineLength.TooLong
+		return [ /* These should become headings: */
 			[ "== h ==<!--c1-->", "<root><h level=\"2\" i=\"1\">== h ==<comment>&lt;!--c1--&gt;</comment></h></root>" ],
 			[ "== h == 	<!--c1-->", "<root><h level=\"2\" i=\"1\">== h == 	<comment>&lt;!--c1--&gt;</comment></h></root>" ],
 			[ "== h ==<!--c1--> 	", "<root><h level=\"2\" i=\"1\">== h ==<comment>&lt;!--c1--&gt;</comment> 	</h></root>" ],
@@ -280,15 +233,15 @@ class PreprocessorTest extends MediaWikiTestCase {
 			[ "== h == x <!--c1--><!--c2--><!--c3-->  ", "<root>== h == x <comment>&lt;!--c1--&gt;</comment><comment>&lt;!--c2--&gt;</comment><comment>&lt;!--c3--&gt;</comment>  </root>" ],
 			[ "== h ==<!--c1--> x <!--c2--><!--c3-->  ", "<root>== h ==<comment>&lt;!--c1--&gt;</comment> x <comment>&lt;!--c2--&gt;</comment><comment>&lt;!--c3--&gt;</comment>  </root>" ],
 			[ "== h ==<!--c1--><!--c2--><!--c3--> x ", "<root>== h ==<comment>&lt;!--c1--&gt;</comment><comment>&lt;!--c2--&gt;</comment><comment>&lt;!--c3--&gt;</comment> x </root>" ],
-		] );
-		// phpcs:enable
+		];
+		// @codingStandardsIgnoreEnd
 	}
 
 	/**
 	 * @dataProvider provideHeadings
+	 * @covers Preprocessor_DOM::preprocessToXml
 	 */
-	public function testHeadings( $className, $wikiText, $expectedXml ) {
-		$this->assertEquals( $this->normalizeXml( $expectedXml ),
-			$this->preprocessToXml( $className, $wikiText ) );
+	public function testHeadings( $wikiText, $expectedXml ) {
+		$this->assertEquals( $this->normalizeXml( $expectedXml ), $this->preprocessToXml( $wikiText ) );
 	}
 }

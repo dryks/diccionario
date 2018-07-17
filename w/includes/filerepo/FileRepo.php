@@ -78,6 +78,10 @@ class FileRepo {
 	 */
 	protected $scriptDirUrl;
 
+	/** @var string Script extension of the MediaWiki installation, equivalent
+	 *    to the old $wgScriptExtension, e.g. .php5 defaults to .php */
+	protected $scriptExtension;
+
 	/** @var string Equivalent to $wgArticlePath, e.g. https://en.wikipedia.org/wiki/$1 */
 	protected $articleUrl;
 
@@ -95,7 +99,7 @@ class FileRepo {
 	 */
 	protected $pathDisclosureProtection = 'simple';
 
-	/** @var string|false Public zone URL. */
+	/** @var bool Public zone URL. */
 	protected $url;
 
 	/** @var string The base thumbnail URL. Defaults to "<url>/thumb". */
@@ -120,20 +124,13 @@ class FileRepo {
 	protected $isPrivate;
 
 	/** @var array callable Override these in the base class */
-	protected $fileFactory = [ UnregisteredLocalFile::class, 'newFromTitle' ];
+	protected $fileFactory = [ 'UnregisteredLocalFile', 'newFromTitle' ];
 	/** @var array callable|bool Override these in the base class */
 	protected $oldFileFactory = false;
 	/** @var array callable|bool Override these in the base class */
 	protected $fileFactoryKey = false;
 	/** @var array callable|bool Override these in the base class */
 	protected $oldFileFactoryKey = false;
-
-	/** @var string URL of where to proxy thumb.php requests to.
-	 *    Example: http://127.0.0.1:8888/wiki/dev/thumb/
-	 */
-	protected $thumbProxyUrl;
-	/** @var string Secret key to pass as an X-Swift-Secret header to the proxied thumb service */
-	protected $thumbProxySecret;
 
 	/**
 	 * @param array|null $info
@@ -162,7 +159,7 @@ class FileRepo {
 		$optionalSettings = [
 			'descBaseUrl', 'scriptDirUrl', 'articleUrl', 'fetchDescription',
 			'thumbScriptUrl', 'pathDisclosureProtection', 'descriptionCacheExpiry',
-			'favicon', 'thumbProxyUrl', 'thumbProxySecret',
+			'scriptExtension', 'favicon'
 		];
 		foreach ( $optionalSettings as $var ) {
 			if ( isset( $info[$var] ) ) {
@@ -312,7 +309,7 @@ class FileRepo {
 	 * @return bool Whether non-ASCII path characters are allowed
 	 */
 	public function backendSupportsUnicodePaths() {
-		return (bool)( $this->getBackend()->getFeatures() & FileBackend::ATTR_UNICODE_PATHS );
+		return ( $this->getBackend()->getFeatures() & FileBackend::ATTR_UNICODE_PATHS );
 	}
 
 	/**
@@ -396,7 +393,7 @@ class FileRepo {
 			if ( $this->oldFileFactory ) {
 				return call_user_func( $this->oldFileFactory, $title, $this, $time );
 			} else {
-				return null;
+				return false;
 			}
 		} else {
 			return call_user_func( $this->fileFactory, $title, $this );
@@ -485,8 +482,8 @@ class FileRepo {
 	 * @param array $items An array of titles, or an array of findFile() options with
 	 *    the "title" option giving the title. Example:
 	 *
-	 *     $findItem = [ 'title' => $title, 'private' => true ];
-	 *     $findBatch = [ $findItem ];
+	 *     $findItem = array( 'title' => $title, 'private' => true );
+	 *     $findBatch = array( $findItem );
 	 *     $repo->findFiles( $findBatch );
 	 *
 	 *    No title should appear in $items twice, as the result use titles as keys
@@ -536,10 +533,11 @@ class FileRepo {
 	public function findFileFromKey( $sha1, $options = [] ) {
 		$time = isset( $options['time'] ) ? $options['time'] : false;
 		# First try to find a matching current version of a file...
-		if ( !$this->fileFactoryKey ) {
+		if ( $this->fileFactoryKey ) {
+			$img = call_user_func( $this->fileFactoryKey, $sha1, $this, $time );
+		} else {
 			return false; // find-by-sha1 not supported
 		}
-		$img = call_user_func( $this->fileFactoryKey, $sha1, $this, $time );
 		if ( $img && $img->exists() ) {
 			return $img;
 		}
@@ -578,8 +576,8 @@ class FileRepo {
 	 * Get an array of arrays or iterators of file objects for files that
 	 * have the given SHA-1 content hashes.
 	 *
-	 * @param string[] $hashes An array of hashes
-	 * @return array[] An Array of arrays or iterators of file objects and the hash as key
+	 * @param array $hashes An array of hashes
+	 * @return array An Array of arrays or iterators of file objects and the hash as key
 	 */
 	public function findBySha1s( array $hashes ) {
 		$result = [];
@@ -599,7 +597,7 @@ class FileRepo {
 	 * STUB
 	 * @param string $prefix The prefix to search for
 	 * @param int $limit The maximum amount of files to return
-	 * @return LocalFile[]
+	 * @return array
 	 */
 	public function findFilesByPrefix( $prefix, $limit ) {
 		return [];
@@ -612,24 +610,6 @@ class FileRepo {
 	 */
 	public function getThumbScriptUrl() {
 		return $this->thumbScriptUrl;
-	}
-
-	/**
-	 * Get the URL thumb.php requests are being proxied to
-	 *
-	 * @return string
-	 */
-	public function getThumbProxyUrl() {
-		return $this->thumbProxyUrl;
-	}
-
-	/**
-	 * Get the secret key for the proxied thumb service
-	 *
-	 * @return string
-	 */
-	public function getThumbProxySecret() {
-		return $this->thumbProxySecret;
 	}
 
 	/**
@@ -740,7 +720,9 @@ class FileRepo {
 	 */
 	public function makeUrl( $query = '', $entry = 'index' ) {
 		if ( isset( $this->scriptDirUrl ) ) {
-			return wfAppendQuery( "{$this->scriptDirUrl}/{$entry}.php", $query );
+			$ext = isset( $this->scriptExtension ) ? $this->scriptExtension : '.php';
+
+			return wfAppendQuery( "{$this->scriptDirUrl}/{$entry}{$ext}", $query );
 		}
 
 		return false;
@@ -756,7 +738,7 @@ class FileRepo {
 	 * constructor, whereas local repositories use the local Title functions.
 	 *
 	 * @param string $name
-	 * @return string|false
+	 * @return string
 	 */
 	public function getDescriptionUrl( $name ) {
 		$encName = wfUrlencode( $name );
@@ -789,13 +771,13 @@ class FileRepo {
 	 * should use File::getDescriptionText().
 	 *
 	 * @param string $name Name of image to fetch
-	 * @param string|null $lang Language to fetch it in, if any.
-	 * @return string|false
+	 * @param string $lang Language to fetch it in, if any.
+	 * @return string
 	 */
 	public function getDescriptionRenderUrl( $name, $lang = null ) {
 		$query = 'action=render';
 		if ( !is_null( $lang ) ) {
-			$query .= '&uselang=' . urlencode( $lang );
+			$query .= '&uselang=' . $lang;
 		}
 		if ( isset( $this->scriptDirUrl ) ) {
 			return $this->makeUrl(
@@ -833,18 +815,19 @@ class FileRepo {
 	 * @param string $dstZone Destination zone
 	 * @param string $dstRel Destination relative path
 	 * @param int $flags Bitwise combination of the following flags:
+	 *   self::DELETE_SOURCE     Delete the source file after upload
 	 *   self::OVERWRITE         Overwrite an existing destination file instead of failing
 	 *   self::OVERWRITE_SAME    Overwrite the file if the destination exists and has the
 	 *                           same contents as the source
 	 *   self::SKIP_LOCKING      Skip any file locking when doing the store
-	 * @return Status
+	 * @return FileRepoStatus
 	 */
 	public function store( $srcPath, $dstZone, $dstRel, $flags = 0 ) {
 		$this->assertWritableRepo(); // fail out if read-only
 
 		$status = $this->storeBatch( [ [ $srcPath, $dstZone, $dstRel ] ], $flags );
 		if ( $status->successCount == 0 ) {
-			$status->setOK( false );
+			$status->ok = false;
 		}
 
 		return $status;
@@ -855,24 +838,22 @@ class FileRepo {
 	 *
 	 * @param array $triplets (src, dest zone, dest rel) triplets as per store()
 	 * @param int $flags Bitwise combination of the following flags:
+	 *   self::DELETE_SOURCE     Delete the source file after upload
 	 *   self::OVERWRITE         Overwrite an existing destination file instead of failing
 	 *   self::OVERWRITE_SAME    Overwrite the file if the destination exists and has the
 	 *                           same contents as the source
 	 *   self::SKIP_LOCKING      Skip any file locking when doing the store
 	 * @throws MWException
-	 * @return Status
+	 * @return FileRepoStatus
 	 */
 	public function storeBatch( array $triplets, $flags = 0 ) {
 		$this->assertWritableRepo(); // fail out if read-only
-
-		if ( $flags & self::DELETE_SOURCE ) {
-			throw new InvalidArgumentException( "DELETE_SOURCE not supported in " . __METHOD__ );
-		}
 
 		$status = $this->newGood();
 		$backend = $this->backend; // convenience
 
 		$operations = [];
+		$sourceFSFilesToDelete = []; // cleanup for disk source files
 		// Validate each triplet and get the store operation...
 		foreach ( $triplets as $triplet ) {
 			list( $srcPath, $dstZone, $dstRel ) = $triplet;
@@ -900,9 +881,12 @@ class FileRepo {
 
 			// Get the appropriate file operation
 			if ( FileBackend::isStoragePath( $srcPath ) ) {
-				$opName = 'copy';
+				$opName = ( $flags & self::DELETE_SOURCE ) ? 'move' : 'copy';
 			} else {
 				$opName = 'store';
+				if ( $flags & self::DELETE_SOURCE ) {
+					$sourceFSFilesToDelete[] = $srcPath;
+				}
 			}
 			$operations[] = [
 				'op' => $opName,
@@ -919,6 +903,12 @@ class FileRepo {
 			$opts['nonLocking'] = true;
 		}
 		$status->merge( $backend->doOperations( $operations, $opts ) );
+		// Cleanup for disk source files...
+		foreach ( $sourceFSFilesToDelete as $file ) {
+			MediaWiki\suppressWarnings();
+			unlink( $file ); // FS cleanup
+			MediaWiki\restoreWarnings();
+		}
 
 		return $status;
 	}
@@ -928,10 +918,10 @@ class FileRepo {
 	 * Each file can be a (zone, rel) pair, virtual url, storage path.
 	 * It will try to delete each file, but ignores any errors that may occur.
 	 *
-	 * @param string[] $files List of files to delete
+	 * @param array $files List of files to delete
 	 * @param int $flags Bitwise combination of the following flags:
 	 *   self::SKIP_LOCKING      Skip any file locking when doing the deletions
-	 * @return Status
+	 * @return FileRepoStatus
 	 */
 	public function cleanupBatch( array $files, $flags = 0 ) {
 		$this->assertWritableRepo(); // fail out if read-only
@@ -971,7 +961,7 @@ class FileRepo {
 	 * @param array|string|null $options An array consisting of a key named headers
 	 *   listing extra headers. If a string, taken as content-disposition header.
 	 *   (Support for array of options new in 1.23)
-	 * @return Status
+	 * @return FileRepoStatus
 	 */
 	final public function quickImport( $src, $dst, $options = null ) {
 		return $this->quickImportBatch( [ [ $src, $dst, $options ] ] );
@@ -983,7 +973,7 @@ class FileRepo {
 	 * This is intended for purging thumbnails.
 	 *
 	 * @param string $path Virtual URL or storage path
-	 * @return Status
+	 * @return FileRepoStatus
 	 */
 	final public function quickPurge( $path ) {
 		return $this->quickPurgeBatch( [ $path ] );
@@ -1014,7 +1004,7 @@ class FileRepo {
 	 * When "headers" are given they are used as HTTP headers if supported.
 	 *
 	 * @param array $triples List of (source path or FSFile, destination path, disposition)
-	 * @return Status
+	 * @return FileRepoStatus
 	 */
 	public function quickImportBatch( array $triples ) {
 		$status = $this->newGood();
@@ -1059,7 +1049,7 @@ class FileRepo {
 	 * This does no locking nor journaling and is intended for purging thumbnails.
 	 *
 	 * @param array $paths List of virtual URLs or storage paths
-	 * @return Status
+	 * @return FileRepoStatus
 	 */
 	public function quickPurgeBatch( array $paths ) {
 		$status = $this->newGood();
@@ -1078,13 +1068,13 @@ class FileRepo {
 
 	/**
 	 * Pick a random name in the temp zone and store a file to it.
-	 * Returns a Status object with the file Virtual URL in the value,
+	 * Returns a FileRepoStatus object with the file Virtual URL in the value,
 	 * file can later be disposed using FileRepo::freeTemp().
 	 *
 	 * @param string $originalName The base name of the file as specified
 	 *   by the user. The file extension will be maintained.
 	 * @param string $srcPath The current location of the file.
-	 * @return Status Object with the URL in the value.
+	 * @return FileRepoStatus Object with the URL in the value.
 	 */
 	public function storeTemp( $originalName, $srcPath ) {
 		$this->assertWritableRepo(); // fail out if read-only
@@ -1126,7 +1116,7 @@ class FileRepo {
 	 * @param string $dstPath Target file system path
 	 * @param int $flags Bitwise combination of the following flags:
 	 *   self::DELETE_SOURCE     Delete the source files on success
-	 * @return Status
+	 * @return FileRepoStatus
 	 */
 	public function concatenate( array $srcPaths, $dstPath, $flags = 0 ) {
 		$this->assertWritableRepo(); // fail out if read-only
@@ -1162,7 +1152,7 @@ class FileRepo {
 	 * Copy or move a file either from a storage path, virtual URL,
 	 * or file system path, into this repository at the specified destination location.
 	 *
-	 * Returns a Status object. On success, the value contains "new" or
+	 * Returns a FileRepoStatus object. On success, the value contains "new" or
 	 * "archived", to indicate whether the file was new with that name.
 	 *
 	 * Options to $options include:
@@ -1175,7 +1165,7 @@ class FileRepo {
 	 * @param int $flags Bitfield, may be FileRepo::DELETE_SOURCE to indicate
 	 *   that the source file should be deleted if possible
 	 * @param array $options Optional additional parameters
-	 * @return Status
+	 * @return FileRepoStatus
 	 */
 	public function publish(
 		$src, $dstRel, $archiveRel, $flags = 0, array $options = []
@@ -1185,7 +1175,7 @@ class FileRepo {
 		$status = $this->publishBatch(
 			[ [ $src, $dstRel, $archiveRel, $options ] ], $flags );
 		if ( $status->successCount == 0 ) {
-			$status->setOK( false );
+			$status->ok = false;
 		}
 		if ( isset( $status->value[0] ) ) {
 			$status->value = $status->value[0];
@@ -1204,7 +1194,7 @@ class FileRepo {
 	 * @param int $flags Bitfield, may be FileRepo::DELETE_SOURCE to indicate
 	 *   that the source files should be deleted if possible
 	 * @throws MWException
-	 * @return Status
+	 * @return FileRepoStatus
 	 */
 	public function publishBatch( array $ntuples, $flags = 0 ) {
 		$this->assertWritableRepo(); // fail out if read-only
@@ -1312,9 +1302,9 @@ class FileRepo {
 		}
 		// Cleanup for disk source files...
 		foreach ( $sourceFSFilesToDelete as $file ) {
-			Wikimedia\suppressWarnings();
+			MediaWiki\suppressWarnings();
 			unlink( $file ); // FS cleanup
-			Wikimedia\restoreWarnings();
+			MediaWiki\restoreWarnings();
 		}
 
 		return $status;
@@ -1341,10 +1331,7 @@ class FileRepo {
 			$params = [ 'noAccess' => true, 'noListing' => true ] + $params;
 		}
 
-		$status = $this->newGood();
-		$status->merge( $this->backend->prepare( $params ) );
-
-		return $status;
+		return $this->backend->prepare( $params );
 	}
 
 	/**
@@ -1378,7 +1365,7 @@ class FileRepo {
 	/**
 	 * Checks existence of an array of files.
 	 *
-	 * @param string[] $files Virtual URLs (or storage paths) of files to check
+	 * @param array $files Virtual URLs (or storage paths) of files to check
 	 * @return array Map of files and existence flags, or false
 	 */
 	public function fileExistsBatch( array $files ) {
@@ -1402,7 +1389,7 @@ class FileRepo {
 	 * @param mixed $srcRel Relative path for the file to be deleted
 	 * @param mixed $archiveRel Relative path for the archive location.
 	 *   Relative to a private archive directory.
-	 * @return Status
+	 * @return FileRepoStatus
 	 */
 	public function delete( $srcRel, $archiveRel ) {
 		$this->assertWritableRepo(); // fail out if read-only
@@ -1425,7 +1412,7 @@ class FileRepo {
 	 *   public root in the first element, and the archive file path relative
 	 *   to the deleted zone root in the second element.
 	 * @throws MWException
-	 * @return Status
+	 * @return FileRepoStatus
 	 */
 	public function deleteBatch( array $sourceDestPairs ) {
 		$this->assertWritableRepo(); // fail out if read-only
@@ -1467,7 +1454,7 @@ class FileRepo {
 				'dst' => $archivePath,
 				// We may have 2+ identical files being deleted,
 				// all of which will map to the same destination file
-				'overwriteSame' => true // also see T33792
+				'overwriteSame' => true // also see bug 31792
 			];
 		}
 
@@ -1484,7 +1471,7 @@ class FileRepo {
 	 * Delete files in the deleted directory if they are not referenced in the filearchive table
 	 *
 	 * STUB
-	 * @param string[] $storageKeys
+	 * @param array $storageKeys
 	 */
 	public function cleanupDeletedBatch( array $storageKeys ) {
 		$this->assertWritableRepo();
@@ -1561,15 +1548,9 @@ class FileRepo {
 	 * @return array
 	 */
 	public function getFileProps( $virtualUrl ) {
-		$fsFile = $this->getLocalReference( $virtualUrl );
-		$mwProps = new MWFileProps( MediaWiki\MediaWikiServices::getInstance()->getMimeAnalyzer() );
-		if ( $fsFile ) {
-			$props = $mwProps->getPropsFromPath( $fsFile->getPath(), true );
-		} else {
-			$props = $mwProps->newPlaceholderProps();
-		}
+		$path = $this->resolveToStoragePath( $virtualUrl );
 
-		return $props;
+		return $this->backend->getFileProps( [ 'src' => $path ] );
 	}
 
 	/**
@@ -1613,28 +1594,14 @@ class FileRepo {
 	 *
 	 * @param string $virtualUrl
 	 * @param array $headers Additional HTTP headers to send on success
-	 * @param array $optHeaders HTTP request headers (if-modified-since, range, ...)
 	 * @return Status
 	 * @since 1.27
 	 */
-	public function streamFileWithStatus( $virtualUrl, $headers = [], $optHeaders = [] ) {
+	public function streamFileWithStatus( $virtualUrl, $headers = [] ) {
 		$path = $this->resolveToStoragePath( $virtualUrl );
-		$params = [ 'src' => $path, 'headers' => $headers, 'options' => $optHeaders ];
+		$params = [ 'src' => $path, 'headers' => $headers ];
 
-		// T172851: HHVM does not flush the output properly, causing OOM
-		ob_start( null, 1048576 );
-		ob_implicit_flush( true );
-
-		$status = $this->newGood();
-		$status->merge( $this->backend->streamFile( $params ) );
-
-		// T186565: Close the buffer, unless it has already been closed
-		// in HTTPFileStreamer::resetOutputBuffers().
-		if ( ob_get_status() ) {
-			ob_end_flush();
-		}
-
-		return $status;
+		return $this->backend->streamFile( $params );
 	}
 
 	/**
@@ -1704,7 +1671,7 @@ class FileRepo {
 	/**
 	 * Get a callback function to use for cleaning error message parameters
 	 *
-	 * @return string[]
+	 * @return array
 	 */
 	function getErrorCleanupFunction() {
 		switch ( $this->pathDisclosureProtection ) {
@@ -1745,7 +1712,7 @@ class FileRepo {
 	 * @return Status
 	 */
 	public function newFatal( $message /*, parameters...*/ ) {
-		$status = call_user_func_array( [ Status::class, 'newFatal' ], func_get_args() );
+		$status = call_user_func_array( [ 'Status', 'newFatal' ], func_get_args() );
 		$status->cleanCallback = $this->getErrorCleanupFunction();
 
 		return $status;
@@ -1893,7 +1860,7 @@ class FileRepo {
 	/**
 	 * Get an UploadStash associated with this repo.
 	 *
-	 * @param User|null $user
+	 * @param User $user
 	 * @return UploadStash
 	 */
 	public function getUploadStash( User $user = null ) {
@@ -1926,7 +1893,7 @@ class FileRepo {
 
 		$optionalSettings = [
 			'url', 'thumbUrl', 'initialCapital', 'descBaseUrl', 'scriptDirUrl', 'articleUrl',
-			'fetchDescription', 'descriptionCacheExpiry', 'favicon'
+			'fetchDescription', 'descriptionCacheExpiry', 'scriptExtension', 'favicon'
 		];
 		foreach ( $optionalSettings as $k ) {
 			if ( isset( $this->$k ) ) {
@@ -1951,5 +1918,14 @@ class FileRepo {
 	 */
 	public function supportsSha1URLs() {
 		return $this->supportsSha1URLs;
+	}
+}
+
+/**
+ * FileRepo for temporary files created via FileRepo::getTempRepo()
+ */
+class TempFileRepo extends FileRepo {
+	public function getTempRepo() {
+		throw new MWException( "Cannot get a temp repo from a temp repo." );
 	}
 }

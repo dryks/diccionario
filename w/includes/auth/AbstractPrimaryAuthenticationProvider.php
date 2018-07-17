@@ -46,7 +46,7 @@ abstract class AbstractPrimaryAuthenticationProvider extends AbstractAuthenticat
 	}
 
 	/**
-	 * @inheritDoc
+	 * @inheritdoc
 	 * @note Reimplement this if you do anything other than
 	 *  User::getCanonicalName( $req->username ) to determine the user being
 	 *  authenticated.
@@ -57,7 +57,7 @@ abstract class AbstractPrimaryAuthenticationProvider extends AbstractAuthenticat
 	}
 
 	/**
-	 * @inheritDoc
+	 * @inheritdoc
 	 * @note Reimplement this if self::getAuthenticationRequests( AuthManager::ACTION_REMOVE )
 	 *  doesn't return requests that will revoke all access for the user.
 	 */
@@ -91,7 +91,7 @@ abstract class AbstractPrimaryAuthenticationProvider extends AbstractAuthenticat
 	public function postAccountCreation( $user, $creator, AuthenticationResponse $response ) {
 	}
 
-	public function testUserForCreation( $user, $autocreate, array $options = [] ) {
+	public function testUserForCreation( $user, $autocreate ) {
 		return \StatusValue::newGood();
 	}
 

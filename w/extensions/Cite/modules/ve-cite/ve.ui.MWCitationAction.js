@@ -1,8 +1,7 @@
 /*!
  * VisualEditor UserInterface MWCitationAction class.
  *
- * @copyright 2011-2018 VisualEditor Team's Cite sub-team and others; see AUTHORS.txt
- * @license MIT
+ * @copyright 2011-2016 VisualEditor Team and others; see http://ve.mit-license.org
  */
 
 /**
@@ -15,9 +14,9 @@
  * @constructor
  * @param {ve.ui.Surface} surface Surface to act on
  */
-ve.ui.MWCitationAction = function VeUiMWCitationAction() {
+ve.ui.MWCitationAction = function VeUiMWCitationAction( surface ) {
 	// Parent constructor
-	ve.ui.MWCitationAction.super.apply( this, arguments );
+	ve.ui.Action.call( this, surface );
 };
 
 /* Inheritance */

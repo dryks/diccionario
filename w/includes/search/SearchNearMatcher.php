@@ -6,7 +6,8 @@
  */
 class SearchNearMatcher {
 	/**
-	 * @var Config
+	 * Configuration object.
+	 * @param Config $config
 	 */
 	protected $config;
 
@@ -69,6 +70,7 @@ class SearchNearMatcher {
 		}
 
 		foreach ( $allSearchTerms as $term ) {
+
 			# Exact match? No need to look further.
 			$title = Title::newFromText( $term );
 			if ( is_null( $title ) ) {

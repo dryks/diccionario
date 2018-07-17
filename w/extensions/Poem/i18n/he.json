@@ -1,8 +1,4 @@
 {
-	"@metadata": {
-		"authors": [
-			"Amire80"
-		]
-	},
-	"poem-desc": "הוספת התג <code>&lt;poem&gt;</code> לעיצוב שירה"
+	"@metadata": [],
+	"poem-desc": "הוספת התגית <code>&lt;poem&gt;</code> לעיצוב שירה"
 }

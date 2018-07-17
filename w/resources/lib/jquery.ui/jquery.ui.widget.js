@@ -36,7 +36,7 @@ $.widget = function( name, base, prototype ) {
 	}
 
 	// create selector for plugin
-	$.expr.pseudos[ fullName.toLowerCase() ] = function( elem ) {
+	$.expr[ ":" ][ fullName.toLowerCase() ] = function( elem ) {
 		return !!$.data( elem, fullName );
 	};
 
@@ -409,7 +409,7 @@ $.Widget.prototype = {
 			if ( selector ) {
 				delegateElement.delegate( selector, eventName, handlerProxy );
 			} else {
-				element.on( eventName, handlerProxy );
+				element.bind( eventName, handlerProxy );
 			}
 		});
 	},

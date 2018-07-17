@@ -191,7 +191,7 @@ class SiteImporter {
 
 	/**
 	 * @param DOMElement $element
-	 * @param string $name
+	 * @param $name
 	 * @param string|null|bool $default
 	 *
 	 * @return null|string

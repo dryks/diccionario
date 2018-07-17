@@ -46,12 +46,7 @@ class SpecialRecentChangesLinked extends SpecialRecentChanges {
 		$opts['target'] = $par;
 	}
 
-	/**
-	 * @inheritDoc
-	 */
-	protected function doMainQuery( $tables, $select, $conds, $query_options,
-		$join_conds, FormOptions $opts
-	) {
+	public function doMainQuery( $conds, $opts ) {
 		$target = $opts['target'];
 		$showlinkedto = $opts['showlinkedto'];
 		$limit = $opts['limit'];
@@ -62,9 +57,9 @@ class SpecialRecentChangesLinked extends SpecialRecentChanges {
 		$outputPage = $this->getOutput();
 		$title = Title::newFromText( $target );
 		if ( !$title || $title->isExternal() ) {
-			$outputPage->addHTML(
-				Html::errorBox( $this->msg( 'allpagesbadtitle' )->parse() )
-			);
+			$outputPage->addHTML( '<div class="errorbox">' . $this->msg( 'allpagesbadtitle' )
+					->parse() . '</div>' );
+
 			return false;
 		}
 
@@ -79,15 +74,15 @@ class SpecialRecentChangesLinked extends SpecialRecentChanges {
 		 * expects only one result set so we use UNION instead.
 		 */
 
-		$dbr = wfGetDB( DB_REPLICA, 'recentchangeslinked' );
+		$dbr = wfGetDB( DB_SLAVE, 'recentchangeslinked' );
 		$id = $title->getArticleID();
 		$ns = $title->getNamespace();
 		$dbkey = $title->getDBkey();
 
-		$rcQuery = RecentChange::getQueryInfo();
-		$tables = array_merge( $tables, $rcQuery['tables'] );
-		$select = array_merge( $rcQuery['fields'], $select );
-		$join_conds = array_merge( $join_conds, $rcQuery['joins'] );
+		$tables = [ 'recentchanges' ];
+		$select = RecentChange::selectFields();
+		$join_conds = [];
+		$query_options = [];
 
 		// left join with watchlist table to highlight watched rows
 		$uid = $this->getUser()->getId();
@@ -100,37 +95,19 @@ class SpecialRecentChangesLinked extends SpecialRecentChanges {
 				'wl_namespace=rc_namespace'
 			] ];
 		}
-
-		// JOIN on page, used for 'last revision' filter highlight
-		$tables[] = 'page';
-		$join_conds['page'] = [ 'LEFT JOIN', 'rc_cur_id=page_id' ];
-		$select[] = 'page_latest';
-
-		$tagFilter = $opts['tagfilter'] ? explode( '|', $opts['tagfilter'] ) : [];
+		if ( $this->getUser()->isAllowed( 'rollback' ) ) {
+			$tables[] = 'page';
+			$join_conds['page'] = [ 'LEFT JOIN', 'rc_cur_id=page_id' ];
+			$select[] = 'page_latest';
+		}
 		ChangeTags::modifyDisplayQuery(
 			$tables,
 			$select,
 			$conds,
 			$join_conds,
 			$query_options,
-			$tagFilter
+			$opts['tagfilter']
 		);
-
-		if ( $dbr->unionSupportsOrderAndLimit() ) {
-			if ( count( $tagFilter ) > 1 ) {
-				// ChangeTags::modifyDisplayQuery() will have added DISTINCT.
-				// To prevent this from causing query performance problems, we need to add
-				// a GROUP BY, and add rc_id to the ORDER BY.
-				$order = [
-					'GROUP BY' => 'rc_timestamp, rc_id',
-					'ORDER BY' => 'rc_timestamp DESC, rc_id DESC'
-				];
-			} else {
-				$order = [ 'ORDER BY' => 'rc_timestamp DESC' ];
-			}
-		} else {
-			$order = [];
-		}
 
 		if ( !$this->runMainQueryHook( $tables, $select, $conds, $query_options, $join_conds,
 			$opts )
@@ -199,6 +176,12 @@ class SpecialRecentChangesLinked extends SpecialRecentChanges {
 				} else {
 					$subjoin = [ "rc_namespace = {$pfx}_namespace", "rc_title = {$pfx}_title" ];
 				}
+			}
+
+			if ( $dbr->unionSupportsOrderAndLimit() ) {
+				$order = [ 'ORDER BY' => 'rc_timestamp DESC' ];
+			} else {
+				$order = [];
 			}
 
 			$query = $dbr->selectSQLText(
@@ -291,24 +274,5 @@ class SpecialRecentChangesLinked extends SpecialRecentChanges {
 	 */
 	public function prefixSearchSubpages( $search, $limit, $offset ) {
 		return $this->prefixSearchString( $search, $limit, $offset );
-	}
-
-	protected function outputNoResults() {
-		$targetTitle = $this->getTargetTitle();
-		if ( $targetTitle === false ) {
-			$this->getOutput()->addHTML(
-				'<div class="mw-changeslist-empty mw-changeslist-notargetpage">' .
-				$this->msg( 'recentchanges-notargetpage' )->parse() .
-				'</div>'
-			);
-		} elseif ( !$targetTitle || $targetTitle->isExternal() ) {
-			$this->getOutput()->addHTML(
-				'<div class="mw-changeslist-empty mw-changeslist-invalidtargetpage">' .
-				$this->msg( 'allpagesbadtitle' )->parse() .
-				'</div>'
-			);
-		} else {
-			parent::outputNoResults();
-		}
 	}
 }

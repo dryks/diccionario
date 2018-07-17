@@ -23,8 +23,6 @@
 
 require_once __DIR__ . '/Maintenance.php';
 
-use Wikimedia\Rdbms\IDatabase;
-
 /**
  * Maintenance script to populate the rc_source field.
  *
@@ -41,31 +39,32 @@ class PopulateRecentChangesSource extends LoggedUpdateMaintenance {
 
 	protected function doDBUpdates() {
 		$dbw = $this->getDB( DB_MASTER );
-		$batchSize = $this->getBatchSize();
 		if ( !$dbw->fieldExists( 'recentchanges', 'rc_source' ) ) {
 			$this->error( 'rc_source field in recentchanges table does not exist.' );
 		}
 
-		$start = $dbw->selectField( 'recentchanges', 'MIN(rc_id)', '', __METHOD__ );
+		$start = $dbw->selectField( 'recentchanges', 'MIN(rc_id)', false, __METHOD__ );
 		if ( !$start ) {
 			$this->output( "Nothing to do.\n" );
 
 			return true;
 		}
-		$end = $dbw->selectField( 'recentchanges', 'MAX(rc_id)', '', __METHOD__ );
-		$end += $batchSize - 1;
+		$end = $dbw->selectField( 'recentchanges', 'MAX(rc_id)', false, __METHOD__ );
+		$end += $this->mBatchSize - 1;
 		$blockStart = $start;
-		$blockEnd = $start + $batchSize - 1;
+		$blockEnd = $start + $this->mBatchSize - 1;
 
 		$updatedValues = $this->buildUpdateCondition( $dbw );
 
 		while ( $blockEnd <= $end ) {
+			$cond = "rc_id BETWEEN $blockStart AND $blockEnd";
+
 			$dbw->update(
 				'recentchanges',
 				[ $updatedValues ],
 				[
 					"rc_source = ''",
-					"rc_id BETWEEN " . (int)$blockStart . " AND " . (int)$blockEnd
+					"rc_id BETWEEN $blockStart AND $blockEnd"
 				],
 				__METHOD__
 			);
@@ -73,8 +72,8 @@ class PopulateRecentChangesSource extends LoggedUpdateMaintenance {
 			$this->output( "." );
 			wfWaitForSlaves();
 
-			$blockStart += $batchSize;
-			$blockEnd += $batchSize;
+			$blockStart += $this->mBatchSize;
+			$blockEnd += $this->mBatchSize;
 		}
 
 		$this->output( "\nDone.\n" );
@@ -84,7 +83,7 @@ class PopulateRecentChangesSource extends LoggedUpdateMaintenance {
 		return __CLASS__;
 	}
 
-	protected function buildUpdateCondition( IDatabase $dbw ) {
+	protected function buildUpdateCondition( DatabaseBase $dbw ) {
 		$rcNew = $dbw->addQuotes( RC_NEW );
 		$rcSrcNew = $dbw->addQuotes( RecentChange::SRC_NEW );
 		$rcEdit = $dbw->addQuotes( RC_EDIT );
@@ -104,5 +103,5 @@ class PopulateRecentChangesSource extends LoggedUpdateMaintenance {
 	}
 }
 
-$maintClass = PopulateRecentChangesSource::class;
+$maintClass = "PopulateRecentChangesSource";
 require_once RUN_MAINTENANCE_IF_MAIN;

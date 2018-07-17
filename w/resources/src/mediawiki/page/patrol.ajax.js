@@ -14,9 +14,9 @@
 	$( function () {
 		var $patrolLinks = $( '.patrollink[data-mw="interface"] a' );
 		$patrolLinks.on( 'click', function ( e ) {
-			var $spinner, rcid, apiRequest;
+			var $spinner, href, rcid, apiRequest;
 
-			// Preload the notification module for mw.notify
+			// Start preloading the notification module (normally loaded by mw.notify())
 			mw.loader.load( 'mediawiki.notification' );
 
 			// Hide the link and create a spinner to show it inside the brackets.
@@ -26,26 +26,28 @@
 			} );
 			$( this ).hide().after( $spinner );
 
-			rcid = mw.util.getParamValue( 'rcid', this.href );
+			href = $( this ).attr( 'href' );
+			rcid = mw.util.getParamValue( 'rcid', href );
 			apiRequest = new mw.Api();
 
 			apiRequest.postWithToken( 'patrol', {
 				formatversion: 2,
 				action: 'patrol',
 				rcid: rcid
-			} ).done( function ( data ) {
-				var title;
+			} )
+			.done( function ( data ) {
 				// Remove all patrollinks from the page (including any spinners inside).
 				$patrolLinks.closest( '.patrollink' ).remove();
 				if ( data.patrol !== undefined ) {
 					// Success
-					title = new mw.Title( data.patrol.title );
+					var title = new mw.Title( data.patrol.title );
 					mw.notify( mw.msg( 'markedaspatrollednotify', title.toText() ) );
 				} else {
 					// This should never happen as errors should trigger fail
 					mw.notify( mw.msg( 'markedaspatrollederrornotify' ), { type: 'error' } );
 				}
-			} ).fail( function ( error ) {
+			} )
+			.fail( function ( error ) {
 				$spinner.remove();
 				// Restore the patrol link. This allows the user to try again
 				// (or open it in a new window, bypassing this ajax module).

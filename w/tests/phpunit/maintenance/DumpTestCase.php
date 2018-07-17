@@ -1,15 +1,5 @@
 <?php
 
-namespace MediaWiki\Tests\Maintenance;
-
-use ContentHandler;
-use ExecutableFinder;
-use MediaWikiLangTestCase;
-use Page;
-use User;
-use XMLReader;
-use MWException;
-
 /**
  * Base TestCase for dumps
  */
@@ -34,26 +24,6 @@ abstract class DumpTestCase extends MediaWikiLangTestCase {
 	 * @var XMLReader|null
 	 */
 	protected $xml = null;
-
-	/** @var bool|null Whether the 'gzip' utility is available */
-	protected static $hasGzip = null;
-
-	/**
-	 * Skip the test if 'gzip' is not in $PATH.
-	 *
-	 * @return bool
-	 */
-	protected function checkHasGzip() {
-		if ( self::$hasGzip === null ) {
-			self::$hasGzip = ( ExecutableFinder::findInDefaultPaths( 'gzip' ) !== false );
-		}
-
-		if ( !self::$hasGzip ) {
-			$this->markTestSkipped( "Skip test, requires the gzip utility in PATH" );
-		}
-
-		return self::$hasGzip;
-	}
 
 	/**
 	 * Adds a revision to a page, while returning the resuting revision's id
@@ -308,6 +278,7 @@ abstract class DumpTestCase extends MediaWikiLangTestCase {
 	 * @param string $name Title of the current page
 	 */
 	protected function assertPageStart( $id, $ns, $name ) {
+
 		$this->assertNodeStart( "page" );
 		$this->skipWhitespace();
 
@@ -402,6 +373,7 @@ abstract class DumpTestCase extends MediaWikiLangTestCase {
 			if ( ( $this->xml->nodeType == XMLReader::END_ELEMENT )
 				&& ( $this->xml->name == "text" )
 			) {
+
 				$this->xml->read();
 			}
 			$this->skipWhitespace();

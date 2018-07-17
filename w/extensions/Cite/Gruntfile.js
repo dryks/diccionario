@@ -4,80 +4,48 @@
  * @package Cite
  */
 
-/* eslint-env node, es6 */
-
+/*jshint node:true */
 module.exports = function ( grunt ) {
-	var conf = grunt.file.readJSON( 'extension.json' );
-
-	grunt.loadNpmTasks( 'grunt-banana-checker' );
-	grunt.loadNpmTasks( 'grunt-eslint' );
+	'use strict';
+	grunt.loadNpmTasks( 'grunt-contrib-jshint' );
+	grunt.loadNpmTasks( 'grunt-jscs' );
 	grunt.loadNpmTasks( 'grunt-jsonlint' );
-	grunt.loadNpmTasks( 'grunt-stylelint' );
-	grunt.loadNpmTasks( 'grunt-svgmin' );
-
+	grunt.loadNpmTasks( 'grunt-banana-checker' );
 	grunt.initConfig( {
-		eslint: {
+		jshint: {
+			options: {
+				jshintrc: true
+			},
 			all: [
 				'**/*.js',
 				'{.jsduck,build}/**/*.js',
 				'modules/**/*.js',
-				'!node_modules/**',
-				'!vendor/**'
+				'!node_modules/**'
 			]
 		},
-		banana: conf.MessagesDirs,
-		stylelint: {
-			all: [
-				'**/*.css',
-				'**/*.less',
-				'!node_modules/**',
-				'!vendor/**'
-			]
+		banana: {
+			core: [ 'i18n/' ],
+			ve: [ 'modules/ve-cite/i18n/' ]
+		},
+		jscs: {
+			fix: {
+				options: {
+					fix: true
+				},
+				src: '<%= jshint.all %>'
+			},
+			main: {
+				src: '<%= jshint.all %>'
+			}
 		},
 		jsonlint: {
 			all: [
 				'**/*.json',
-				'!node_modules/**',
-				'!vendor/**'
+				'!node_modules/**'
 			]
-		},
-		// SVG Optimization
-		svgmin: {
-			options: {
-				js2svg: {
-					pretty: true,
-					multipass: true
-				},
-				plugins: [ {
-					cleanupIDs: false
-				}, {
-					removeDesc: false
-				}, {
-					removeRasterImages: true
-				}, {
-					removeTitle: false
-				}, {
-					removeViewBox: false
-				}, {
-					removeXMLProcInst: false
-				}, {
-					sortAttrs: true
-				} ]
-			},
-			all: {
-				files: [ {
-					expand: true,
-					cwd: 'modules/ve-cite/icons',
-					src: [
-						'**/*.svg'
-					],
-					dest: 'modules/ve-cite/icons/',
-					ext: '.svg'
-				} ]
-			}
 		}
 	} );
 
-	grunt.registerTask( 'test', [ 'eslint', 'stylelint', 'jsonlint', 'banana', 'svgmin' ] );
+	grunt.registerTask( 'test', [ 'jshint', 'jscs:main', 'jsonlint', 'banana' ] );
 	grunt.registerTask( 'default', 'test' );
 };

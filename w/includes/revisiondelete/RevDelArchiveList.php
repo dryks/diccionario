@@ -19,8 +19,6 @@
  * @ingroup RevisionDelete
  */
 
-use Wikimedia\Rdbms\IDatabase;
-
 /**
  * List for archive table items, i.e. revisions deleted via action=delete
  */
@@ -43,33 +41,15 @@ class RevDelArchiveList extends RevDelRevisionList {
 			$timestamps[] = $db->timestamp( $id );
 		}
 
-		$arQuery = Revision::getArchiveQueryInfo();
-		$tables = $arQuery['tables'];
-		$fields = $arQuery['fields'];
-		$conds = [
-			'ar_namespace' => $this->title->getNamespace(),
-			'ar_title' => $this->title->getDBkey(),
-			'ar_timestamp' => $timestamps,
-		];
-		$join_conds = $arQuery['joins'];
-		$options = [ 'ORDER BY' => 'ar_timestamp DESC' ];
-
-		ChangeTags::modifyDisplayQuery(
-			$tables,
-			$fields,
-			$conds,
-			$join_conds,
-			$options,
-			''
-		);
-
-		return $db->select( $tables,
-			$fields,
-			$conds,
-			__METHOD__,
-			$options,
-			$join_conds
-		);
+		return $db->select( 'archive', Revision::selectArchiveFields(),
+				[
+					'ar_namespace' => $this->title->getNamespace(),
+					'ar_title' => $this->title->getDBkey(),
+					'ar_timestamp' => $timestamps
+				],
+				__METHOD__,
+				[ 'ORDER BY' => 'ar_timestamp DESC' ]
+			);
 	}
 
 	public function newItem( $row ) {
@@ -80,7 +60,7 @@ class RevDelArchiveList extends RevDelRevisionList {
 		return Status::newGood();
 	}
 
-	public function doPostCommitUpdates( array $visibilityChangeMap ) {
+	public function doPostCommitUpdates() {
 		return Status::newGood();
 	}
 }

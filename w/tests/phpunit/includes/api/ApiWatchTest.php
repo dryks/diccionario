@@ -5,14 +5,19 @@
  * @group Database
  * @group medium
  * @todo This test suite is severly broken and need a full review
- *
- * @covers ApiWatch
  */
 class ApiWatchTest extends ApiTestCase {
+	protected function setUp() {
+		parent::setUp();
+		$this->doLogin();
+	}
+
 	function getTokens() {
 		return $this->getTokenList( self::$users['sysop'] );
 	}
 
+	/**
+	 */
 	public function testWatchEdit() {
 		$tokens = $this->getTokens();
 
@@ -69,6 +74,8 @@ class ApiWatchTest extends ApiTestCase {
 		return $data;
 	}
 
+	/**
+	 */
 	public function testWatchProtect() {
 		$tokens = $this->getTokens();
 
@@ -85,6 +92,8 @@ class ApiWatchTest extends ApiTestCase {
 		$this->assertArrayHasKey( 'edit', $data[0]['protect']['protections'][0] );
 	}
 
+	/**
+	 */
 	public function testGetRollbackToken() {
 		$this->getTokens();
 
@@ -137,11 +146,11 @@ class ApiWatchTest extends ApiTestCase {
 
 			$this->assertArrayHasKey( 'rollback', $data[0] );
 			$this->assertArrayHasKey( 'title', $data[0]['rollback'] );
-		} catch ( ApiUsageException $ue ) {
-			if ( self::apiExceptionHasCode( $ue, 'onlyauthor' ) ) {
+		} catch ( UsageException $ue ) {
+			if ( $ue->getCodeString() == 'onlyauthor' ) {
 				$this->markTestIncomplete( "Only one author to 'Help:UTPage', cannot test rollback" );
 			} else {
-				$this->fail( "Received error '" . $ue->getMessage() . "'" );
+				$this->fail( "Received error '" . $ue->getCodeString() . "'" );
 			}
 		}
 	}

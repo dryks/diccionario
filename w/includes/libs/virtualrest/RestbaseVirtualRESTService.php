@@ -44,9 +44,6 @@ class RestbaseVirtualRESTService extends VirtualRESTService {
 	 *   - HTTPProxy      : HTTP proxy to use (optional)
 	 *   - parsoidCompat  : whether to parse URL as if they were meant for Parsoid
 	 *                       boolean (optional)
-	 *   - fixedUrl       : Do not append domain to the url. For example to use
-	 *                       English Wikipedia restbase, you would this to true
-	 *                       and url to https://en.wikipedia.org/api/rest_#version#
 	 */
 	public function __construct( array $params ) {
 		// set up defaults and merge them with the given params
@@ -57,13 +54,14 @@ class RestbaseVirtualRESTService extends VirtualRESTService {
 			'timeout' => 100,
 			'forwardCookies' => false,
 			'HTTPProxy' => null,
-			'parsoidCompat' => false,
-			'fixedUrl' => false,
+			'parsoidCompat' => false
 		], $params );
 		// Ensure that the url parameter has a trailing slash.
-		if ( substr( $mparams['url'], -1 ) !== '/' ) {
-			$mparams['url'] .= '/';
-		}
+		$mparams['url'] = preg_replace(
+			'#/?$#',
+			'/',
+			$mparams['url']
+		);
 		// Ensure the correct domain format: strip protocol, port,
 		// and trailing slash if present.  This lets us use
 		// $wgCanonicalServer as a default value, which is very convenient.
@@ -76,24 +74,17 @@ class RestbaseVirtualRESTService extends VirtualRESTService {
 	}
 
 	public function onRequests( array $reqs, Closure $idGenFunc ) {
+
 		if ( $this->params['parsoidCompat'] ) {
 			return $this->onParsoidRequests( $reqs, $idGenFunc );
 		}
 
 		$result = [];
 		foreach ( $reqs as $key => $req ) {
-			if ( $this->params['fixedUrl'] ) {
-				$version = explode( '/', $req['url'] )[1];
-				$req['url'] =
-					str_replace( '#version#', $version, $this->params['url'] ) .
-					preg_replace( '#^local/v./#', '', $req['url'] );
-			} else {
-				// replace /local/ with the current domain
-				$req['url'] = preg_replace( '#^local/#', $this->params['domain'] . '/', $req['url'] );
-				// and prefix it with the service URL
-				$req['url'] = $this->params['url'] . $req['url'];
-			}
-
+			// replace /local/ with the current domain
+			$req['url'] = preg_replace( '#^local/#', $this->params['domain'] . '/', $req['url'] );
+			// and prefix it with the service URL
+			$req['url'] = $this->params['url'] . $req['url'];
 			// set the appropriate proxy, timeout and headers
 			if ( $this->params['HTTPProxy'] ) {
 				$req['proxy'] = $this->params['HTTPProxy'];
@@ -108,16 +99,14 @@ class RestbaseVirtualRESTService extends VirtualRESTService {
 		}
 
 		return $result;
+
 	}
 
 	/**
 	 * Remaps Parsoid v1/v3 requests to RESTBase v1 requests.
-	 * @param array $reqs
-	 * @param Closure $idGeneratorFunc
-	 * @return array
-	 * @throws Exception
 	 */
 	public function onParsoidRequests( array $reqs, Closure $idGeneratorFunc ) {
+
 		$result = [];
 		foreach ( $reqs as $key => $req ) {
 			$version = explode( '/', $req['url'] )[1];
@@ -131,6 +120,7 @@ class RestbaseVirtualRESTService extends VirtualRESTService {
 		}
 
 		return $result;
+
 	}
 
 	/**
@@ -149,10 +139,6 @@ class RestbaseVirtualRESTService extends VirtualRESTService {
 	 * NOTE: the POST APIs aren't "real" Parsoid v1 APIs, they are just what
 	 * Visual Editor "pretends" the V1 API is like.  (See
 	 * ParsoidVirtualRESTService.)
-	 * @param array $req
-	 * @param Closure $idGeneratorFunc
-	 * @return array
-	 * @throws Exception
 	 */
 	public function onParsoid1Request( array $req, Closure $idGeneratorFunc ) {
 		$parts = explode( '/', $req['url'] );
@@ -226,6 +212,7 @@ class RestbaseVirtualRESTService extends VirtualRESTService {
 		}
 
 		return $req;
+
 	}
 
 	/**
@@ -241,12 +228,9 @@ class RestbaseVirtualRESTService extends VirtualRESTService {
 	 *   * body: array( 'wikitext' => ... ) or array( 'wikitext' => ..., 'body_only' => true/false )
 	 *   * $title is optional
 	 *   * $revision is optional
-	 * @param array $req
-	 * @param Closure $idGeneratorFunc
-	 * @return array
-	 * @throws Exception
 	 */
 	public function onParsoid3Request( array $req, Closure $idGeneratorFunc ) {
+
 		$parts = explode( '/', $req['url'] );
 		list(
 			$targetWiki, // 'local'
@@ -277,6 +261,7 @@ class RestbaseVirtualRESTService extends VirtualRESTService {
 		}
 
 		return $req;
+
 	}
 
 }

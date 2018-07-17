@@ -46,7 +46,7 @@ class UpdateArticleCount extends Maintenance {
 		if ( $this->hasOption( 'use-master' ) ) {
 			$dbr = $this->getDB( DB_MASTER );
 		} else {
-			$dbr = $this->getDB( DB_REPLICA, 'vslow' );
+			$dbr = $this->getDB( DB_SLAVE, 'vslow' );
 		}
 		$counter = new SiteStatsInit( $dbr );
 		$result = $counter->articles();
@@ -69,5 +69,5 @@ class UpdateArticleCount extends Maintenance {
 	}
 }
 
-$maintClass = UpdateArticleCount::class;
+$maintClass = "UpdateArticleCount";
 require_once RUN_MAINTENANCE_IF_MAIN;

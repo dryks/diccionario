@@ -1,8 +1,7 @@
 /*!
  * VisualEditor MWReferenceContextItem class.
  *
- * @copyright 2011-2018 VisualEditor Team's Cite sub-team and others; see AUTHORS.txt
- * @license MIT
+ * @copyright 2011-2016 VisualEditor Team and others; see http://ve.mit-license.org
  */
 
 /**
@@ -68,7 +67,7 @@ ve.ui.MWReferenceContextItem.prototype.getRendering = function () {
 /**
  * Get the reference node in the containing document (not the internal list document)
  *
- * @return {ve.dm.InternalItemNode|null} Reference item node
+ * @return {ve.dm.Node} Reference node
  */
 ve.ui.MWReferenceContextItem.prototype.getReferenceNode = function () {
 	var refModel;

@@ -37,7 +37,8 @@ use MWExceptionHandler;
  * will be used to redact the trace information.
  *
  * @since 1.26
- * @copyright © 2015 Wikimedia Foundation and contributors
+ * @author Bryan Davis <bd808@wikimedia.org>
+ * @copyright © 2015 Bryan Davis and Wikimedia Foundation.
  */
 class LineFormatter extends MonologLineFormatter {
 
@@ -60,7 +61,7 @@ class LineFormatter extends MonologLineFormatter {
 	}
 
 	/**
-	 * @inheritDoc
+	 * {@inheritdoc}
 	 */
 	public function format( array $record ) {
 		// Drop the 'private' flag from the context

@@ -21,15 +21,9 @@
  * @ingroup JobQueue
  */
 
-use MediaWiki\MediaWikiServices;
 use MediaWiki\Logger\LoggerFactory;
-use Liuggio\StatsdClient\Factory\StatsdDataFactory;
 use Psr\Log\LoggerAwareInterface;
 use Psr\Log\LoggerInterface;
-use Wikimedia\ScopedCallback;
-use Wikimedia\Rdbms\LBFactory;
-use Wikimedia\Rdbms\DBError;
-use Wikimedia\Rdbms\DBReplicationWaitError;
 
 /**
  * Job queue runner utility methods
@@ -38,8 +32,6 @@ use Wikimedia\Rdbms\DBReplicationWaitError;
  * @since 1.24
  */
 class JobRunner implements LoggerAwareInterface {
-	/** @var Config */
-	protected $config;
 	/** @var callable|null Debug output handler */
 	protected $debug;
 
@@ -49,9 +41,8 @@ class JobRunner implements LoggerAwareInterface {
 	protected $logger;
 
 	const MAX_ALLOWED_LAG = 3; // abort if more than this much DB lag is present
-	const LAG_CHECK_PERIOD = 1.0; // check replica DB lag this many seconds
+	const LAG_CHECK_PERIOD = 1.0; // check slave lag this many seconds
 	const ERROR_BACKOFF_TTL = 1; // seconds to back off a queue due to errors
-	const READONLY_BACKOFF_TTL = 30; // seconds to back off a queue due to read-only errors
 
 	/**
 	 * @param callable $debug Optional debug output handler
@@ -76,7 +67,6 @@ class JobRunner implements LoggerAwareInterface {
 			$logger = LoggerFactory::getInstance( 'runJobs' );
 		}
 		$this->setLogger( $logger );
-		$this->config = MediaWikiServices::getInstance()->getMainConfig();
 	}
 
 	/**
@@ -104,8 +94,7 @@ class JobRunner implements LoggerAwareInterface {
 	 * @return array Summary response that can easily be JSON serialized
 	 */
 	public function run( array $options ) {
-		$jobClasses = $this->config->get( 'JobClasses' );
-		$profilerLimits = $this->config->get( 'TrxProfilerLimits' );
+		global $wgJobClasses, $wgTrxProfilerLimits;
 
 		$response = [ 'jobs' => [], 'reached' => 'none-ready' ];
 
@@ -115,33 +104,30 @@ class JobRunner implements LoggerAwareInterface {
 		$noThrottle = isset( $options['throttle'] ) && !$options['throttle'];
 
 		// Bail if job type is invalid
-		if ( $type !== false && !isset( $jobClasses[$type] ) ) {
+		if ( $type !== false && !isset( $wgJobClasses[$type] ) ) {
 			$response['reached'] = 'none-possible';
 			return $response;
 		}
-
 		// Bail out if DB is in read-only mode
 		if ( wfReadOnly() ) {
 			$response['reached'] = 'read-only';
 			return $response;
 		}
-
-		$lbFactory = MediaWikiServices::getInstance()->getDBLoadBalancerFactory();
-		if ( $lbFactory->hasTransactionRound() ) {
-			throw new LogicException( __METHOD__ . ' called with an active transaction round.' );
-		}
 		// Bail out if there is too much DB lag.
 		// This check should not block as we want to try other wiki queues.
-		list( , $maxLag ) = $lbFactory->getMainLB( wfWikiID() )->getMaxLag();
+		list( , $maxLag ) = wfGetLB( wfWikiID() )->getMaxLag();
 		if ( $maxLag >= self::MAX_ALLOWED_LAG ) {
-			$response['reached'] = 'replica-lag-limit';
+			$response['reached'] = 'slave-lag-limit';
 			return $response;
 		}
 
-		// Catch huge single updates that lead to replica DB lag
+		// Flush any pending DB writes for sanity
+		wfGetLBFactory()->commitAll( __METHOD__ );
+
+		// Catch huge single updates that lead to slave lag
 		$trxProfiler = Profiler::instance()->getTransactionProfiler();
 		$trxProfiler->setLogger( LoggerFactory::getInstance( 'DBPerformance' ) );
-		$trxProfiler->setExpectations( $profilerLimits['JobRunner'], __METHOD__ );
+		$trxProfiler->setExpectations( $wgTrxProfilerLimits['JobRunner'], __METHOD__ );
 
 		// Some jobs types should not run until a certain timestamp
 		$backoffs = []; // map of (type => UNIX expiry)
@@ -149,11 +135,11 @@ class JobRunner implements LoggerAwareInterface {
 		$wait = 'wait'; // block to read backoffs the first time
 
 		$group = JobQueueGroup::singleton();
-		$stats = MediaWikiServices::getInstance()->getStatsdDataFactory();
+		$stats = RequestContext::getMain()->getStats();
 		$jobsPopped = 0;
 		$timeMsTotal = 0;
 		$startTime = microtime( true ); // time since jobs started running
-		$lastCheckTime = 1; // timestamp of last replica DB check
+		$lastCheckTime = 1; // timestamp of last slave check
 		do {
 			// Sync the persistent backoffs with concurrent runners
 			$backoffs = $this->syncBackoffDeltas( $backoffs, $backoffDeltas, $wait );
@@ -190,14 +176,14 @@ class JobRunner implements LoggerAwareInterface {
 					$backoffs = $this->syncBackoffDeltas( $backoffs, $backoffDeltas, $wait );
 				}
 
-				$info = $this->executeJob( $job, $lbFactory, $stats, $popTime );
+				$info = $this->executeJob( $job, $stats, $popTime );
 				if ( $info['status'] !== false || !$job->allowRetries() ) {
 					$group->ack( $job ); // succeeded or job cannot be retried
 				}
 
 				// Back off of certain jobs for a while (for throttling and for errors)
 				if ( $info['status'] === false && mt_rand( 0, 49 ) == 0 ) {
-					$ttw = max( $ttw, $this->getErrorBackoffTTL( $info['error'] ) );
+					$ttw = max( $ttw, self::ERROR_BACKOFF_TTL ); // too many errors
 					$backoffDeltas[$jType] = isset( $backoffDeltas[$jType] )
 						? $backoffDeltas[$jType] + $ttw
 						: $ttw;
@@ -220,23 +206,23 @@ class JobRunner implements LoggerAwareInterface {
 					break;
 				}
 
-				// Don't let any of the main DB replica DBs get backed up.
+				// Don't let any of the main DB slaves get backed up.
 				// This only waits for so long before exiting and letting
 				// other wikis in the farm (on different masters) get a chance.
 				$timePassed = microtime( true ) - $lastCheckTime;
 				if ( $timePassed >= self::LAG_CHECK_PERIOD || $timePassed < 0 ) {
 					try {
-						$lbFactory->waitForReplication( [
+						wfGetLBFactory()->waitForReplication( [
 							'ifWritesSince' => $lastCheckTime,
 							'timeout' => self::MAX_ALLOWED_LAG
 						] );
 					} catch ( DBReplicationWaitError $e ) {
-						$response['reached'] = 'replica-lag-limit';
+						$response['reached'] = 'slave-lag-limit';
 						break;
 					}
 					$lastCheckTime = microtime( true );
 				}
-				// Don't let any queue replica DBs/backups fall behind
+				// Don't let any queue slaves/backups fall behind
 				if ( $jobsPopped > 0 && ( $jobsPopped % 100 ) == 0 ) {
 					$group->waitForBackups();
 				}
@@ -261,63 +247,42 @@ class JobRunner implements LoggerAwareInterface {
 	}
 
 	/**
-	 * @param string $error
-	 * @return int TTL in seconds
-	 */
-	private function getErrorBackoffTTL( $error ) {
-		return strpos( $error, 'DBReadOnlyError' ) !== false
-			? self::READONLY_BACKOFF_TTL
-			: self::ERROR_BACKOFF_TTL;
-	}
-
-	/**
 	 * @param Job $job
-	 * @param LBFactory $lbFactory
-	 * @param StatsdDataFactory $stats
+	 * @param BufferingStatsdDataFactory $stats
 	 * @param float $popTime
 	 * @return array Map of status/error/timeMs
 	 */
-	private function executeJob( Job $job, LBFactory $lbFactory, $stats, $popTime ) {
+	private function executeJob( Job $job, $stats, $popTime ) {
 		$jType = $job->getType();
 		$msg = $job->toString() . " STARTING";
-		$this->logger->debug( $msg, [
-			'job_type' => $job->getType(),
-		] );
+		$this->logger->debug( $msg );
 		$this->debugCallback( $msg );
 
 		// Run the job...
 		$rssStart = $this->getMaxRssKb();
 		$jobStartTime = microtime( true );
 		try {
-			$fnameTrxOwner = get_class( $job ) . '::run'; // give run() outer scope
-			if ( !$job->hasExecutionFlag( $job::JOB_NO_EXPLICIT_TRX_ROUND ) ) {
-				$lbFactory->beginMasterChanges( $fnameTrxOwner );
-			}
 			$status = $job->run();
 			$error = $job->getLastError();
-			$this->commitMasterChanges( $lbFactory, $job, $fnameTrxOwner );
-			// Important: this must be the last deferred update added (T100085, T154425)
-			DeferredUpdates::addCallableUpdate( [ JobQueueGroup::class, 'pushLazyJobs' ] );
-			// Run any deferred update tasks; doUpdates() manages transactions itself
+			$this->commitMasterChanges( $job );
+
 			DeferredUpdates::doUpdates();
+			$this->commitMasterChanges( $job );
+			// Push lazy jobs added by the job or its deferred udpates
+			JobQueueGroup::pushLazyJobs();
+			$job->teardown();
 		} catch ( Exception $e ) {
 			MWExceptionHandler::rollbackMasterChangesAndLog( $e );
 			$status = false;
 			$error = get_class( $e ) . ': ' . $e->getMessage();
-		}
-		// Always attempt to call teardown() even if Job throws exception.
-		try {
-			$job->teardown( $status );
-		} catch ( Exception $e ) {
 			MWExceptionHandler::logException( $e );
 		}
-
 		// Commit all outstanding connections that are in a transaction
 		// to get a fresh repeatable read snapshot on every connection.
-		// Note that jobs are still responsible for handling replica DB lag.
-		$lbFactory->flushReplicaSnapshots( __METHOD__ );
+		// Note that jobs are still responsible for handling slave lag.
+		wfGetLBFactory()->commitAll( __METHOD__ );
 		// Clear out title cache data from prior snapshots
-		MediaWikiServices::getInstance()->getLinkCache()->clear();
+		LinkCache::singleton()->clear();
 		$timeMs = intval( ( microtime( true ) - $jobStartTime ) * 1000 );
 		$rssEnd = $this->getMaxRssKb();
 
@@ -338,27 +303,16 @@ class JobRunner implements LoggerAwareInterface {
 		$stats->timing( "jobqueue.run.$jType", $timeMs );
 		// Track RSS increases for jobs (in case of memory leaks)
 		if ( $rssStart && $rssEnd ) {
-			$stats->updateCount( "jobqueue.rss_delta.$jType", $rssEnd - $rssStart );
+			$stats->increment( "jobqueue.rss_delta.$jType", $rssEnd - $rssStart );
 		}
 
 		if ( $status === false ) {
-			$msg = $job->toString() . " t={job_duration} error={job_error}";
-			$this->logger->error( $msg, [
-				'job_type' => $job->getType(),
-				'job_duration' => $timeMs,
-				'job_error' => $error,
-			] );
-
 			$msg = $job->toString() . " t=$timeMs error={$error}";
+			$this->logger->error( $msg );
 			$this->debugCallback( $msg );
 		} else {
-			$msg = $job->toString() . " t={job_duration} good";
-			$this->logger->info( $msg, [
-				'job_type' => $job->getType(),
-				'job_duration' => $timeMs,
-			] );
-
 			$msg = $job->toString() . " t=$timeMs good";
+			$this->logger->info( $msg );
 			$this->debugCallback( $msg );
 		}
 
@@ -370,7 +324,7 @@ class JobRunner implements LoggerAwareInterface {
 	 */
 	private function getMaxRssKb() {
 		$info = wfGetRusage() ?: [];
-		// see https://linux.die.net/man/2/getrusage
+		// see http://linux.die.net/man/2/getrusage
 		return isset( $info['ru_maxrss'] ) ? (int)$info['ru_maxrss'] : null;
 	}
 
@@ -380,13 +334,15 @@ class JobRunner implements LoggerAwareInterface {
 	 * @see $wgJobBackoffThrottling
 	 */
 	private function getBackoffTimeToWait( Job $job ) {
-		$throttling = $this->config->get( 'JobBackoffThrottling' );
+		global $wgJobBackoffThrottling;
 
-		if ( !isset( $throttling[$job->getType()] ) || $job instanceof DuplicateJob ) {
+		if ( !isset( $wgJobBackoffThrottling[$job->getType()] ) ||
+			$job instanceof DuplicateJob // no work was done
+		) {
 			return 0; // not throttled
 		}
 
-		$itemsPerSecond = $throttling[$job->getType()];
+		$itemsPerSecond = $wgJobBackoffThrottling[$job->getType()];
 		if ( $itemsPerSecond <= 0 ) {
 			return 0; // not throttled
 		}
@@ -502,14 +458,9 @@ class JobRunner implements LoggerAwareInterface {
 		}
 		$usedBytes = memory_get_usage();
 		if ( $maxBytes && $usedBytes >= 0.95 * $maxBytes ) {
-			$msg = "Detected excessive memory usage ({used_bytes}/{max_bytes}).";
-			$this->logger->error( $msg, [
-				'used_bytes' => $usedBytes,
-				'max_bytes' => $maxBytes,
-			] );
-
 			$msg = "Detected excessive memory usage ($usedBytes/$maxBytes).";
 			$this->debugCallback( $msg );
+			$this->logger->error( $msg );
 
 			return false;
 		}
@@ -530,55 +481,36 @@ class JobRunner implements LoggerAwareInterface {
 	/**
 	 * Issue a commit on all masters who are currently in a transaction and have
 	 * made changes to the database. It also supports sometimes waiting for the
-	 * local wiki's replica DBs to catch up. See the documentation for
+	 * local wiki's slaves to catch up. See the documentation for
 	 * $wgJobSerialCommitThreshold for more.
 	 *
-	 * @param LBFactory $lbFactory
 	 * @param Job $job
-	 * @param string $fnameTrxOwner
 	 * @throws DBError
 	 */
-	private function commitMasterChanges( LBFactory $lbFactory, Job $job, $fnameTrxOwner ) {
-		$syncThreshold = $this->config->get( 'JobSerialCommitThreshold' );
+	private function commitMasterChanges( Job $job ) {
+		global $wgJobSerialCommitThreshold;
 
-		$time = false;
-		$lb = $lbFactory->getMainLB( wfWikiID() );
-		if ( $syncThreshold !== false && $lb->getServerCount() > 1 ) {
+		$lb = wfGetLB( wfWikiID() );
+		if ( $wgJobSerialCommitThreshold !== false && $lb->getServerCount() > 1 ) {
 			// Generally, there is one master connection to the local DB
 			$dbwSerial = $lb->getAnyOpenConnection( $lb->getWriterIndex() );
-			// We need natively blocking fast locks
-			if ( $dbwSerial && $dbwSerial->namedLocksEnqueue() ) {
-				$time = $dbwSerial->pendingWriteQueryDuration( $dbwSerial::ESTIMATE_DB_APPLY );
-				if ( $time < $syncThreshold ) {
-					$dbwSerial = false;
-				}
-			} else {
-				$dbwSerial = false;
-			}
 		} else {
-			// There are no replica DBs or writes are all to foreign DB (we don't handle that)
 			$dbwSerial = false;
 		}
 
-		if ( !$dbwSerial ) {
-			$lbFactory->commitMasterChanges(
-				$fnameTrxOwner,
-				// Abort if any transaction was too big
-				[ 'maxWriteDuration' => $this->config->get( 'MaxJobDBWriteDuration' ) ]
-			);
-
+		if ( !$dbwSerial
+			|| !$dbwSerial->namedLocksEnqueue()
+			|| $dbwSerial->pendingWriteQueryDuration() < $wgJobSerialCommitThreshold
+		) {
+			// Writes are all to foreign DBs, named locks don't form queues,
+			// or $wgJobSerialCommitThreshold is not reached; commit changes now
+			wfGetLBFactory()->commitMasterChanges( __METHOD__ );
 			return;
 		}
 
-		$ms = intval( 1000 * $time );
-
-		$msg = $job->toString() . " COMMIT ENQUEUED [{job_commit_write_ms}ms of writes]";
-		$this->logger->info( $msg, [
-			'job_type' => $job->getType(),
-			'job_commit_write_ms' => $ms,
-		] );
-
+		$ms = intval( 1000 * $dbwSerial->pendingWriteQueryDuration() );
 		$msg = $job->toString() . " COMMIT ENQUEUED [{$ms}ms of writes]";
+		$this->logger->info( $msg );
 		$this->debugCallback( $msg );
 
 		// Wait for an exclusive lock to commit
@@ -586,22 +518,27 @@ class JobRunner implements LoggerAwareInterface {
 			// This will trigger a rollback in the main loop
 			throw new DBError( $dbwSerial, "Timed out waiting on commit queue." );
 		}
-		$unlocker = new ScopedCallback( function () use ( $dbwSerial ) {
-			$dbwSerial->unlock( 'jobrunner-serial-commit', __METHOD__ );
-		} );
-
-		// Wait for the replica DBs to catch up
+		// Wait for the generic slave to catch up
 		$pos = $lb->getMasterPos();
 		if ( $pos ) {
-			$lb->waitForAll( $pos );
+			$lb->waitForOne( $pos );
 		}
 
+		$fname = __METHOD__;
+		// Re-ping all masters with transactions. This throws DBError if some
+		// connection died while waiting on locks/slaves, triggering a rollback.
+		wfGetLBFactory()->forEachLB( function( LoadBalancer $lb ) use ( $fname ) {
+			$lb->forEachOpenConnection( function( IDatabase $conn ) use ( $fname ) {
+				if ( $conn->writesOrCallbacksPending() ) {
+					$conn->query( "SELECT 1", $fname );
+				}
+			} );
+		} );
+
 		// Actually commit the DB master changes
-		$lbFactory->commitMasterChanges(
-			$fnameTrxOwner,
-			// Abort if any transaction was too big
-			[ 'maxWriteDuration' => $this->config->get( 'MaxJobDBWriteDuration' ) ]
-		);
-		ScopedCallback::consume( $unlocker );
+		wfGetLBFactory()->commitMasterChanges( __METHOD__ );
+
+		// Release the lock
+		$dbwSerial->unlock( 'jobrunner-serial-commit', __METHOD__ );
 	}
 }

@@ -22,14 +22,14 @@
  * Profiler wrapper for XHProf extension.
  *
  * @code
- * $wgProfiler['class'] = ProfilerXhprof::class;
+ * $wgProfiler['class'] = 'ProfilerXhprof';
  * $wgProfiler['flags'] = XHPROF_FLAGS_NO_BUILTINS;
  * $wgProfiler['output'] = 'text';
  * $wgProfiler['visible'] = true;
  * @endcode
  *
  * @code
- * $wgProfiler['class'] = ProfilerXhprof::class;
+ * $wgProfiler['class'] = 'ProfilerXhprof';
  * $wgProfiler['flags'] = XHPROF_FLAGS_CPU | XHPROF_FLAGS_MEMORY | XHPROF_FLAGS_NO_BUILTINS;
  * $wgProfiler['output'] = 'udp';
  * @endcode
@@ -43,22 +43,18 @@
  * ($wgProfiler['exclude']) containing an array of function names.
  * Shell-style patterns are also accepted.
  *
- * It is also possible to use the Tideways PHP extension, which is mostly
- * a drop-in replacement for Xhprof. Just change the XHPROF_FLAGS_* constants
- * to TIDEWAYS_FLAGS_*.
- *
- * @copyright © 2014 Wikimedia Foundation and contributors
+ * @author Bryan Davis <bd808@wikimedia.org>
+ * @copyright © 2014 Bryan Davis and Wikimedia Foundation.
  * @ingroup Profiler
  * @see Xhprof
  * @see https://php.net/xhprof
  * @see https://github.com/facebook/hhvm/blob/master/hphp/doc/profiling.md
- * @see https://github.com/tideways/php-profiler-extension
  */
 class ProfilerXhprof extends Profiler {
 	/**
-	 * @var XhprofData|null $xhprofData
+	 * @var Xhprof $xhprof
 	 */
-	protected $xhprofData;
+	protected $xhprof;
 
 	/**
 	 * Profiler for explicit, arbitrary, frame labels
@@ -72,22 +68,8 @@ class ProfilerXhprof extends Profiler {
 	 */
 	public function __construct( array $params = [] ) {
 		parent::__construct( $params );
-
-		$flags = isset( $params['flags'] ) ? $params['flags'] : 0;
-		$options = isset( $params['exclude'] )
-			? [ 'ignored_functions' => $params['exclude'] ] : [];
-		Xhprof::enable( $flags, $options );
+		$this->xhprof = new Xhprof( $params );
 		$this->sprofiler = new SectionProfiler();
-	}
-
-	/**
-	 * @return XhprofData
-	 */
-	public function getXhprofData() {
-		if ( !$this->xhprofData ) {
-			$this->xhprofData = new XhprofData( Xhprof::disable(), $this->params );
-		}
-		return $this->xhprofData;
 	}
 
 	public function scopedProfileIn( $section ) {
@@ -130,7 +112,7 @@ class ProfilerXhprof extends Profiler {
 	}
 
 	public function getFunctionStats() {
-		$metrics = $this->getXhprofData()->getCompleteMetrics();
+		$metrics = $this->xhprof->getCompleteMetrics();
 		$profile = [];
 
 		$main = null; // units in ms
@@ -200,7 +182,7 @@ class ProfilerXhprof extends Profiler {
 	 */
 	protected function getFunctionReport() {
 		$data = $this->getFunctionStats();
-		usort( $data, function ( $a, $b ) {
+		usort( $data, function( $a, $b ) {
 			if ( $a['real'] === $b['real'] ) {
 				return 0;
 			}
@@ -234,6 +216,6 @@ class ProfilerXhprof extends Profiler {
 	 * @return array
 	 */
 	public function getRawData() {
-		return $this->getXhprofData()->getRawData();
+		return $this->xhprof->getRawData();
 	}
 }

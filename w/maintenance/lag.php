@@ -48,6 +48,7 @@ class DatabaseLag extends Maintenance {
 			echo "\n";
 
 			while ( 1 ) {
+				$lb->clearLagTimeCache();
 				$lags = $lb->getLagTimes();
 				unset( $lags[0] );
 				echo gmdate( 'H:i:s' ) . ' ';
@@ -68,5 +69,5 @@ class DatabaseLag extends Maintenance {
 	}
 }
 
-$maintClass = DatabaseLag::class;
+$maintClass = "DatabaseLag";
 require_once RUN_MAINTENANCE_IF_MAIN;

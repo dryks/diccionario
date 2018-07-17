@@ -18,6 +18,7 @@
  * http://www.gnu.org/copyleft/gpl.html
  *
  * @file
+ * @author Aaron Schulz
  */
 
 /**
@@ -177,7 +178,7 @@ class JobQueueMemory extends JobQueue {
 		return new MappedIterator(
 			$unclaimed,
 			function ( $value ) {
-				return $this->jobFromSpecInternal( $value );
+				$this->jobFromSpecInternal( $value );
 			}
 		);
 	}
@@ -196,7 +197,7 @@ class JobQueueMemory extends JobQueue {
 		return new MappedIterator(
 			$claimed,
 			function ( $value ) {
-				return $this->jobFromSpecInternal( $value );
+				$this->jobFromSpecInternal( $value );
 			}
 		);
 	}

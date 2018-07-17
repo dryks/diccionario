@@ -44,7 +44,8 @@ use UnexpectedValueException;
  * replacement for \Monolog\Handler\StreamHandler.
  *
  * @since 1.25
- * @copyright © 2013 Wikimedia Foundation and contributors
+ * @author Bryan Davis <bd808@wikimedia.org>
+ * @copyright © 2013 Bryan Davis and Wikimedia Foundation.
  */
 class LegacyHandler extends AbstractProcessingHandler {
 
@@ -194,6 +195,7 @@ class LegacyHandler extends AbstractProcessingHandler {
 
 		$text = (string)$record['formatted'];
 		if ( $this->useUdp() ) {
+
 			// Clean it up for the multiplexer
 			if ( $this->prefix !== '' ) {
 				$leader = ( $this->prefix === '{channel}' ) ?

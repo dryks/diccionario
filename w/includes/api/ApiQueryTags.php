@@ -1,5 +1,9 @@
 <?php
 /**
+ *
+ *
+ * Created on Jul 9, 2009
+ *
  * Copyright © 2009
  *
  * This program is free software; you can redistribute it and/or modify
@@ -46,27 +50,40 @@ class ApiQueryTags extends ApiQueryBase {
 		$limit = $params['limit'];
 		$result = $this->getResult();
 
-		$softwareDefinedTags = array_fill_keys( ChangeTags::listSoftwareDefinedTags(), 0 );
+		$extensionDefinedTags = array_fill_keys( ChangeTags::listExtensionDefinedTags(), 0 );
 		$explicitlyDefinedTags = array_fill_keys( ChangeTags::listExplicitlyDefinedTags(), 0 );
-		$softwareActivatedTags = array_fill_keys( ChangeTags::listSoftwareActivatedTags(), 0 );
-		$tagStats = ChangeTags::tagUsageStatistics();
+		$extensionActivatedTags = array_fill_keys( ChangeTags::listExtensionActivatedTags(), 0 );
 
-		$tagHitcounts = array_merge( $softwareDefinedTags, $explicitlyDefinedTags, $tagStats );
-		$tags = array_keys( $tagHitcounts );
+		$definedTags = array_merge( $extensionDefinedTags, $explicitlyDefinedTags );
 
 		# Fetch defined tags that aren't past the continuation
 		if ( $params['continue'] !== null ) {
 			$cont = $params['continue'];
-			$tags = array_filter( $tags, function ( $v ) use ( $cont ) {
+			$tags = array_filter( array_keys( $definedTags ), function ( $v ) use ( $cont ) {
 				return $v >= $cont;
 			} );
+			$tags = array_fill_keys( $tags, 0 );
+		} else {
+			$tags = $definedTags;
+		}
+
+		# Merge in all used tags
+		$this->addTables( 'change_tag' );
+		$this->addFields( 'ct_tag' );
+		$this->addFields( [ 'hitcount' => $fld_hitcount ? 'COUNT(*)' : '0' ] );
+		$this->addOption( 'LIMIT', $limit + 1 );
+		$this->addOption( 'GROUP BY', 'ct_tag' );
+		$this->addWhereRange( 'ct_tag', 'newer', $params['continue'], null );
+		$res = $this->select( __METHOD__ );
+		foreach ( $res as $row ) {
+			$tags[$row->ct_tag] = (int)$row->hitcount;
 		}
 
 		# Now make sure the array is sorted for proper continuation
-		sort( $tags );
+		ksort( $tags );
 
 		$count = 0;
-		foreach ( $tags as $tagName ) {
+		foreach ( $tags as $tagName => $hitcount ) {
 			if ( ++$count > $limit ) {
 				$this->setContinueEnumParameter( 'continue', $tagName );
 				break;
@@ -76,7 +93,7 @@ class ApiQueryTags extends ApiQueryBase {
 			$tag['name'] = $tagName;
 
 			if ( $fld_displayname ) {
-				$tag['displayname'] = ChangeTags::tagDescription( $tagName, $this );
+				$tag['displayname'] = ChangeTags::tagDescription( $tagName );
 			}
 
 			if ( $fld_description ) {
@@ -85,20 +102,19 @@ class ApiQueryTags extends ApiQueryBase {
 			}
 
 			if ( $fld_hitcount ) {
-				$tag['hitcount'] = intval( $tagHitcounts[$tagName] );
+				$tag['hitcount'] = $hitcount;
 			}
 
-			$isSoftware = isset( $softwareDefinedTags[$tagName] );
+			$isExtension = isset( $extensionDefinedTags[$tagName] );
 			$isExplicit = isset( $explicitlyDefinedTags[$tagName] );
 
 			if ( $fld_defined ) {
-				$tag['defined'] = $isSoftware || $isExplicit;
+				$tag['defined'] = $isExtension || $isExplicit;
 			}
 
 			if ( $fld_source ) {
 				$tag['source'] = [];
-				if ( $isSoftware ) {
-					// TODO: Can we change this to 'software'?
+				if ( $isExtension ) {
 					$tag['source'][] = 'extension';
 				}
 				if ( $isExplicit ) {
@@ -107,7 +123,7 @@ class ApiQueryTags extends ApiQueryBase {
 			}
 
 			if ( $fld_active ) {
-				$tag['active'] = $isExplicit || isset( $softwareActivatedTags[$tagName] );
+				$tag['active'] = $isExplicit || isset( $extensionActivatedTags[$tagName] );
 			}
 
 			$fit = $result->addValue( [ 'query', $this->getModuleName() ], null, $tag );
@@ -137,8 +153,9 @@ class ApiQueryTags extends ApiQueryBase {
 				ApiBase::PARAM_MAX2 => ApiBase::LIMIT_BIG2
 			],
 			'prop' => [
-				ApiBase::PARAM_DFLT => '',
+				ApiBase::PARAM_DFLT => 'name',
 				ApiBase::PARAM_TYPE => [
+					'name',
 					'displayname',
 					'description',
 					'hitcount',
@@ -160,6 +177,6 @@ class ApiQueryTags extends ApiQueryBase {
 	}
 
 	public function getHelpUrls() {
-		return 'https://www.mediawiki.org/wiki/Special:MyLanguage/API:Tags';
+		return 'https://www.mediawiki.org/wiki/API:Tags';
 	}
 }

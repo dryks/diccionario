@@ -1,15 +1,9 @@
 <?php
-
-use Wikimedia\TestingAccessWrapper;
-
 /**
  * @group Search
  * @group Database
- * @covers PrefixSearch
  */
 class PrefixSearchTest extends MediaWikiLangTestCase {
-	const NS_NONCAP = 12346;
-
 	private $originalHandlers;
 
 	public function addDBDataOnce() {
@@ -37,10 +31,6 @@ class PrefixSearchTest extends MediaWikiLangTestCase {
 		$this->insertPage( 'Talk:Example' );
 
 		$this->insertPage( 'User:Example' );
-
-		$this->insertPage( Title::makeTitle( self::NS_NONCAP, 'Bar' ) );
-		$this->insertPage( Title::makeTitle( self::NS_NONCAP, 'Upper' ) );
-		$this->insertPage( Title::makeTitle( self::NS_NONCAP, 'sandbox' ) );
 	}
 
 	protected function setUp() {
@@ -54,27 +44,18 @@ class PrefixSearchTest extends MediaWikiLangTestCase {
 		$this->setMwGlobals( [
 			'wgSpecialPages' => [],
 			'wgHooks' => [],
-			'wgExtraNamespaces' => [ self::NS_NONCAP => 'NonCap' ],
-			'wgCapitalLinkOverrides' => [ self::NS_NONCAP => false ],
 		] );
 
-		$this->originalHandlers = TestingAccessWrapper::newFromClass( Hooks::class )->handlers;
-		TestingAccessWrapper::newFromClass( Hooks::class )->handlers = [];
-
-		// Clear caches so that our new namespace appears
-		MWNamespace::clearCaches();
-		Language::factory( 'en' )->resetNamespaces();
+		$this->originalHandlers = TestingAccessWrapper::newFromClass( 'Hooks' )->handlers;
+		TestingAccessWrapper::newFromClass( 'Hooks' )->handlers = [];
 
 		SpecialPageFactory::resetList();
 	}
 
 	public function tearDown() {
-		MWNamespace::clearCaches();
-		Language::factory( 'en' )->resetNamespaces();
-
 		parent::tearDown();
 
-		TestingAccessWrapper::newFromClass( Hooks::class )->handlers = $this->originalHandlers;
+		TestingAccessWrapper::newFromClass( 'Hooks' )->handlers = $this->originalHandlers;
 
 		SpecialPageFactory::resetList();
 	}
@@ -135,11 +116,11 @@ class PrefixSearchTest extends MediaWikiLangTestCase {
 				'results' => [
 					'Special:ActiveUsers',
 					'Special:AllMessages',
-					'Special:AllMyUploads',
+					'Special:AllMyFiles',
 				],
 				// Third result when testing offset
 				'offsetresult' => [
-					'Special:AllPages',
+					'Special:AllMyUploads',
 				],
 			] ],
 			[ [
@@ -152,7 +133,7 @@ class PrefixSearchTest extends MediaWikiLangTestCase {
 				],
 				// Third result when testing offset
 				'offsetresult' => [
-					'Special:UncategorizedPages',
+					'Special:UncategorizedImages',
 				],
 			] ],
 			[ [
@@ -177,29 +158,6 @@ class PrefixSearchTest extends MediaWikiLangTestCase {
 					'Special:EditWatchlist/clear',
 				],
 			] ],
-			[ [
-				'Namespace with case sensitive first letter',
-				'query' => 'NonCap:upper',
-				'results' => []
-			] ],
-			[ [
-				'Multinamespace search',
-				'query' => 'B',
-				'results' => [
-					'Bar',
-					'NonCap:Bar',
-				],
-				'namespaces' => [ NS_MAIN, self::NS_NONCAP ],
-			] ],
-			[ [
-				'Multinamespace search with lowercase first letter',
-				'query' => 'sand',
-				'results' => [
-					'Sandbox',
-					'NonCap:sandbox',
-				],
-				'namespaces' => [ NS_MAIN, self::NS_NONCAP ],
-			] ],
 		];
 	}
 
@@ -210,16 +168,8 @@ class PrefixSearchTest extends MediaWikiLangTestCase {
 	 */
 	public function testSearch( array $case ) {
 		$this->searchProvision( null );
-
-		$namespaces = isset( $case['namespaces'] ) ? $case['namespaces'] : [];
-
-		if ( wfGetDB( DB_REPLICA )->getType() === 'postgres' ) {
-			// Postgres will sort lexicographically on utf8 code units (" " before "/")
-			sort( $case['results'], SORT_STRING );
-		}
-
 		$searcher = new StringPrefixSearch;
-		$results = $searcher->search( $case['query'], 3, $namespaces );
+		$results = $searcher->search( $case['query'], 3 );
 		$this->assertEquals(
 			$case['results'],
 			$results,
@@ -234,16 +184,8 @@ class PrefixSearchTest extends MediaWikiLangTestCase {
 	 */
 	public function testSearchWithOffset( array $case ) {
 		$this->searchProvision( null );
-
-		$namespaces = isset( $case['namespaces'] ) ? $case['namespaces'] : [];
-
 		$searcher = new StringPrefixSearch;
-		$results = $searcher->search( $case['query'], 3, $namespaces, 1 );
-
-		if ( wfGetDB( DB_REPLICA )->getType() === 'postgres' ) {
-			// Postgres will sort lexicographically on utf8 code units (" " before "/")
-			sort( $case['results'], SORT_STRING );
-		}
+		$results = $searcher->search( $case['query'], 3, [], 1 );
 
 		// We don't expect the first result when offsetting
 		array_shift( $case['results'] );
@@ -276,7 +218,7 @@ class PrefixSearchTest extends MediaWikiLangTestCase {
 				],
 			] ],
 			[ [
-				'Exact match not on top (T72958)',
+				'Exact match not on top (bug 70958)',
 				'provision' => [
 					'Barcelona',
 					'Bar',
@@ -290,7 +232,7 @@ class PrefixSearchTest extends MediaWikiLangTestCase {
 				],
 			] ],
 			[ [
-				'Exact match missing (T72958)',
+				'Exact match missing (bug 70958)',
 				'provision' => [
 					'Barcelona',
 					'Barbara',

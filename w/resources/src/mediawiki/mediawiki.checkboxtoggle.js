@@ -9,7 +9,7 @@
  * Jeroen De Dauw <jeroendedauw at gmail dot com>
  */
 
-( function ( $ ) {
+( function ( mw, $ ) {
 	'use strict';
 
 	$( function () {
@@ -21,13 +21,16 @@
 			$checkboxes.prop( 'checked', check );
 		}
 
-		$( '.mw-checkbox-all' ).click( function () {
+		$( '.mw-checkbox-all' ).click( function ( e ) {
+			e.preventDefault();
 			selectAll( true );
 		} );
-		$( '.mw-checkbox-none' ).click( function () {
+		$( '.mw-checkbox-none' ).click( function ( e ) {
+			e.preventDefault();
 			selectAll( false );
 		} );
-		$( '.mw-checkbox-invert' ).click( function () {
+		$( '.mw-checkbox-invert' ).click( function ( e ) {
+			e.preventDefault();
 			$checkboxes.prop( 'checked', function ( i, val ) {
 				return !val;
 			} );
@@ -35,4 +38,5 @@
 
 	} );
 
-}( jQuery ) );
+}( mediaWiki, jQuery ) );
+

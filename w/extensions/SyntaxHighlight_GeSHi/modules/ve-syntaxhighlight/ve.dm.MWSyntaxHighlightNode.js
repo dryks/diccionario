@@ -37,56 +37,25 @@ ve.dm.MWSyntaxHighlightNode.static.getMatchRdfaTypes = function () {
  */
 ve.dm.MWSyntaxHighlightNode.static.toDataElement = function ( domElements, converter ) {
 	// Parent method
-	var isInline = this.isHybridInline( domElements, converter ),
-		type = isInline ? 'mwInlineSyntaxHighlight' : 'mwBlockSyntaxHighlight',
-		dataElement = ve.dm.MWExtensionNode.static.toDataElement.call( this, domElements, converter, type );
+	var dataElement = ve.dm.MWExtensionNode.static.toDataElement.call( this, domElements, converter ),
+		isInline = this.isHybridInline( domElements, converter ),
+		type = isInline ? 'mwInlineSyntaxHighlight' : 'mwBlockSyntaxHighlight';
+
+	dataElement.type = type;
 
 	return dataElement;
 };
 
 ( function () {
-	var supportedLanguages = [ undefined ],
-		geshiToPygmentsMap,
-		pygmentsToAceMap;
+	var supportedLanguages = [ undefined ];
 
 	/**
-	 * Register supported Pygments languages.
+	 * Register supported languages.
 	 *
 	 * @param {Array} languages
 	 */
-	ve.dm.MWSyntaxHighlightNode.static.addPygmentsLanguages = function ( languages ) {
+	ve.dm.MWSyntaxHighlightNode.static.addLanguages = function ( languages ) {
 		ve.batchPush( supportedLanguages, languages );
-	};
-
-	/**
-	 * Register map from Geshi to pygments lexer names.
-	 *
-	 * @param {Array} map
-	 */
-	ve.dm.MWSyntaxHighlightNode.static.addGeshiToPygmentsMap = function ( map ) {
-		geshiToPygmentsMap = map;
-		ve.batchPush( supportedLanguages, Object.keys( geshiToPygmentsMap ) );
-	};
-
-	/**
-	 * Register a map from pygments to Ace lexer names.
-	 *
-	 * @param {Array} map
-	 */
-	ve.dm.MWSyntaxHighlightNode.static.addPygmentsToAceMap = function ( map ) {
-		pygmentsToAceMap = map;
-	};
-
-	/**
-	 * Converts a (valid) language as recognized by the SyntaxHighlight wikicode
-	 * to a compatible Ace lexer name (to be used by CodeEditor)
-	 *
-	 * @param {string} language Language name
-	 * @return {string} The name of the ace lexer
-	 */
-	ve.dm.MWSyntaxHighlightNode.static.convertLanguageToAce = function ( language ) {
-		language = geshiToPygmentsMap[ language ] || language;
-		return ( pygmentsToAceMap[ language ] || language ).toLowerCase();
 	};
 
 	/**
@@ -100,7 +69,7 @@ ve.dm.MWSyntaxHighlightNode.static.toDataElement = function ( domElements, conve
 	};
 
 	/**
-	 * Get an array of all languages (both Pygments and former GeSHi names)
+	 * Get an array of all languages
 	 *
 	 * @return {Array} All currently supported languages
 	 */

@@ -35,11 +35,6 @@
 class TextContent extends AbstractContent {
 
 	/**
-	 * @var string
-	 */
-	protected $mText;
-
-	/**
 	 * @param string $text
 	 * @param string $model_id
 	 * @throws MWException
@@ -153,27 +148,8 @@ class TextContent extends AbstractContent {
 	}
 
 	/**
-	 * Do a "\r\n" -> "\n" and "\r" -> "\n" transformation
-	 * as well as trim trailing whitespace
-	 *
-	 * This was formerly part of Parser::preSaveTransform, but
-	 * for non-wikitext content models they probably still want
-	 * to normalize line endings without all of the other PST
-	 * changes.
-	 *
-	 * @since 1.28
-	 * @param string $text
-	 * @return string
-	 */
-	public static function normalizeLineEndings( $text ) {
-		return str_replace( [ "\r\n", "\r" ], "\n", rtrim( $text ) );
-	}
-
-	/**
 	 * Returns a Content object with pre-save transformations applied.
-	 *
-	 * At a minimum, subclasses should make sure to call TextContent::normalizeLineEndings()
-	 * either directly or part of Parser::preSaveTransform().
+	 * This implementation just trims trailing whitespace.
 	 *
 	 * @param Title $title
 	 * @param User $user
@@ -183,7 +159,7 @@ class TextContent extends AbstractContent {
 	 */
 	public function preSaveTransform( Title $title, User $user, ParserOptions $popts ) {
 		$text = $this->getNativeData();
-		$pst = self::normalizeLineEndings( $text );
+		$pst = rtrim( $text );
 
 		return ( $text === $pst ) ? $this : new static( $pst, $this->getModel() );
 	}
@@ -236,9 +212,9 @@ class TextContent extends AbstractContent {
 	 *
 	 * @param Title $title Context title for parsing
 	 * @param int $revId Revision ID (for {{REVISIONID}})
-	 * @param ParserOptions $options
+	 * @param ParserOptions $options Parser options
 	 * @param bool $generateHtml Whether or not to generate HTML
-	 * @param ParserOutput &$output The output object to fill (reference).
+	 * @param ParserOutput $output The output object to fill (reference).
 	 */
 	protected function fillParserOutput( Title $title, $revId,
 		ParserOptions $options, $generateHtml, ParserOutput &$output

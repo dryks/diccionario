@@ -20,8 +20,6 @@
  * @file
  */
 
-use MediaWiki\Shell\Shell;
-
 /**
  * This is a class for holding configuration settings, particularly for
  * multi-wiki sites.
@@ -38,15 +36,15 @@ use MediaWiki\Shell\Shell;
  *
  * @code
  * $conf = new SiteConfiguration;
- * $conf->wikis = [ 'de', 'en', 'beta' ];
+ * $conf->wikis = array( 'de', 'en', 'beta' );
  * @endcode
  *
  * When configuring the MediaWiki global settings (the $wg variables),
  * the identifiers will be available to specify settings on a per wiki basis.
  *
  * @code
- * $conf->settings = [
- *	'wgSomeSetting' => [
+ * $conf->settings = array(
+ *	'wgSomeSetting' => array(
  *
  *		# production:
  *		'de'     => false,
@@ -54,8 +52,8 @@ use MediaWiki\Shell\Shell;
  *
  *		# test:
  *		'beta    => true,
- *	],
- * ];
+ *	),
+ * );
  * @endcode
  *
  * With three wikis, that is easy to manage. But what about a farm with
@@ -64,15 +62,15 @@ use MediaWiki\Shell\Shell;
  * the above code could be written:
  *
  * @code
- * $conf->settings = [
- *	'wgSomeSetting' => [
+ * $conf->settings = array(
+ *	'wgSomeSetting' => array(
  *
  *		'default' => false,
  *
  *		# Enable feature on test
  *		'beta'    => true,
- *	],
- * ];
+ *	),
+ * );
  * @endcode
  *
  *
@@ -82,23 +80,23 @@ use MediaWiki\Shell\Shell;
  * on a per wiki basis.
  *
  * @code
- * $conf->settings = [
- *	'wgMergeSetting' = [
+ * $conf->settings = array(
+ *	'wgMergeSetting' = array(
  *		# Value that will be shared among all wikis:
- *		'default' => [ NS_USER => true ],
+ *		'default' => array( NS_USER => true ),
  *
  *		# Leading '+' means merging the array of value with the defaults
- *		'+beta' => [ NS_HELP => true ],
- *	],
- * ];
+ *		'+beta' => array( NS_HELP => true ),
+ *	),
+ * );
  *
  * # Get configuration for the German site:
  * $conf->get( 'wgMergeSetting', 'de' );
- * // --> [ NS_USER => true ];
+ * // --> array( NS_USER => true );
  *
  * # Get configuration for the testing site:
  * $conf->get( 'wgMergeSetting', 'beta' );
- * // --> [ NS_USER => true, NS_HELP => true ];
+ * // --> array( NS_USER => true, NS_HELP => true );
  * @endcode
  *
  * Finally, to load all configuration settings, extract them in global context:
@@ -110,14 +108,9 @@ use MediaWiki\Shell\Shell;
  * extract( $globals );
  * @endcode
  *
- * @note For WikiMap to function, the configuration must define string values for
- *  $wgServer (or $wgCanonicalServer) and $wgArticlePath, even if these are the
- *  same for all wikis or can be correctly determined by the logic in
- *  Setup.php.
- *
  * @todo Give examples for,
  * suffixes:
- * $conf->suffixes = [ 'wiki' ];
+ * $conf->suffixes = array( 'wiki' );
  * localVHosts
  * callbacks!
  */
@@ -276,7 +269,7 @@ class SiteConfiguration {
 	 * @param string $from
 	 * @param string $to
 	 * @param string|array $in
-	 * @return string|array
+	 * @return string
 	 */
 	function doReplace( $from, $to, $in ) {
 		if ( is_string( $in ) ) {
@@ -347,7 +340,7 @@ class SiteConfiguration {
 	 * @param string $setting ID of the setting name to retrieve
 	 * @param string $wiki Wiki ID of the wiki in question.
 	 * @param string $suffix The suffix of the wiki in question.
-	 * @param array &$var Reference The variable to insert the value into.
+	 * @param array $var Reference The variable to insert the value into.
 	 * @param array $params List of parameters. $.'key' is replaced by $value in all returned data.
 	 * @param array $wikiTags The tags assigned to the wiki.
 	 */
@@ -548,21 +541,19 @@ class SiteConfiguration {
 			} else {
 				$this->cfgCache[$wiki] = [];
 			}
-			$result = Shell::makeScriptCommand(
+			$retVal = 1;
+			$cmd = wfShellWikiCmd(
 				"$IP/maintenance/getConfiguration.php",
 				[
 					'--wiki', $wiki,
 					'--settings', implode( ' ', $settings ),
-					'--format', 'PHP',
+					'--format', 'PHP'
 				]
-			)
-				// limit.sh breaks this call
-				->limits( [ 'memory' => 0, 'filesize' => 0 ] )
-				->execute();
-
-			$data = trim( $result->getStdout() );
-			if ( $result->getExitCode() != 0 || !strlen( $data ) ) {
-				throw new MWException( "Failed to run getConfiguration.php: {$result->getStdout()}" );
+			);
+			// ulimit5.sh breaks this call
+			$data = trim( wfShellExec( $cmd, $retVal, [], [ 'memory' => 0 ] ) );
+			if ( $retVal != 0 || !strlen( $data ) ) {
+				throw new MWException( "Failed to run getConfiguration.php." );
 			}
 			$res = unserialize( $data );
 			if ( !is_array( $res ) ) {
@@ -572,6 +563,17 @@ class SiteConfiguration {
 		}
 
 		return $multi ? $res : current( $res );
+	}
+
+	/**
+	 * Returns true if the given vhost is handled locally.
+	 *
+	 * @deprecated since 1.25; check if the host is in $wgLocalVirtualHosts instead.
+	 * @param string $vhost
+	 * @return bool
+	 */
+	public function isLocalVHost( $vhost ) {
+		return in_array( $vhost, $this->localVHosts );
 	}
 
 	/**

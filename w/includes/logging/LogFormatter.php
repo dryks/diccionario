@@ -22,8 +22,6 @@
  * @license http://www.gnu.org/copyleft/gpl.html GNU General Public License 2.0 or later
  * @since 1.19
  */
-use MediaWiki\Linker\LinkRenderer;
-use MediaWiki\MediaWikiServices;
 
 /**
  * Implements the default log formatting.
@@ -103,11 +101,6 @@ class LogFormatter {
 	/** @var string */
 	protected $irctext = false;
 
-	/**
-	 * @var LinkRenderer|null
-	 */
-	private $linkRenderer;
-
 	protected function __construct( LogEntry $entry ) {
 		$this->entry = $entry;
 		$this->context = RequestContext::getMain();
@@ -119,26 +112,6 @@ class LogFormatter {
 	 */
 	public function setContext( IContextSource $context ) {
 		$this->context = $context;
-	}
-
-	/**
-	 * @since 1.30
-	 * @param LinkRenderer $linkRenderer
-	 */
-	public function setLinkRenderer( LinkRenderer $linkRenderer ) {
-		$this->linkRenderer = $linkRenderer;
-	}
-
-	/**
-	 * @since 1.30
-	 * @return LinkRenderer
-	 */
-	public function getLinkRenderer() {
-		if ( $this->linkRenderer !== null ) {
-			return $this->linkRenderer;
-		} else {
-			return MediaWikiServices::getInstance()->getLinkRenderer();
-		}
 	}
 
 	/**
@@ -193,8 +166,8 @@ class LogFormatter {
 	}
 
 	/**
-	 * Even uglier hack to maintain backwards compatibility with IRC bots
-	 * (T36508).
+	 * Even uglier hack to maintain backwards compatibilty with IRC bots
+	 * (bug 34508).
 	 * @see getActionText()
 	 * @return string Text
 	 */
@@ -214,8 +187,8 @@ class LogFormatter {
 	}
 
 	/**
-	 * Even uglier hack to maintain backwards compatibility with IRC bots
-	 * (T36508).
+	 * Even uglier hack to maintain backwards compatibilty with IRC bots
+	 * (bug 34508).
 	 * @see getActionText()
 	 * @return string Text
 	 */
@@ -261,15 +234,19 @@ class LogFormatter {
 						$text = wfMessage( 'undeletedarticle' )
 							->rawParams( $target )->inContentLanguage()->escaped();
 						break;
+					// @codingStandardsIgnoreStart Long line
 					//case 'revision': // Revision deletion
 					//case 'event': // Log deletion
 					// see https://github.com/wikimedia/mediawiki/commit/a9c243b7b5289dad204278dbe7ed571fd914e395
 					//default:
+					// @codingStandardsIgnoreEnd
 				}
 				break;
 
 			case 'patrol':
+				// @codingStandardsIgnoreStart Long line
 				// https://github.com/wikimedia/mediawiki/commit/1a05f8faf78675dc85984f27f355b8825b43efff
+				// @codingStandardsIgnoreEnd
 				// Create a diff link to the patrolled revision
 				if ( $entry->getSubtype() === 'patrol' ) {
 					$diffLink = htmlspecialchars(
@@ -376,11 +353,7 @@ class LogFormatter {
 							$rawDuration = $parameters['5::duration'];
 							$rawFlags = $parameters['6::flags'];
 						}
-						$duration = $wgContLang->translateBlockExpiry(
-							$rawDuration,
-							null,
-							wfTimestamp( TS_UNIX, $entry->getTimestamp() )
-						);
+						$duration = $wgContLang->translateBlockExpiry( $rawDuration );
 						$flags = BlockLogFormatter::formatBlockFlags( $rawFlags, $wgContLang );
 						$text = wfMessage( 'blocklogentry' )
 							->rawParams( $target, $duration, $flags )->inContentLanguage()->escaped();
@@ -390,11 +363,7 @@ class LogFormatter {
 							->rawParams( $target )->inContentLanguage()->escaped();
 						break;
 					case 'reblock':
-						$duration = $wgContLang->translateBlockExpiry(
-							$parameters['5::duration'],
-							null,
-							wfTimestamp( TS_UNIX, $entry->getTimestamp() )
-						);
+						$duration = $wgContLang->translateBlockExpiry( $parameters['5::duration'] );
 						$flags = BlockLogFormatter::formatBlockFlags( $parameters['6::flags'], $wgContLang );
 						$text = wfMessage( 'reblock-logentry' )
 							->rawParams( $target, $duration, $flags )->inContentLanguage()->escaped();
@@ -640,13 +609,12 @@ class LogFormatter {
 	 * @return string
 	 */
 	protected function makePageLink( Title $title = null, $parameters = [], $html = null ) {
-		if ( !$title instanceof Title ) {
-			throw new MWException( 'Expected title, got null' );
-		}
 		if ( !$this->plaintext ) {
-			$html = $html !== null ? new HtmlArmor( $html ) : $html;
-			$link = $this->getLinkRenderer()->makeLink( $title, $html, [], $parameters );
+			$link = Linker::link( $title, $html, [], $parameters );
 		} else {
+			if ( !$title instanceof Title ) {
+				throw new MWException( "Expected title, got null" );
+			}
 			$link = '[[' . $title->getPrefixedText() . ']]';
 		}
 
@@ -863,12 +831,10 @@ class LogFormatter {
 			case 'title':
 			case 'title-link':
 				$title = Title::newFromText( $value );
-				if ( !$title ) {
-					// Huh? Do something halfway sane.
-					$title = SpecialPage::getTitleFor( 'Badtitle', $value );
+				if ( $title ) {
+					$value = [];
+					ApiQueryBase::addTitleInfo( $value, $title, "{$name}_" );
 				}
-				$value = [];
-				ApiQueryBase::addTitleInfo( $value, $title, "{$name}_" );
 				return $value;
 
 			case 'user':

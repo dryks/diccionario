@@ -42,19 +42,20 @@ class BenchWfIsWindows extends Benchmarker {
 			[ 'function' => [ $this, 'wfIsWindows' ] ],
 			[ 'function' => [ $this, 'wfIsWindowsCached' ] ],
 		] );
+		print $this->getFormattedResults();
 	}
 
-	protected static function is_win() {
+	static function is_win() {
 		return substr( php_uname(), 0, 7 ) == 'Windows';
 	}
 
 	// bench function 1
-	protected function wfIsWindows() {
+	function wfIsWindows() {
 		return self::is_win();
 	}
 
 	// bench function 2
-	protected function wfIsWindowsCached() {
+	function wfIsWindowsCached() {
 		static $isWindows = null;
 		if ( $isWindows == null ) {
 			$isWindows = self::is_win();
@@ -64,5 +65,5 @@ class BenchWfIsWindows extends Benchmarker {
 	}
 }
 
-$maintClass = BenchWfIsWindows::class;
+$maintClass = 'BenchWfIsWindows';
 require_once RUN_MAINTENANCE_IF_MAIN;

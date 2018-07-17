@@ -32,7 +32,7 @@ class ExtraParserTest extends MediaWikiTestCase {
 	}
 
 	/**
-	 * @see T10689
+	 * @see Bug 8689
 	 * @covers Parser::parse
 	 */
 	public function testLongNumericLinesDontKillTheParser() {
@@ -41,7 +41,7 @@ class ExtraParserTest extends MediaWikiTestCase {
 		$title = Title::newFromText( 'Unit test' );
 		$options = ParserOptions::newFromUser( new User() );
 		$this->assertEquals( "<p>$longLine</p>",
-			$this->parser->parse( $longLine, $title, $options )->getText( [ 'unwrap' => true ] ) );
+			$this->parser->parse( $longLine, $title, $options )->getText() );
 	}
 
 	/**
@@ -53,7 +53,7 @@ class ExtraParserTest extends MediaWikiTestCase {
 		$parserOutput = $this->parser->parse( "Test\n{{Foo}}\n{{Bar}}", $title, $this->options );
 		$this->assertEquals(
 			"<p>Test\nContent of <i>Template:Foo</i>\nContent of <i>Template:Bar</i>\n</p>",
-			$parserOutput->getText( [ 'unwrap' => true ] )
+			$parserOutput->getText()
 		);
 	}
 
@@ -191,6 +191,7 @@ class ExtraParserTest extends MediaWikiTestCase {
 	}
 
 	/**
+	 * @group Database
 	 * @covers Parser::parse
 	 */
 	public function testTrackingCategory() {
@@ -204,6 +205,7 @@ class ExtraParserTest extends MediaWikiTestCase {
 	}
 
 	/**
+	 * @group Database
 	 * @covers Parser::parse
 	 */
 	public function testTrackingCategorySpecial() {

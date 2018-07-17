@@ -26,27 +26,27 @@ trait FlaggedElement {
 	/**
 	 * @param array $config Configuration options
 	 * @param string|string[] $config['flags'] Flags describing importance and functionality, e.g.
-	 *   'primary', 'safe', 'progressive', or 'destructive'.
+	 *   'primary', 'safe', 'progressive', 'destructive' or 'constructive'
 	 */
 	public function initializeFlaggedElement( array $config = [] ) {
-		// Properties
 		$this->flagged = isset( $config['flagged'] ) ? $config['flagged'] : $this;
 
 		// Initialization
 		$this->setFlags( isset( $config['flags'] ) ? $config['flags'] : null );
 
-		$this->registerConfigCallback( function ( &$config ) {
+		$this->registerConfigCallback( function( &$config ) {
 			if ( !empty( $this->flags ) ) {
 				$config['flags'] = $this->getFlags();
 			}
 		} );
+
 	}
 
 	/**
 	 * Check if a flag is set.
 	 *
 	 * @param string $flag Name of flag
-	 * @return bool Has flag
+	 * @return boolean Has flag
 	 */
 	public function hasFlag( $flag ) {
 		return isset( $this->flags[$flag] );

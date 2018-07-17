@@ -71,7 +71,7 @@ class CategoryMembershipChange {
 			$this->timestamp = $revision->getTimestamp();
 		}
 		$this->revision = $revision;
-		$this->newForCategorizationCallback = [ RecentChange::class, 'newForCategorization' ];
+		$this->newForCategorizationCallback = [ 'RecentChange', 'newForCategorization' ];
 	}
 
 	/**
@@ -129,13 +129,12 @@ class CategoryMembershipChange {
 			$this->getUser(),
 			$this->getChangeMessageText(
 				$type,
-				$this->pageTitle->getPrefixedText(),
+				[ 'prefixedText' => $this->pageTitle->getPrefixedText() ],
 				$this->numTemplateLinks
 			),
 			$this->pageTitle,
 			$this->getPreviousRevisionTimestamp(),
-			$this->revision,
-			$type === self::CATEGORY_ADDITION
+			$this->revision
 		);
 	}
 
@@ -147,7 +146,6 @@ class CategoryMembershipChange {
 	 * @param Title $pageTitle Title of the page that is being added or removed
 	 * @param string $lastTimestamp Parent revision timestamp of this change in TS_MW format
 	 * @param Revision|null $revision
-	 * @param bool $added true, if the category was added, false for removed
 	 *
 	 * @throws MWException
 	 */
@@ -158,8 +156,7 @@ class CategoryMembershipChange {
 		$comment,
 		Title $pageTitle,
 		$lastTimestamp,
-		$revision,
-		$added
+		$revision
 	) {
 		$deleted = $revision ? $revision->getVisibility() & Revision::SUPPRESSED_USER : 0;
 		$newRevId = $revision ? $revision->getId() : 0;
@@ -167,7 +164,7 @@ class CategoryMembershipChange {
 		/**
 		 * T109700 - Default bot flag to true when there is no corresponding RC entry
 		 * This means all changes caused by parser functions & Lua on reparse are marked as bot
-		 * Also in the case no RC entry could be found due to replica DB lag
+		 * Also in the case no RC entry could be found due to slave lag
 		 */
 		$bot = 1;
 		$lastRevId = 0;
@@ -200,8 +197,7 @@ class CategoryMembershipChange {
 				$lastTimestamp,
 				$bot,
 				$ip,
-				$deleted,
-				$added
+				$deleted
 			]
 		);
 		$rc->save();
@@ -249,12 +245,13 @@ class CategoryMembershipChange {
 	 *
 	 * @param int $type may be CategoryMembershipChange::CATEGORY_ADDITION
 	 * or CategoryMembershipChange::CATEGORY_REMOVAL
-	 * @param string $prefixedText result of Title::->getPrefixedText()
+	 * @param array $params
+	 * - prefixedText: result of Title::->getPrefixedText()
 	 * @param int $numTemplateLinks
 	 *
 	 * @return string
 	 */
-	private function getChangeMessageText( $type, $prefixedText, $numTemplateLinks ) {
+	private function getChangeMessageText( $type, array $params, $numTemplateLinks ) {
 		$array = [
 			self::CATEGORY_ADDITION => 'recentchanges-page-added-to-category',
 			self::CATEGORY_REMOVAL => 'recentchanges-page-removed-from-category',
@@ -266,7 +263,7 @@ class CategoryMembershipChange {
 			$msgKey .= '-bundled';
 		}
 
-		return wfMessage( $msgKey, $prefixedText )->inContentLanguage()->text();
+		return wfMessage( $msgKey, $params )->inContentLanguage()->text();
 	}
 
 	/**

@@ -46,7 +46,6 @@ $specialPageAliases = [
 	'AllMyUploads'              => [ 'כל_ההעלאות_שלי' ],
 	'Allpages'                  => [ 'כל_הדפים' ],
 	'ApiHelp'                   => [ 'עזרת_API' ],
-	'ApiSandbox'                => [ 'ארגז_חול_של_API' ],
 	'Ancientpages'              => [ 'דפים_מוזנחים' ],
 	'Badtitle'                  => [ 'כותרת_שגויה' ],
 	'Blankpage'                 => [ 'דף_ריק' ],
@@ -344,5 +343,6 @@ $bookstoreList = [
 	'מיתוס'          => 'http://www.mitos.co.il/',
 	'iBooks'         => 'http://www.ibooks.co.il/',
 	'Barnes & Noble' => 'http://search.barnesandnoble.com/bookSearch/isbnInquiry.asp?isbn=$1',
-	'Amazon.com'     => 'https://www.amazon.com/exec/obidos/ISBN=$1'
+	'Amazon.com'     => 'http://www.amazon.com/exec/obidos/ISBN=$1'
 ];
+

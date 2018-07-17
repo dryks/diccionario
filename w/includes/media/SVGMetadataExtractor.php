@@ -58,6 +58,8 @@ class SVGReader {
 	private $languagePrefixes = [];
 
 	/**
+	 * Constructor
+	 *
 	 * Creates an SVGReader drawing from the source provided
 	 * @param string $source URI from which to read
 	 * @throws MWException|Exception
@@ -84,13 +86,13 @@ class SVGReader {
 		}
 
 		// Expand entities, since Adobe Illustrator uses them for xmlns
-		// attributes (T33719). Note that libxml2 has some protection
+		// attributes (bug 31719). Note that libxml2 has some protection
 		// against large recursive entity expansions so this is not as
 		// insecure as it might appear to be. However, it is still extremely
 		// insecure. It's necessary to wrap any read() calls with
 		// libxml_disable_entity_loader() to avoid arbitrary local file
 		// inclusion, or even arbitrary code execution if the expect
-		// extension is installed (T48859).
+		// extension is installed (bug 46859).
 		$oldDisable = libxml_disable_entity_loader( true );
 		$this->reader->setParserProperty( XMLReader::SUBST_ENTITIES, true );
 
@@ -106,17 +108,17 @@ class SVGReader {
 		// Because we cut off the end of the svg making an invalid one. Complicated
 		// try catch thing to make sure warnings get restored. Seems like there should
 		// be a better way.
-		Wikimedia\suppressWarnings();
+		MediaWiki\suppressWarnings();
 		try {
 			$this->read();
 		} catch ( Exception $e ) {
 			// Note, if this happens, the width/height will be taken to be 0x0.
 			// Should we consider it the default 512x512 instead?
-			Wikimedia\restoreWarnings();
+			MediaWiki\restoreWarnings();
 			libxml_disable_entity_loader( $oldDisable );
 			throw $e;
 		}
-		Wikimedia\restoreWarnings();
+		MediaWiki\restoreWarnings();
 		libxml_disable_entity_loader( $oldDisable );
 	}
 
@@ -262,7 +264,7 @@ class SVGReader {
 			) {
 				$sysLang = $this->reader->getAttribute( 'systemLanguage' );
 				if ( !is_null( $sysLang ) && $sysLang !== '' ) {
-					// See https://www.w3.org/TR/SVG/struct.html#SystemLanguageAttribute
+					// See http://www.w3.org/TR/SVG/struct.html#SystemLanguageAttribute
 					$langList = explode( ',', $sysLang );
 					foreach ( $langList as $langItem ) {
 						$langItem = trim( $langItem );
@@ -303,6 +305,12 @@ class SVGReader {
 			}
 			$keepReading = $this->reader->read();
 		}
+	}
+
+	// @todo FIXME: Unused, remove?
+	private function throwXmlError( $err ) {
+		$this->debug( "FAILURE: $err" );
+		wfDebug( "SVGReader XML error: $err\n" );
 	}
 
 	private function debug( $data ) {
@@ -361,7 +369,7 @@ class SVGReader {
 
 	/**
 	 * Return a rounded pixel equivalent for a labeled CSS/SVG length.
-	 * https://www.w3.org/TR/SVG11/coords.html#Units
+	 * http://www.w3.org/TR/SVG11/coords.html#UnitIdentifiers
 	 *
 	 * @param string $length CSS/SVG length.
 	 * @param float|int $viewportSize Optional scale for percentage units...

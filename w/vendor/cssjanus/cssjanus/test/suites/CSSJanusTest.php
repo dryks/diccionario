@@ -5,18 +5,13 @@ class CSSJanusTest extends PHPUnit_Framework_TestCase {
 	public static function provideData() {
 		$data = self::getSpec();
 		$cases = array();
+		$defaultSettings = array(
+			'swapLtrRtlInUrl' => false,
+			'swapLeftRightInUrl' => false,
+		);
 		foreach ($data as $name => $test) {
-			if (isset($test['args']) || isset($test['options'])) {
-				// v1.2.0 test format
-				$args = isset($test['args']) ? $test['args'] :
-					(isset($test['options']) ? array( $test['options'] ) : array());
-			} else {
-				// v1.1.x test format
-				$args = array(
-					!empty($test['settings']['swapLtrRtlInUrl']),
-					!empty($test['settings']['swapLeftRightInUrl'])
-				);
-			}
+			$settings = isset($test['settings']) ? $test['settings'] : array();
+			$settings += $defaultSettings;
 			foreach ($test['cases'] as $i => $case) {
 				$input = $case[0];
 				$noop = !isset($case[1]);
@@ -24,7 +19,7 @@ class CSSJanusTest extends PHPUnit_Framework_TestCase {
 
 				$cases[] = array(
 					$input,
-					$args,
+					$settings,
 					$output,
 					$name,
 				);
@@ -33,7 +28,7 @@ class CSSJanusTest extends PHPUnit_Framework_TestCase {
 					// Round trip
 					$cases[] = array(
 						$output,
-						$args,
+						$settings,
 						$input,
 						$name,
 					);
@@ -46,11 +41,10 @@ class CSSJanusTest extends PHPUnit_Framework_TestCase {
 	/**
 	 * @dataProvider provideData
 	 */
-	public function testTransform($input, $args, $output, $name) {
-		array_unshift($args, $input);
+	public function testTransform($input, $settings, $output, $name) {
 		$this->assertEquals(
 			$output,
-			call_user_func_array('CSSJanus::transform', $args),
+			CSSJanus::transform($input, $settings['swapLtrRtlInUrl'], $settings['swapLeftRightInUrl']),
 			$name
 		);
 	}
@@ -58,7 +52,7 @@ class CSSJanusTest extends PHPUnit_Framework_TestCase {
 	protected static function getSpec() {
 		static $json;
 		if ($json == null) {
-			$version = '1.2.0';
+			$version = '1.1.2';
 			$dir = dirname(__DIR__);
 			$file = "$dir/data-v$version.json";
 			if (!is_readable($file)) {

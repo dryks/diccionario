@@ -3,9 +3,7 @@
 /**
  * @covers FileContentsHasherTest
  */
-class FileContentsHasherTest extends PHPUnit\Framework\TestCase {
-
-	use MediaWikiCoversValidator;
+class FileContentsHasherTest extends MediaWikiTestCase {
 
 	public function provideSingleFile() {
 		return array_map( function ( $file ) {

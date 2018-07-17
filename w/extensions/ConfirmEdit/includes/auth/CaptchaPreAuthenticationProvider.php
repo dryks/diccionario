@@ -17,10 +17,10 @@ class CaptchaPreAuthenticationProvider extends AbstractPreAuthenticationProvider
 				$needed = $captcha->needCreateAccountCaptcha( $user ?: new User() );
 				if ( $needed ) {
 					$captcha->setAction( 'accountcreate' );
-					LoggerFactory::getInstance( 'authevents' )
+					LoggerFactory::getInstance( 'authmanager' )
 						->info( 'Captcha shown on account creation', [
 							'event' => 'captcha.display',
-							'eventType' => 'accountcreation',
+							'type' => 'accountcreation',
 						] );
 				}
 				break;
@@ -46,10 +46,10 @@ class CaptchaPreAuthenticationProvider extends AbstractPreAuthenticationProvider
 				) {
 					$needed = true;
 					$captcha->setAction( 'badlogin' );
-					LoggerFactory::getInstance( 'authevents' )
+					LoggerFactory::getInstance( 'authmanager' )
 						->info( 'Captcha shown on account creation', [
 							'event' => 'captcha.display',
-							'eventType' => 'accountcreation',
+							'type' => 'accountcreation',
 						] );
 					break;
 				}
@@ -74,9 +74,9 @@ class CaptchaPreAuthenticationProvider extends AbstractPreAuthenticationProvider
 			$captcha->setAction( 'badlogin' );
 			$captcha->setTrigger( "post-badlogin login '$username'" );
 			$success = $this->verifyCaptcha( $captcha, $reqs, new User() );
-			LoggerFactory::getInstance( 'authevents' )->info( 'Captcha submitted on login', [
+			LoggerFactory::getInstance( 'authmanager' )->info( 'Captcha submitted on login', [
 				'event' => 'captcha.submit',
-				'eventType' => 'login',
+				'type' => 'login',
 				'successful' => $success,
 			] );
 		}
@@ -99,9 +99,9 @@ class CaptchaPreAuthenticationProvider extends AbstractPreAuthenticationProvider
 			$captcha->setAction( 'accountcreate' );
 			$captcha->setTrigger( "new account '$username'" );
 			$success = $this->verifyCaptcha( $captcha, $reqs, $user );
-			LoggerFactory::getInstance( 'authevents' )->info( 'Captcha submitted on account creation', [
+			LoggerFactory::getInstance( 'authmanager' )->info( 'Captcha submitted on account creation', [
 				'event' => 'captcha.submit',
-				'eventType' => 'accountcreation',
+				'type' => 'accountcreation',
 				'successful' => $success,
 			] );
 			if ( !$success ) {

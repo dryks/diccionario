@@ -92,13 +92,13 @@ abstract class WebInstallerPage {
 		}
 
 		if ( $continue ) {
-			// Fake submit button for enter keypress (T28267)
+			// Fake submit button for enter keypress (bug 26267)
 			// Messages: config-continue, config-restart, config-regenerate
 			$s .= Xml::submitButton(
 				wfMessage( "config-$continue" )->text(),
 				[
 					'name' => "enter-$continue",
-					'style' => 'width:0;border:0;height:0;padding:0'
+					'style' => 'visibility:hidden;overflow:hidden;width:1px;margin:0'
 				]
 			) . "\n";
 		}
@@ -133,7 +133,7 @@ abstract class WebInstallerPage {
 	 * @return string
 	 */
 	public function getName() {
-		return str_replace( 'WebInstaller', '', static::class );
+		return str_replace( 'WebInstaller', '', get_class( $this ) );
 	}
 
 	/**

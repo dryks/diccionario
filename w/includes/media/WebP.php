@@ -63,9 +63,9 @@ class WebPHandler extends BitmapHandler {
 				return self::METADATA_GOOD;
 		}
 
-		Wikimedia\suppressWarnings();
+		MediaWiki\suppressWarnings();
 		$data = unserialize( $metadata );
-		Wikimedia\restoreWarnings();
+		MediaWiki\restoreWarnings();
 
 		if ( !$data || !is_array( $data ) ) {
 				wfDebug( __METHOD__ . " invalid WebP metadata\n" );
@@ -86,7 +86,7 @@ class WebPHandler extends BitmapHandler {
 	/**
 	 * Extracts the image size and WebP type from a file
 	 *
-	 * @param string $filename
+	 * @param string $chunks Chunks as extracted by RiffExtractor
 	 * @return array|bool Header data array with entries 'compression', 'width' and 'height',
 	 * where 'compression' can be 'lossy', 'lossless', 'animated' or 'unknown'. False if
 	 * file is not a valid WebP file.
@@ -118,7 +118,6 @@ class WebPHandler extends BitmapHandler {
 	/**
 	 * Extracts the image size and WebP type from a file based on the chunk list
 	 * @param array $chunks Chunks as extracted by RiffExtractor
-	 * @param string $filename
 	 * @return array Header data array with entries 'compression', 'width' and 'height', where
 	 * 'compression' can be 'lossy', 'lossless', 'animated' or 'unknown'
 	 */
@@ -154,7 +153,7 @@ class WebPHandler extends BitmapHandler {
 
 	/**
 	 * Decodes a lossy chunk header
-	 * @param string $header First few bytes of the header, expected to be at least 18 bytes long
+	 * @param string $header Header string
 	 * @return bool|array See WebPHandler::decodeHeader
 	 */
 	protected static function decodeLossyChunkHeader( $header ) {
@@ -180,7 +179,7 @@ class WebPHandler extends BitmapHandler {
 
 	/**
 	 * Decodes a lossless chunk header
-	 * @param string $header First few bytes of the header, expected to be at least 13 bytes long
+	 * @param string $header Header string
 	 * @return bool|array See WebPHandler::decodeHeader
 	 */
 	public static function decodeLosslessChunkHeader( $header ) {
@@ -205,7 +204,7 @@ class WebPHandler extends BitmapHandler {
 
 	/**
 	 * Decodes an extended chunk header
-	 * @param string $header First few bytes of the header, expected to be at least 18 bytes long
+	 * @param string $header Header string
 	 * @return bool|array See WebPHandler::decodeHeader
 	 */
 	public static function decodeExtendedChunkHeader( $header ) {
@@ -231,13 +230,13 @@ class WebPHandler extends BitmapHandler {
 		if ( $file === null ) {
 			$metadata = self::getMetadata( $file, $path );
 		}
-		if ( $metadata === false && $file instanceof File ) {
+		if ( $metadata === false ) {
 			$metadata = $file->getMetadata();
 		}
 
-		Wikimedia\suppressWarnings();
+		MediaWiki\suppressWarnings();
 		$metadata = unserialize( $metadata );
-		Wikimedia\restoreWarnings();
+		MediaWiki\restoreWarnings();
 
 		if ( $metadata == false ) {
 			return false;
@@ -246,7 +245,7 @@ class WebPHandler extends BitmapHandler {
 	}
 
 	/**
-	 * @param File $file
+	 * @param $file
 	 * @return bool True, not all browsers support WebP
 	 */
 	public function mustRender( $file ) {
@@ -254,7 +253,7 @@ class WebPHandler extends BitmapHandler {
 	}
 
 	/**
-	 * @param File $file
+	 * @param $file
 	 * @return bool False if we are unable to render this image
 	 */
 	public function canRender( $file ) {
@@ -287,9 +286,9 @@ class WebPHandler extends BitmapHandler {
 	/**
 	 * Render files as PNG
 	 *
-	 * @param string $ext
-	 * @param string $mime
-	 * @param array|null $params
+	 * @param $ext
+	 * @param $mime
+	 * @param $params
 	 * @return array
 	 */
 	public function getThumbType( $ext, $mime, $params = null ) {
@@ -299,8 +298,6 @@ class WebPHandler extends BitmapHandler {
 	/**
 	 * Must use "im" for XCF
 	 *
-	 * @param string $dstPath
-	 * @param bool $checkDstPath
 	 * @return string
 	 */
 	protected function getScalerType( $dstPath, $checkDstPath = true ) {

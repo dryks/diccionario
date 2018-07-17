@@ -1,5 +1,9 @@
 <?php
 /**
+ *
+ *
+ * Created on Dec 22, 2010
+ *
  * Copyright © 2010 Roan Kattouw "<Firstname>.<Lastname>@gmail.com"
  *
  * This program is free software; you can redistribute it and/or modify
@@ -55,10 +59,10 @@ class ApiQueryQueryPage extends ApiQueryGeneratorBase {
 		$params = $this->extractRequestParams();
 		$result = $this->getResult();
 
-		/** @var QueryPage $qp */
+		/** @var $qp QueryPage */
 		$qp = new $this->qpMap[$params['page']]();
 		if ( !$qp->userCanExecute( $this->getUser() ) ) {
-			$this->dieWithError( 'apierror-specialpage-cantexecute' );
+			$this->dieUsageMsg( 'specialpage-cantexecute' );
 		}
 
 		$r = [ 'name' => $params['page'] ];
@@ -125,7 +129,7 @@ class ApiQueryQueryPage extends ApiQueryGeneratorBase {
 	}
 
 	public function getCacheMode( $params ) {
-		/** @var QueryPage $qp */
+		/** @var $qp QueryPage */
 		$qp = new $this->qpMap[$params['page']]();
 		if ( $qp->getRestriction() != '' ) {
 			return 'private';
@@ -162,6 +166,6 @@ class ApiQueryQueryPage extends ApiQueryGeneratorBase {
 	}
 
 	public function getHelpUrls() {
-		return 'https://www.mediawiki.org/wiki/Special:MyLanguage/API:Querypage';
+		return 'https://www.mediawiki.org/wiki/API:Querypage';
 	}
 }

@@ -29,26 +29,19 @@ class PermissionsError extends ErrorPageError {
 	public $permission, $errors;
 
 	/**
-	 * @param string|null $permission A permission name or null if unknown
-	 * @param array $errors Error message keys or [key, param...] arrays; must not be empty if
-	 *   $permission is null
-	 * @throws \InvalidArgumentException
+	 * @param string $permission A permission name.
+	 * @param string[] $errors Error message keys
 	 */
 	public function __construct( $permission, $errors = [] ) {
 		global $wgLang;
 
-		if ( $permission === null && !$errors ) {
-			throw new \InvalidArgumentException( __METHOD__ .
-				': $permission and $errors cannot both be empty' );
-		}
-
 		$this->permission = $permission;
 
 		if ( !count( $errors ) ) {
-			$groups = [];
-			foreach ( User::getGroupsWithPermission( $this->permission ) as $group ) {
-				$groups[] = UserGroupMembership::getLink( $group, RequestContext::getMain(), 'wiki' );
-			}
+			$groups = array_map(
+				[ 'User', 'makeGroupLinkWiki' ],
+				User::getGroupsWithPermission( $this->permission )
+			);
 
 			if ( $groups ) {
 				$errors[] = [ 'badaccess-groups', $wgLang->commaList( $groups ), count( $groups ) ];
@@ -58,9 +51,6 @@ class PermissionsError extends ErrorPageError {
 		}
 
 		$this->errors = $errors;
-
-		// Give the parent class something to work with
-		parent::__construct( 'permissionserrors', Message::newFromSpecifier( $errors[0] ) );
 	}
 
 	public function report() {

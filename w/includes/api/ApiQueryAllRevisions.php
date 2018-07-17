@@ -1,6 +1,8 @@
 <?php
 /**
- * Copyright © 2015 Wikimedia Foundation and contributors
+ * Created on Sep 27, 2015
+ *
+ * Copyright © 2015 Brad Jorsch "bjorsch@wikimedia.org"
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -61,20 +63,20 @@ class ApiQueryAllRevisions extends ApiQueryRevisionsBase {
 			}
 		}
 
+		$this->addTables( 'revision' );
 		if ( $resultPageSet === null ) {
 			$this->parseParameters( $params );
-			$revQuery = Revision::getQueryInfo(
-				$this->fetchContent ? [ 'page', 'text' ] : [ 'page' ]
+			$this->addTables( 'page' );
+			$this->addJoinConds(
+				[ 'page' => [ 'INNER JOIN', [ 'rev_page = page_id' ] ] ]
 			);
-			$this->addTables( $revQuery['tables'] );
-			$this->addFields( $revQuery['fields'] );
-			$this->addJoinConds( $revQuery['joins'] );
+			$this->addFields( Revision::selectFields() );
+			$this->addFields( Revision::selectPageFields() );
 
 			// Review this depeneding on the outcome of T113901
 			$this->addOption( 'STRAIGHT_JOIN' );
 		} else {
 			$this->limit = $this->getParameter( 'limit' ) ?: 10;
-			$this->addTables( 'revision' );
 			$this->addFields( [ 'rev_timestamp', 'rev_id' ] );
 			if ( $params['generatetitles'] ) {
 				$this->addFields( [ 'rev_page' ] );
@@ -103,22 +105,33 @@ class ApiQueryAllRevisions extends ApiQueryRevisionsBase {
 			$this->addFields( 'ts_tags' );
 		}
 
+		if ( $this->fetchContent ) {
+			$this->addTables( 'text' );
+			$this->addJoinConds(
+				[ 'text' => [ 'INNER JOIN', [ 'rev_text_id=old_id' ] ] ]
+			);
+			$this->addFields( 'old_id' );
+			$this->addFields( Revision::selectTextFields() );
+		}
+
 		if ( $params['user'] !== null ) {
-			$actorQuery = ActorMigration::newMigration()
-				->getWhere( $db, 'rev_user', User::newFromName( $params['user'], false ) );
-			$this->addTables( $actorQuery['tables'] );
-			$this->addJoinConds( $actorQuery['joins'] );
-			$this->addWhere( $actorQuery['conds'] );
+			$id = User::idFromName( $params['user'] );
+			if ( $id ) {
+				$this->addWhereFld( 'rev_user', $id );
+			} else {
+				$this->addWhereFld( 'rev_user_text', $params['user'] );
+			}
 		} elseif ( $params['excludeuser'] !== null ) {
-			$actorQuery = ActorMigration::newMigration()
-				->getWhere( $db, 'rev_user', User::newFromName( $params['excludeuser'], false ) );
-			$this->addTables( $actorQuery['tables'] );
-			$this->addJoinConds( $actorQuery['joins'] );
-			$this->addWhere( 'NOT(' . $actorQuery['conds'] . ')' );
+			$id = User::idFromName( $params['excludeuser'] );
+			if ( $id ) {
+				$this->addWhere( 'rev_user != ' . $id );
+			} else {
+				$this->addWhere( 'rev_user_text != ' . $db->addQuotes( $params['excludeuser'] ) );
+			}
 		}
 
 		if ( $params['user'] !== null || $params['excludeuser'] !== null ) {
-			// Paranoia: avoid brute force searches (T19342)
+			// Paranoia: avoid brute force searches (bug 17342)
 			if ( !$this->getUser()->isAllowed( 'deletedhistory' ) ) {
 				$bitmask = Revision::DELETED_USER;
 			} elseif ( !$this->getUser()->isAllowedAny( 'suppressrevision', 'viewsuppressed' ) ) {
@@ -153,20 +166,12 @@ class ApiQueryAllRevisions extends ApiQueryRevisionsBase {
 		$orderby[] = "rev_id $sort";
 		$this->addOption( 'ORDER BY', $orderby );
 
-		$hookData = [];
-		$res = $this->select( __METHOD__, [], $hookData );
+		$res = $this->select( __METHOD__ );
 		$pageMap = []; // Maps rev_page to array index
 		$count = 0;
 		$nextIndex = 0;
 		$generated = [];
 		foreach ( $res as $row ) {
-			if ( $count === 0 && $resultPageSet !== null ) {
-				// Set the non-continue since the list of all revisions is
-				// prone to having entries added at the start frequently.
-				$this->getContinuationManager()->addGeneratorNonContinueParam(
-					$this, 'continue', "$row->rev_timestamp|$row->rev_id"
-				);
-			}
 			if ( ++$count > $this->limit ) {
 				// We've had enough
 				$this->setContinueEnumParameter( 'continue', "$row->rev_timestamp|$row->rev_id" );
@@ -198,12 +203,12 @@ class ApiQueryAllRevisions extends ApiQueryRevisionsBase {
 					];
 					ApiResult::setIndexedTagName( $a['revisions'], 'rev' );
 					ApiQueryBase::addTitleInfo( $a, $title );
-					$fit = $this->processRow( $row, $a['revisions'][0], $hookData ) &&
-						$result->addValue( [ 'query', $this->getModuleName() ], $index, $a );
+					$fit = $result->addValue( [ 'query', $this->getModuleName() ], $index, $a );
 				} else {
 					$index = $pageMap[$row->rev_page];
-					$fit = $this->processRow( $row, $rev, $hookData ) &&
-						$result->addValue( [ 'query', $this->getModuleName(), $index, 'revisions' ], null, $rev );
+					$fit = $result->addValue(
+						[ 'query', $this->getModuleName(), $index, 'revisions' ],
+						null, $rev );
 				}
 				if ( !$fit ) {
 					$this->setContinueEnumParameter( 'continue', "$row->rev_timestamp|$row->rev_id" );
@@ -277,6 +282,6 @@ class ApiQueryAllRevisions extends ApiQueryRevisionsBase {
 	}
 
 	public function getHelpUrls() {
-		return 'https://www.mediawiki.org/wiki/Special:MyLanguage/API:Allrevisions';
+		return 'https://www.mediawiki.org/wiki/API:Allrevisions';
 	}
 }

@@ -40,6 +40,7 @@ class CheckLanguageCLI {
 	private $includeExif = false;
 
 	/**
+	 * Constructor.
 	 * @param array $options Options for script.
 	 */
 	public function __construct( array $options ) {
@@ -332,8 +333,9 @@ ENDS;
 			return $blacklist;
 		}
 
-		// phpcs:ignore MediaWiki.NamingConventions.ValidGlobalName.wgPrefix
+		// @codingStandardsIgnoreStart Ignore that globals should have a "wg" prefix.
 		global $checkBlacklist;
+		// @codingStandardsIgnoreEnd
 
 		$blacklist = $checkBlacklist;
 
@@ -516,7 +518,7 @@ ENDS;
 		$tableRows = implode( "\n|-\n", $rows );
 
 		$version = SpecialVersion::getVersion( 'nodb' );
-		// phpcs:disable Generic.Files.LineLength
+		// @codingStandardsIgnoreStart Long line.
 		echo <<<EOL
 '''Check results are for:''' <code>$version</code>
 
@@ -528,7 +530,7 @@ $tableRows
 $detailText
 
 EOL;
-		// phpcs:enable
+		// @codingStandardsIgnoreEnd
 	}
 
 	/**
@@ -555,6 +557,7 @@ class CheckExtensionsCLI extends CheckLanguageCLI {
 	private $extensions;
 
 	/**
+	 * Constructor.
 	 * @param array $options Options for script.
 	 * @param string $extension The extension name (or names).
 	 */

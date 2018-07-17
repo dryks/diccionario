@@ -35,22 +35,23 @@ if ( PHP_SAPI != 'cli' ) {
 require_once dirname( __DIR__ ) . '/vendor/autoload.php';
 
 define( 'BENCH_CYCLES', 1 );
-// 10 M
-define( 'BIGSIZE', 1024 * 1024 * 10 );
+define( 'BIGSIZE', 1024 * 1024 * 10 ); // 10m
 ini_set( 'memory_limit', BIGSIZE + 120 * 1024 * 1024 );
 
-$testfiles = [
+$testfiles = array(
 	'testdata/washington.txt' => 'English text',
 	'testdata/berlin.txt' => 'German text',
 	'testdata/bulgakov.txt' => 'Russian text',
 	'testdata/tokyo.txt' => 'Japanese text',
 	'testdata/young.txt' => 'Korean text'
-];
+);
 $normalizer = new Validator;
 Validator::loadData();
 foreach ( $testfiles as $file => $desc ) {
 	benchmarkTest( $normalizer, $file, $desc );
 }
+
+# -------
 
 function benchmarkTest( &$u, $filename, $desc ) {
 	print "Testing $filename ($desc)...\n";
@@ -61,10 +62,10 @@ function benchmarkTest( &$u, $filename, $desc ) {
 	}
 	$data = $all;
 	echo "Data is " . strlen( $data ) . " bytes.\n";
-	$forms = [
+	$forms = array(
 		'quickIsNFCVerify',
 		'cleanUp',
-	];
+	);
 
 	foreach ( $forms as $form ) {
 		if ( is_array( $form ) ) {
@@ -79,16 +80,15 @@ function benchmarkTest( &$u, $filename, $desc ) {
 }
 
 function benchmarkForm( &$u, &$data, $form ) {
-	# $start = microtime( true );
+	#$start = microtime( true );
 	for ( $i = 0; $i < BENCH_CYCLES; $i++ ) {
 		$start = microtime( true );
 		$out = $u->$form( $data, Validator::$utfCanonicalDecomp );
 		$deltas[] = ( microtime( true ) - $start );
 	}
-	# $delta = (microtime( true ) - $start) / BENCH_CYCLES;
+	#$delta = (microtime( true ) - $start) / BENCH_CYCLES;
 	sort( $deltas );
-	# Take shortest time
-	$delta = $deltas[0];
+	$delta = $deltas[0]; # Take shortest time
 
 	$rate = intval( strlen( $data ) / $delta );
 	$same = ( 0 == strcmp( $data, $out ) );

@@ -16,35 +16,30 @@
 	beStrictAboutTestsThatDoNotTestAnything="true"
 	beStrictAboutOutputDuringTests="true"
 	beStrictAboutTestSize="true"
-	verbose="false">
+	verbose="true">
 	<testsuites>
 		<testsuite name="includes">
 			<directory>includes</directory>
-			<!-- Parser tests must be invoked via their suite -->
-			<exclude>includes/parser/ParserIntegrationTest.php</exclude>
 		</testsuite>
 		<testsuite name="languages">
 			<directory>languages</directory>
 		</testsuite>
 		<testsuite name="parsertests">
-			<file>suites/CoreParserTestSuite.php</file>
+			<file>includes/parser/MediaWikiParserTest.php</file>
 			<file>suites/ExtensionsParserTestSuite.php</file>
 		</testsuite>
 		<testsuite name="skins">
 			<directory>skins</directory>
 			<directory>structure</directory>
-			<file>suites/ExtensionsTestSuite.php</file>
 			<file>suites/LessTestSuite.php</file>
 		</testsuite>
-		<!-- As there is a class Maintenance, we cannot use the name "maintenance" directly -->
+		<!-- As there is a class Maintenance, we cannot use the
+		     name "maintenance" directly -->
 		<testsuite name="maintenance_suite">
 			<directory>maintenance</directory>
 		</testsuite>
 		<testsuite name="structure">
 			<directory>structure</directory>
-		</testsuite>
-		<testsuite name="tests">
-			<directory>tests</directory>
 		</testsuite>
 		<testsuite name="uploadfromurl">
 			<file>suites/UploadFromUrlTestSuite.php</file>
@@ -60,6 +55,7 @@
 		<exclude>
 			<group>Utility</group>
 			<group>Broken</group>
+			<group>ParserFuzz</group>
 			<group>Stub</group>
 		</exclude>
 	</groups>
@@ -68,9 +64,7 @@
 			<directory suffix=".php">../../includes</directory>
 			<directory suffix=".php">../../languages</directory>
 			<directory suffix=".php">../../maintenance</directory>
-			<exclude>
-				<directory suffix=".php">../../languages/messages</directory>
-			</exclude>
+			<directory suffix=".php">../../skins</directory>
 		</whitelist>
 	</filter>
 </phpunit>

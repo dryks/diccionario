@@ -40,7 +40,7 @@ class CheckUsernames extends Maintenance {
 	}
 
 	function execute() {
-		$dbr = $this->getDB( DB_REPLICA );
+		$dbr = $this->getDB( DB_SLAVE );
 
 		$maxUserId = 0;
 		do {
@@ -50,7 +50,7 @@ class CheckUsernames extends Maintenance {
 				__METHOD__,
 				[
 					'ORDER BY' => 'user_id',
-					'LIMIT' => $this->getBatchSize(),
+					'LIMIT' => $this->mBatchSize,
 				]
 			);
 
@@ -65,5 +65,5 @@ class CheckUsernames extends Maintenance {
 	}
 }
 
-$maintClass = CheckUsernames::class;
+$maintClass = "CheckUsernames";
 require_once RUN_MAINTENANCE_IF_MAIN;

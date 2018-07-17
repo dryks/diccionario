@@ -10,11 +10,14 @@
 }
 
 .ve-ui-mwSyntaxHighlightDialog-content .ve-ui-mwExtensionWindow-input textarea {
-	/* T176636 */
-	font-family: monospace, monospace;
+	font-family: monospace, Courier;
 }
 
-.ve-ui-mwSyntaxHighlightDialog-content .ve-ui-mwSyntaxHighlightWindow-languageField,
-.ve-ui-mwSyntaxHighlightDialog-content .ve-ui-mwSyntaxHighlightWindow-startLineField {
+.ve-ui-mwSyntaxHighlightDialog-content .oo-ui-comboBoxWidget > .oo-ui-menuSelectWidget {
+	/* Force combo box dropdowns to appear above Ace editor */
+	z-index: 10;
+}
+
+.ve-ui-mwSyntaxHighlightDialog-content .ve-ui-mwSyntaxHighlightWindow-languageField {
 	max-width: 30em;
 }

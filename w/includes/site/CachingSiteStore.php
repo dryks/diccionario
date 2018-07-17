@@ -90,7 +90,7 @@ class CachingSiteStore implements SiteStore {
 	private function getCacheKey() {
 		if ( $this->cacheKey === null ) {
 			$type = 'SiteList#' . SiteList::getSerialVersionId();
-			$this->cacheKey = $this->cache->makeKey( "sites/$type" );
+			$this->cacheKey = wfMemcKey( "sites/$type" );
 		}
 
 		return $this->cacheKey;

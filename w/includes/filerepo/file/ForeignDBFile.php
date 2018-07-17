@@ -21,8 +21,6 @@
  * @ingroup FileAbstraction
  */
 
-use Wikimedia\Rdbms\DBUnexpectedError;
-
 /**
  * Foreign file with an accessible MediaWiki database
  *
@@ -59,7 +57,7 @@ class ForeignDBFile extends LocalFile {
 	 * @param string $srcPath
 	 * @param int $flags
 	 * @param array $options
-	 * @return Status
+	 * @return FileRepoStatus
 	 * @throws MWException
 	 */
 	function publish( $srcPath, $flags = 0, array $options = [] ) {
@@ -74,7 +72,7 @@ class ForeignDBFile extends LocalFile {
 	 * @param string $source
 	 * @param bool $watch
 	 * @param bool|string $timestamp
-	 * @param User|null $user User object or null to use $wgUser
+	 * @param User $user User object or null to use $wgUser
 	 * @return bool
 	 * @throws MWException
 	 */
@@ -86,7 +84,7 @@ class ForeignDBFile extends LocalFile {
 	/**
 	 * @param array $versions
 	 * @param bool $unsuppress
-	 * @return Status
+	 * @return FileRepoStatus
 	 * @throws MWException
 	 */
 	function restore( $versions = [], $unsuppress = false ) {
@@ -97,7 +95,7 @@ class ForeignDBFile extends LocalFile {
 	 * @param string $reason
 	 * @param bool $suppress
 	 * @param User|null $user
-	 * @return Status
+	 * @return FileRepoStatus
 	 * @throws MWException
 	 */
 	function delete( $reason, $suppress = false, $user = null ) {
@@ -106,7 +104,7 @@ class ForeignDBFile extends LocalFile {
 
 	/**
 	 * @param Title $target
-	 * @return Status
+	 * @return FileRepoStatus
 	 * @throws MWException
 	 */
 	function move( $target ) {
@@ -122,10 +120,10 @@ class ForeignDBFile extends LocalFile {
 	}
 
 	/**
-	 * @param Language|null $lang Optional language to fetch description in.
-	 * @return string|false
+	 * @param bool|Language $lang Optional language to fetch description in.
+	 * @return string
 	 */
-	function getDescriptionText( $lang = null ) {
+	function getDescriptionText( $lang = false ) {
 		global $wgLang;
 
 		if ( !$this->repo->fetchDescription ) {
@@ -138,7 +136,7 @@ class ForeignDBFile extends LocalFile {
 			return false;
 		}
 
-		$touched = $this->repo->getReplicaDB()->selectField(
+		$touched = $this->repo->getSlaveDB()->selectField(
 			'page',
 			'page_touched',
 			[
@@ -181,7 +179,7 @@ class ForeignDBFile extends LocalFile {
 	 * @since 1.27
 	 */
 	public function getDescriptionShortUrl() {
-		$dbr = $this->repo->getReplicaDB();
+		$dbr = $this->repo->getSlaveDB();
 		$pageId = $dbr->selectField(
 			'page',
 			'page_id',

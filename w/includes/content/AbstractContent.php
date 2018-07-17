@@ -55,7 +55,6 @@ abstract class AbstractContent implements Content {
 	 * @since 1.21
 	 *
 	 * @see Content::getModel
-	 * @return string
 	 */
 	public function getModel() {
 		return $this->model_id;
@@ -83,7 +82,6 @@ abstract class AbstractContent implements Content {
 	 * @since 1.21
 	 *
 	 * @see Content::getContentHandler
-	 * @return ContentHandler
 	 */
 	public function getContentHandler() {
 		return ContentHandler::getForContent( $this );
@@ -93,7 +91,6 @@ abstract class AbstractContent implements Content {
 	 * @since 1.21
 	 *
 	 * @see Content::getDefaultFormat
-	 * @return string
 	 */
 	public function getDefaultFormat() {
 		return $this->getContentHandler()->getDefaultFormat();
@@ -103,7 +100,6 @@ abstract class AbstractContent implements Content {
 	 * @since 1.21
 	 *
 	 * @see Content::getSupportedFormats
-	 * @return string[]
 	 */
 	public function getSupportedFormats() {
 		return $this->getContentHandler()->getSupportedFormats();
@@ -285,7 +281,7 @@ abstract class AbstractContent implements Content {
 	 *
 	 * @since 1.21
 	 *
-	 * @return Title|null
+	 * @return null
 	 *
 	 * @see Content::getRedirectTarget
 	 */
@@ -338,7 +334,6 @@ abstract class AbstractContent implements Content {
 	/**
 	 * @since 1.21
 	 *
-	 * @param string|int $sectionId
 	 * @return null
 	 *
 	 * @see Content::getSection
@@ -350,9 +345,6 @@ abstract class AbstractContent implements Content {
 	/**
 	 * @since 1.21
 	 *
-	 * @param string|int|null|bool $sectionId
-	 * @param Content $with
-	 * @param string $sectionTitle
 	 * @return null
 	 *
 	 * @see Content::replaceSection
@@ -364,9 +356,6 @@ abstract class AbstractContent implements Content {
 	/**
 	 * @since 1.21
 	 *
-	 * @param Title $title
-	 * @param User $user
-	 * @param ParserOptions $popts
 	 * @return Content $this
 	 *
 	 * @see Content::preSaveTransform
@@ -378,7 +367,6 @@ abstract class AbstractContent implements Content {
 	/**
 	 * @since 1.21
 	 *
-	 * @param string $header
 	 * @return Content $this
 	 *
 	 * @see Content::addSectionHeader
@@ -390,9 +378,6 @@ abstract class AbstractContent implements Content {
 	/**
 	 * @since 1.21
 	 *
-	 * @param Title $title
-	 * @param ParserOptions $popts
-	 * @param array $params
 	 * @return Content $this
 	 *
 	 * @see Content::preloadTransform
@@ -404,10 +389,6 @@ abstract class AbstractContent implements Content {
 	/**
 	 * @since 1.21
 	 *
-	 * @param WikiPage $page
-	 * @param int $flags
-	 * @param int $parentRevId
-	 * @param User $user
 	 * @return Status
 	 *
 	 * @see Content::prepareSave
@@ -424,9 +405,9 @@ abstract class AbstractContent implements Content {
 	 * @since 1.21
 	 *
 	 * @param WikiPage $page
-	 * @param ParserOutput|null $parserOutput
+	 * @param ParserOutput $parserOutput
 	 *
-	 * @return DeferrableUpdate[]
+	 * @return LinksDeletionUpdate[]
 	 *
 	 * @see Content::getDeletionUpdates
 	 */
@@ -492,7 +473,7 @@ abstract class AbstractContent implements Content {
 	 *
 	 * @param Title $title Context title for parsing
 	 * @param int|null $revId Revision ID (for {{REVISIONID}})
-	 * @param ParserOptions|null $options
+	 * @param ParserOptions|null $options Parser options
 	 * @param bool $generateHtml Whether or not to generate HTML
 	 *
 	 * @return ParserOutput Containing information derived from this content.
@@ -507,8 +488,8 @@ abstract class AbstractContent implements Content {
 		$po = new ParserOutput();
 
 		if ( Hooks::run( 'ContentGetParserOutput',
-			[ $this, $title, $revId, $options, $generateHtml, &$po ] )
-		) {
+			[ $this, $title, $revId, $options, $generateHtml, &$po ] ) ) {
+
 			// Save and restore the old value, just in case something is reusing
 			// the ParserOptions object in some weird way.
 			$oldRedir = $options->getRedirectTarget();
@@ -536,7 +517,7 @@ abstract class AbstractContent implements Content {
 	 *
 	 * @param Title $title Context title for parsing
 	 * @param int|null $revId Revision ID (for {{REVISIONID}})
-	 * @param ParserOptions $options
+	 * @param ParserOptions $options Parser options
 	 * @param bool $generateHtml Whether or not to generate HTML
 	 * @param ParserOutput &$output The output object to fill (reference).
 	 *

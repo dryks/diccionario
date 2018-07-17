@@ -19,7 +19,6 @@
  *
  * @file
  */
-use Wikimedia\ObjectFactory;
 
 /**
  * Class to implement stub globals, which are globals that delay loading the
@@ -49,25 +48,19 @@ class StubObject {
 	/** @var null|string */
 	protected $class;
 
-	/** @var null|callable */
-	protected $factory;
-
 	/** @var array */
 	protected $params;
 
 	/**
+	 * Constructor.
+	 *
 	 * @param string $global Name of the global variable.
-	 * @param string|callable $class Name of the class of the real object
-	 *                               or a factory function to call
+	 * @param string $class Name of the class of the real object.
 	 * @param array $params Parameters to pass to constructor of the real object.
 	 */
 	public function __construct( $global = null, $class = null, $params = [] ) {
 		$this->global = $global;
-		if ( is_callable( $class ) ) {
-			$this->factory = $class;
-		} else {
-			$this->class = $class;
-		}
+		$this->class = $class;
 		$this->params = $params;
 	}
 
@@ -87,7 +80,7 @@ class StubObject {
 	 * infinite loop when unstubbing an object or to avoid reference parameter
 	 * breakage.
 	 *
-	 * @param object &$obj Object to check.
+	 * @param object $obj Object to check.
 	 * @return void
 	 */
 	public static function unstub( &$obj ) {
@@ -117,10 +110,8 @@ class StubObject {
 	 * @return object
 	 */
 	public function _newObject() {
-		$params = $this->factory
-			? [ 'factory' => $this->factory ]
-			: [ 'class' => $this->class ];
-		return ObjectFactory::getObjectFromSpec( $params + [
+		return ObjectFactory::getObjectFromSpec( [
+			'class' => $this->class,
 			'args' => $this->params,
 			'closure_expansion' => false,
 		] );

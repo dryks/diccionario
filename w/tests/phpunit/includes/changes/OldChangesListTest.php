@@ -93,6 +93,7 @@ class OldChangesListTest extends MediaWikiLangTestCase {
 			'assert diff link'
 		);
 
+		$this->assertRegExp( '/tabindex="0"/', $line, 'assert tab index' );
 		$this->assertRegExp(
 			'/title=Cat&amp;curid=20131103212153&amp;action=history"/',
 			$line,
@@ -119,21 +120,15 @@ class OldChangesListTest extends MediaWikiLangTestCase {
 		);
 	}
 
-	public function testRecentChangesLine_Attribs() {
+	public function testRecentChangesLine_Tags() {
 		$recentChange = $this->getEditChange();
 		$recentChange->mAttribs['ts_tags'] = 'vandalism,newbie';
 
 		$oldChangesList = $this->getOldChangesList();
 		$line = $oldChangesList->recentChangesLine( $recentChange, false, 1 );
 
-		$this->assertRegExp(
-			'/<li data-mw-revid="\d+" data-mw-ts="\d+" class="[\w\s-]*mw-tag-vandalism[\w\s-]*">/',
-			$line
-		);
-		$this->assertRegExp(
-			'/<li data-mw-revid="\d+" data-mw-ts="\d+" class="[\w\s-]*mw-tag-newbie[\w\s-]*">/',
-			$line
-		);
+		$this->assertRegExp( '/<li class="[\w\s-]*mw-tag-vandalism[\w\s-]*">/', $line );
+		$this->assertRegExp( '/<li class="[\w\s-]*mw-tag-newbie[\w\s-]*">/', $line );
 	}
 
 	public function testRecentChangesLine_numberOfWatchingUsers() {
@@ -155,42 +150,8 @@ class OldChangesListTest extends MediaWikiLangTestCase {
 		$this->assertRegExp( "/watchlist-0-Cat/", $line );
 	}
 
-	public function testRecentChangesLine_dataAttribute() {
-		$oldChangesList = $this->getOldChangesList();
-		$oldChangesList->setWatchlistDivs( true );
-
-		$recentChange = $this->getEditChange();
-		$line = $oldChangesList->recentChangesLine( $recentChange, false, 1 );
-		$this->assertRegExp( '/data-target-page=\"Cat\"/', $line );
-
-		$recentChange = $this->getLogChange( 'delete', 'delete' );
-		$line = $oldChangesList->recentChangesLine( $recentChange, false, 1 );
-		$this->assertRegExp( '/data-target-page="Abc"/', $line );
-	}
-
-	public function testRecentChangesLine_prefix() {
-		$mockContext = $this->getMockBuilder( RequestContext::class )
-			->setMethods( [ 'getTitle' ] )
-			->getMock();
-		$mockContext->method( 'getTitle' )
-			->will( $this->returnValue( Title::newFromText( 'Expected Context Title' ) ) );
-
-		$oldChangesList = $this->getOldChangesList();
-		$oldChangesList->setContext( $mockContext );
-		$recentChange = $this->getEditChange();
-
-		$oldChangesList->setChangeLinePrefixer( function ( $rc, $changesList ) {
-			// Make sure RecentChange and ChangesList objects are the same
-			$this->assertEquals( 'Expected Context Title', $changesList->getContext()->getTitle() );
-			$this->assertEquals( 'Cat', $rc->getTitle() );
-			return 'I am a prefix';
-		} );
-		$line = $oldChangesList->recentChangesLine( $recentChange );
-		$this->assertRegExp( "/I am a prefix/", $line );
-	}
-
 	private function getNewBotEditChange() {
-		$user = $this->getMutableTestUser()->getUser();
+		$user = $this->getTestUser();
 
 		$recentChange = $this->testRecentChangesHelper->makeNewBotEditRecentChange(
 			$user, 'Abc', '20131103212153', 5, 191, 190, 0, 0
@@ -200,7 +161,7 @@ class OldChangesListTest extends MediaWikiLangTestCase {
 	}
 
 	private function getLogChange( $logType, $logAction ) {
-		$user = $this->getMutableTestUser()->getUser();
+		$user = $this->getTestUser();
 
 		$recentChange = $this->testRecentChangesHelper->makeLogRecentChange(
 			$logType, $logAction, $user, 'Abc', '20131103212153', 0, 0
@@ -210,7 +171,7 @@ class OldChangesListTest extends MediaWikiLangTestCase {
 	}
 
 	private function getEditChange() {
-		$user = $this->getMutableTestUser()->getUser();
+		$user = $this->getTestUser();
 		$recentChange = $this->testRecentChangesHelper->makeEditRecentChange(
 			$user, 'Cat', '20131103212153', 5, 191, 190, 0, 0
 		);
@@ -223,8 +184,18 @@ class OldChangesListTest extends MediaWikiLangTestCase {
 		return new OldChangesList( $context );
 	}
 
+	private function getTestUser() {
+		$user = User::newFromName( 'TestRecentChangesUser' );
+
+		if ( !$user->getId() ) {
+			$user->addToDatabase();
+		}
+
+		return $user;
+	}
+
 	private function getContext() {
-		$user = $this->getMutableTestUser()->getUser();
+		$user = $this->getTestUser();
 		$context = $this->testRecentChangesHelper->getTestContext( $user );
 		$context->setLanguage( 'qqx' );
 

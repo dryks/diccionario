@@ -32,17 +32,8 @@ use Liuggio\StatsdClient\Factory\StatsdDataFactory;
  *
  * @since 1.25
  */
-class BufferingStatsdDataFactory extends StatsdDataFactory implements IBufferingStatsdDataFactory {
+class BufferingStatsdDataFactory extends StatsdDataFactory {
 	protected $buffer = [];
-	/**
-	 * Collection enabled?
-	 * @var bool
-	 */
-	protected $enabled = true;
-	/**
-	 * @var string
-	 */
-	private $prefix;
 
 	public function __construct( $prefix ) {
 		parent::__construct();
@@ -58,7 +49,6 @@ class BufferingStatsdDataFactory extends StatsdDataFactory implements IBuffering
 	 *
 	 * @param string $key
 	 * @since 1.26
-	 * @return string
 	 */
 	private static function normalizeMetricKey( $key ) {
 		$key = preg_replace( '/[:.]+/', '.', $key );
@@ -71,9 +61,6 @@ class BufferingStatsdDataFactory extends StatsdDataFactory implements IBuffering
 		$key, $value = 1, $metric = StatsdDataInterface::STATSD_METRIC_COUNT
 	) {
 		$entity = $this->produceStatsdDataEntity();
-		if ( !$this->enabled ) {
-			return $entity;
-		}
 		if ( $key !== null ) {
 			$key = self::normalizeMetricKey( "{$this->prefix}.{$key}" );
 			$entity->setKey( $key );
@@ -92,30 +79,9 @@ class BufferingStatsdDataFactory extends StatsdDataFactory implements IBuffering
 	}
 
 	/**
-	 * @deprecated Use getData()
 	 * @return StatsdData[]
 	 */
 	public function getBuffer() {
 		return $this->buffer;
-	}
-
-	public function hasData() {
-		return !empty( $this->buffer );
-	}
-
-	public function getData() {
-		return $this->buffer;
-	}
-
-	public function clearData() {
-		$this->buffer = [];
-	}
-
-	public function getDataCount() {
-		return count( $this->buffer );
-	}
-
-	public function setEnabled( $enabled ) {
-		$this->enabled = $enabled;
 	}
 }

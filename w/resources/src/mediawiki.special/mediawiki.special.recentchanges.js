@@ -21,6 +21,7 @@
 			$checkboxes.prop( 'disabled', isAllNS );
 		},
 
+		/** */
 		init: function () {
 			$select = $( '#namespace' );
 			$checkboxes = $( '#nsassociated, #nsinvert' );
@@ -33,6 +34,6 @@
 
 	$( rc.init );
 
-	module.exports = rc;
+	mw.special.recentchanges = rc;
 
 }( mediaWiki, jQuery ) );

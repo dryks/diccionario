@@ -7,10 +7,7 @@
 			"Shirayuki",
 			"Takot",
 			"Los688",
-			"Sujiniku",
-			"Translatealcd",
-			"Otokoume",
-			"Rxy"
+			"Sujiniku"
 		]
 	},
 	"ooui-outline-control-move-down": "項目を下に移動させる",
@@ -19,7 +16,6 @@
 	"ooui-toolbar-more": "その他",
 	"ooui-toolgroup-expand": "続き",
 	"ooui-toolgroup-collapse": "折り畳む",
-	"ooui-item-remove": "削除",
 	"ooui-dialog-message-accept": "OK",
 	"ooui-dialog-message-reject": "キャンセル",
 	"ooui-dialog-process-error": "エラーが発生しました…",

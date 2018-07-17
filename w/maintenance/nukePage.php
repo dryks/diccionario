@@ -39,8 +39,9 @@ class NukePage extends Maintenance {
 	}
 
 	public function execute() {
+
 		$name = $this->getArg();
-		$delete = $this->hasOption( 'delete' );
+		$delete = $this->getOption( 'delete', false );
 
 		$dbw = $this->getDB( DB_MASTER );
 		$this->beginTransaction( $dbw, __METHOD__ );
@@ -115,5 +116,5 @@ class NukePage extends Maintenance {
 	}
 }
 
-$maintClass = NukePage::class;
+$maintClass = "NukePage";
 require_once RUN_MAINTENANCE_IF_MAIN;

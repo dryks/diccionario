@@ -14,7 +14,6 @@ $separatorTransformTable = [
 	',' => "\xc2\xa0",
 	'.' => ',',
 ];
-$minimumGroupingDigits = 2;
 
 $fallback8bitEncoding = 'windows-1254';
 
@@ -143,3 +142,4 @@ $dateFormats = [
 
 $linkTrail = "/^((?:[a-zıʼ’“»]|'(?!'))+)(.*)$/sDu";
 $linkPrefixCharset = 'a-zıA-Zİ\\x80-\\xff';
+

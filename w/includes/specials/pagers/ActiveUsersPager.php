@@ -1,5 +1,7 @@
 <?php
 /**
+ * Copyright © 2008 Aaron Schulz
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -34,9 +36,14 @@ class ActiveUsersPager extends UsersPager {
 	protected $opts;
 
 	/**
-	 * @var string[]
+	 * @var array
 	 */
-	protected $groups;
+	protected $hideGroups = [];
+
+	/**
+	 * @var array
+	 */
+	protected $hideRights = [];
 
 	/**
 	 * @var array
@@ -45,15 +52,15 @@ class ActiveUsersPager extends UsersPager {
 
 	/**
 	 * @param IContextSource $context
-	 * @param FormOptions $opts
+	 * @param null $group Unused
+	 * @param string $par Parameter passed to the page
 	 */
-	function __construct( IContextSource $context = null, FormOptions $opts ) {
+	function __construct( IContextSource $context = null, $group = null, $par = null ) {
 		parent::__construct( $context );
 
 		$this->RCMaxAge = $this->getConfig()->get( 'ActiveUserDays' );
+		$un = $this->getRequest()->getText( 'username', $par );
 		$this->requestedUser = '';
-
-		$un = $opts->getValue( 'username' );
 		if ( $un != '' ) {
 			$username = Title::makeTitleSafe( NS_USER, $un );
 			if ( !is_null( $username ) ) {
@@ -61,14 +68,22 @@ class ActiveUsersPager extends UsersPager {
 			}
 		}
 
-		$this->groups = $opts->getValue( 'groups' );
-		$this->excludegroups = $opts->getValue( 'excludegroups' );
-		// Backwards-compatibility with old URLs
-		if ( $opts->getValue( 'hidebots' ) ) {
-			$this->excludegroups[] = 'bot';
+		$this->setupOptions();
+	}
+
+	public function setupOptions() {
+		$this->opts = new FormOptions();
+
+		$this->opts->add( 'hidebots', false, FormOptions::BOOL );
+		$this->opts->add( 'hidesysops', false, FormOptions::BOOL );
+
+		$this->opts->fetchValuesFromRequest( $this->getRequest() );
+
+		if ( $this->opts->getValue( 'hidebots' ) == 1 ) {
+			$this->hideRights[] = 'bot';
 		}
-		if ( $opts->getValue( 'hidesysops' ) ) {
-			$this->excludegroups[] = 'sysop';
+		if ( $this->opts->getValue( 'hidesysops' ) == 1 ) {
+			$this->hideGroups[] = 'sysop';
 		}
 	}
 
@@ -79,17 +94,13 @@ class ActiveUsersPager extends UsersPager {
 	function getQueryInfo() {
 		$dbr = $this->getDatabase();
 
-		$rcQuery = ActorMigration::newMigration()->getJoin( 'rc_user' );
-
 		$activeUserSeconds = $this->getConfig()->get( 'ActiveUserDays' ) * 86400;
 		$timestamp = $dbr->timestamp( wfTimestamp( TS_UNIX ) - $activeUserSeconds );
-		$tables = [ 'querycachetwo', 'user', 'recentchanges' ] + $rcQuery['tables'];
-		$jconds = $rcQuery['joins'];
 		$conds = [
 			'qcc_type' => 'activeusers',
 			'qcc_namespace' => NS_USER,
 			'user_name = qcc_title',
-			$rcQuery['fields']['rc_user_text'] . ' = qcc_title',
+			'rc_user_text = qcc_title',
 			'rc_type != ' . $dbr->addQuotes( RC_EXTERNAL ), // Don't count wikidata.
 			'rc_type != ' . $dbr->addQuotes( RC_CATEGORIZE ), // Don't count categorization changes.
 			'rc_log_type IS NULL OR rc_log_type != ' . $dbr->addQuotes( 'newusers' ),
@@ -98,23 +109,6 @@ class ActiveUsersPager extends UsersPager {
 		if ( $this->requestedUser != '' ) {
 			$conds[] = 'qcc_title >= ' . $dbr->addQuotes( $this->requestedUser );
 		}
-		if ( $this->groups !== [] ) {
-			$tables[] = 'user_groups';
-			$conds[] = 'ug_user = user_id';
-			$conds['ug_group'] = $this->groups;
-			$conds[] = 'ug_expiry IS NULL OR ug_expiry >= ' . $dbr->addQuotes( $dbr->timestamp() );
-		}
-		if ( $this->excludegroups !== [] ) {
-			foreach ( $this->excludegroups as $group ) {
-				$conds[] = 'NOT EXISTS (' . $dbr->selectSQLText(
-					'user_groups', '1', [
-						'ug_user = user_id',
-						'ug_group' => $group,
-						'ug_expiry IS NULL OR ug_expiry >= ' . $dbr->addQuotes( $dbr->timestamp() )
-					]
-				) . ')';
-			}
-		}
 		if ( !$this->getUser()->isAllowed( 'hideuser' ) ) {
 			$conds[] = 'NOT EXISTS (' . $dbr->selectSQLText(
 					'ipblocks', '1', [ 'ipb_user=user_id', 'ipb_deleted' => 1 ]
@@ -122,16 +116,10 @@ class ActiveUsersPager extends UsersPager {
 		}
 
 		return [
-			'tables' => $tables,
-			'fields' => [
-				'qcc_title',
-				'user_name' => 'qcc_title',
-				'user_id' => 'MAX(user_id)',
-				'recentedits' => 'COUNT(*)'
-			],
+			'tables' => [ 'querycachetwo', 'user', 'recentchanges' ],
+			'fields' => [ 'user_name', 'user_id', 'recentedits' => 'COUNT(*)', 'qcc_title' ],
 			'options' => [ 'GROUP BY' => [ 'qcc_title' ] ],
-			'conds' => $conds,
-			'join_conds' => $jconds,
+			'conds' => $conds
 		];
 	}
 
@@ -171,9 +159,27 @@ class ActiveUsersPager extends UsersPager {
 		$list = [];
 		$user = User::newFromId( $row->user_id );
 
-		$ugms = self::getGroupMemberships( intval( $row->user_id ), $this->userGroupCache );
-		foreach ( $ugms as $ugm ) {
-			$list[] = $this->buildGroupLink( $ugm, $userName );
+		// User right filter
+		foreach ( $this->hideRights as $right ) {
+			// Calling User::getRights() within the loop so that
+			// if the hideRights() filter is empty, we don't have to
+			// trigger the lazy-init of the big userrights array in the
+			// User object
+			if ( in_array( $right, $user->getRights() ) ) {
+				return '';
+			}
+		}
+
+		// User group filter
+		// Note: This is a different loop than for user rights,
+		// because we're reusing it to build the group links
+		// at the same time
+		$groups_list = self::getGroups( intval( $row->user_id ), $this->userGroupCache );
+		foreach ( $groups_list as $group ) {
+			if ( in_array( $group, $this->hideGroups ) ) {
+				return '';
+			}
+			$list[] = self::buildGroupLink( $group, $userName );
 		}
 
 		$groups = $lang->commaList( $list );
@@ -189,6 +195,54 @@ class ActiveUsersPager extends UsersPager {
 		$blocked = $isBlocked ? ' ' . $this->msg( 'listusers-blocked', $userName )->escaped() : '';
 
 		return Html::rawElement( 'li', [], "{$item} [{$count}]{$blocked}" );
+	}
+
+	function getPageHeader() {
+		$self = $this->getTitle();
+		$limit = $this->mLimit ? Html::hidden( 'limit', $this->mLimit ) : '';
+
+		# Form tag
+		$out = Xml::openElement( 'form', [ 'method' => 'get', 'action' => wfScript() ] );
+		$out .= Xml::fieldset( $this->msg( 'activeusers' )->text() ) . "\n";
+		$out .= Html::hidden( 'title', $self->getPrefixedDBkey() ) . $limit . "\n";
+
+		# Username field (with autocompletion support)
+		$this->getOutput()->addModules( 'mediawiki.userSuggest' );
+		$out .= Xml::inputLabel(
+				$this->msg( 'activeusers-from' )->text(),
+				'username',
+				'offset',
+				20,
+				$this->requestedUser,
+				[
+					'class' => 'mw-ui-input-inline mw-autocomplete-user',
+					'tabindex' => 1,
+				] + (
+					// Set autofocus on blank input
+				$this->requestedUser === '' ? [ 'autofocus' => '' ] : []
+				)
+			) . '<br />';
+
+		$out .= Xml::checkLabel( $this->msg( 'activeusers-hidebots' )->text(),
+			'hidebots', 'hidebots', $this->opts->getValue( 'hidebots' ), [ 'tabindex' => 2 ] );
+
+		$out .= Xml::checkLabel(
+				$this->msg( 'activeusers-hidesysops' )->text(),
+				'hidesysops',
+				'hidesysops',
+				$this->opts->getValue( 'hidesysops' ),
+				[ 'tabindex' => 3 ]
+			) . '<br />';
+
+		# Submit button and form bottom
+		$out .= Xml::submitButton(
+				$this->msg( 'activeusers-submit' )->text(),
+				[ 'tabindex' => 4 ]
+			) . "\n";
+		$out .= Xml::closeElement( 'fieldset' );
+		$out .= Xml::closeElement( 'form' );
+
+		return $out;
 	}
 
 }

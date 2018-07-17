@@ -18,9 +18,9 @@ class ContentModelLogFormatter extends LogFormatter {
 		}
 
 		$params = $this->extractParameters();
-		$revert = $this->getLinkRenderer()->makeKnownLink(
+		$revert = Linker::linkKnown(
 			SpecialPage::getTitleFor( 'ChangeContentModel' ),
-			$this->msg( 'logentry-contentmodel-change-revertlink' )->text(),
+			$this->msg( 'logentry-contentmodel-change-revertlink' )->escaped(),
 			[],
 			[
 				'pagetitle' => $this->entry->getTarget()->getPrefixedText(),

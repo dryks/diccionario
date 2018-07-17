@@ -5,6 +5,8 @@
  * @license The MIT License (MIT); see LICENSE.txt
  */
 
+/*global ve, OO */
+
 /**
  * MediaWiki UserInterface syntax highlight tool.
  *
@@ -20,7 +22,7 @@ ve.ui.MWSyntaxHighlightInspectorTool = function VeUiMWSyntaxHighlightInspectorTo
 OO.inheritClass( ve.ui.MWSyntaxHighlightInspectorTool, ve.ui.FragmentInspectorTool );
 ve.ui.MWSyntaxHighlightInspectorTool.static.name = 'syntaxhighlightInspector';
 ve.ui.MWSyntaxHighlightInspectorTool.static.group = 'object';
-ve.ui.MWSyntaxHighlightInspectorTool.static.icon = 'markup';
+ve.ui.MWSyntaxHighlightInspectorTool.static.icon = 'alienextension';
 ve.ui.MWSyntaxHighlightInspectorTool.static.title = OO.ui.deferMsg(
 	'syntaxhighlight-visualeditor-mwsyntaxhighlightinspector-title' );
 ve.ui.MWSyntaxHighlightInspectorTool.static.modelClasses = [ ve.dm.MWInlineSyntaxHighlightNode ];

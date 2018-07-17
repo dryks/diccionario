@@ -1,16 +1,9 @@
 <?php
 
-use Wikimedia\TestingAccessWrapper;
-
 /**
  * @group FileRepo
  * @group FileBackend
  * @group medium
- *
- * @covers SwiftFileBackend
- * @covers SwiftFileBackendDirList
- * @covers SwiftFileBackendFileList
- * @covers SwiftFileBackendList
  */
 class SwiftFileBackendTest extends MediaWikiTestCase {
 	/** @var TestingAccessWrapper Proxy to SwiftFileBackend */
@@ -22,7 +15,7 @@ class SwiftFileBackendTest extends MediaWikiTestCase {
 		$this->backend = TestingAccessWrapper::newFromObject(
 			new SwiftFileBackend( [
 				'name'             => 'local-swift-testing',
-				'class'            => SwiftFileBackend::class,
+				'class'            => 'SwiftFileBackend',
 				'wikiId'           => 'unit-testing',
 				'lockManager'      => LockManagerGroup::singleton()->get( 'fsLockManager' ),
 				'swiftAuthUrl'     => 'http://127.0.0.1:8080/auth', // unused
@@ -34,69 +27,9 @@ class SwiftFileBackendTest extends MediaWikiTestCase {
 	}
 
 	/**
-	 * @dataProvider provider_testSanitizeHdrsStrict
-	 */
-	public function testSanitizeHdrsStrict( $raw, $sanitized ) {
-		$hdrs = $this->backend->sanitizeHdrsStrict( [ 'headers' => $raw ] );
-
-		$this->assertEquals( $hdrs, $sanitized, 'sanitizeHdrsStrict() has expected result' );
-	}
-
-	public static function provider_testSanitizeHdrsStrict() {
-		return [
-			[
-				[
-					'content-length' => 345,
-					'content-type'   => 'image+bitmap/jpeg',
-					'content-disposition' => 'inline',
-					'content-duration' => 35.6363,
-					'content-Custom' => 'hello',
-					'x-content-custom' => 'hello'
-				],
-				[
-					'content-disposition' => 'inline',
-					'content-duration' => 35.6363,
-					'content-custom' => 'hello',
-					'x-content-custom' => 'hello'
-				]
-			],
-			[
-				[
-					'content-length' => 345,
-					'content-type'   => 'image+bitmap/jpeg',
-					'content-Disposition' => 'inline; filename=xxx; ' . str_repeat( 'o', 1024 ),
-					'content-duration' => 35.6363,
-					'content-custom' => 'hello',
-					'x-content-custom' => 'hello'
-				],
-				[
-					'content-disposition' => 'inline;filename=xxx',
-					'content-duration' => 35.6363,
-					'content-custom' => 'hello',
-					'x-content-custom' => 'hello'
-				]
-			],
-			[
-				[
-					'content-length' => 345,
-					'content-type'   => 'image+bitmap/jpeg',
-					'content-disposition' => 'filename=' . str_repeat( 'o', 1024 ) . ';inline',
-					'content-duration' => 35.6363,
-					'content-custom' => 'hello',
-					'x-content-custom' => 'hello'
-				],
-				[
-					'content-disposition' => '',
-					'content-duration' => 35.6363,
-					'content-custom' => 'hello',
-					'x-content-custom' => 'hello'
-				]
-			]
-		];
-	}
-
-	/**
 	 * @dataProvider provider_testSanitizeHdrs
+	 * @covers SwiftFileBackend::sanitizeHdrs
+	 * @covers SwiftFileBackend::getCustomHeaders
 	 */
 	public function testSanitizeHdrs( $raw, $sanitized ) {
 		$hdrs = $this->backend->sanitizeHdrs( [ 'headers' => $raw ] );
@@ -116,7 +49,6 @@ class SwiftFileBackendTest extends MediaWikiTestCase {
 					'x-content-custom' => 'hello'
 				],
 				[
-					'content-type'   => 'image+bitmap/jpeg',
 					'content-disposition' => 'inline',
 					'content-duration' => 35.6363,
 					'content-custom' => 'hello',
@@ -133,7 +65,6 @@ class SwiftFileBackendTest extends MediaWikiTestCase {
 					'x-content-custom' => 'hello'
 				],
 				[
-					'content-type'   => 'image+bitmap/jpeg',
 					'content-disposition' => 'inline;filename=xxx',
 					'content-duration' => 35.6363,
 					'content-custom' => 'hello',
@@ -150,7 +81,6 @@ class SwiftFileBackendTest extends MediaWikiTestCase {
 					'x-content-custom' => 'hello'
 				],
 				[
-					'content-type'   => 'image+bitmap/jpeg',
 					'content-disposition' => '',
 					'content-duration' => 35.6363,
 					'content-custom' => 'hello',
@@ -162,6 +92,7 @@ class SwiftFileBackendTest extends MediaWikiTestCase {
 
 	/**
 	 * @dataProvider provider_testGetMetadataHeaders
+	 * @covers SwiftFileBackend::getMetadataHeaders
 	 */
 	public function testGetMetadataHeaders( $raw, $sanitized ) {
 		$hdrs = $this->backend->getMetadataHeaders( $raw );
@@ -189,6 +120,7 @@ class SwiftFileBackendTest extends MediaWikiTestCase {
 
 	/**
 	 * @dataProvider provider_testGetMetadata
+	 * @covers SwiftFileBackend::getMetadata
 	 */
 	public function testGetMetadata( $raw, $sanitized ) {
 		$hdrs = $this->backend->getMetadata( $raw );

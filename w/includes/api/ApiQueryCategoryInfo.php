@@ -1,5 +1,9 @@
 <?php
 /**
+ *
+ *
+ * Created on May 13, 2007
+ *
  * Copyright © 2006 Yuri Astrakhan "<Firstname><Lastname>@gmail.com"
  *
  * This program is free software; you can redistribute it and/or modify
@@ -43,7 +47,7 @@ class ApiQueryCategoryInfo extends ApiQueryBase {
 		$titles = $this->getPageSet()->getGoodAndMissingTitles();
 		$cattitles = [];
 		foreach ( $categories as $c ) {
-			/** @var Title $t */
+			/** @var $t Title */
 			$t = $titles[$c];
 			$cattitles[$c] = $t->getDBkey();
 		}
@@ -111,6 +115,6 @@ class ApiQueryCategoryInfo extends ApiQueryBase {
 	}
 
 	public function getHelpUrls() {
-		return 'https://www.mediawiki.org/wiki/Special:MyLanguage/API:Categoryinfo';
+		return 'https://www.mediawiki.org/wiki/API:Categoryinfo';
 	}
 }

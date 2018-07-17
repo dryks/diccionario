@@ -23,7 +23,6 @@ Brad Jorsch
 Chad Horohoe
 Daniel Cannon
 Danny B.
-David Chan
 Derk-Jan Hartman
 Erick Guan
 Fomafix

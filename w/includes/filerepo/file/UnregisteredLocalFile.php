@@ -111,11 +111,6 @@ class UnregisteredLocalFile extends File {
 	 * @return bool
 	 */
 	private function cachePageDimensions( $page = 1 ) {
-		$page = (int)$page;
-		if ( $page < 1 ) {
-			$page = 1;
-		}
-
 		if ( !isset( $this->dims[$page] ) ) {
 			if ( !$this->getHandler() ) {
 				return false;
@@ -151,7 +146,7 @@ class UnregisteredLocalFile extends File {
 	 */
 	function getMimeType() {
 		if ( !isset( $this->mime ) ) {
-			$magic = MediaWiki\MediaWikiServices::getInstance()->getMimeAnalyzer();
+			$magic = MimeMagic::singleton();
 			$this->mime = $magic->guessMimeType( $this->getLocalRefPath() );
 		}
 
@@ -171,8 +166,8 @@ class UnregisteredLocalFile extends File {
 	}
 
 	/**
-	 * @return int
-	 */
+	* @return int
+	*/
 	function getBitDepth() {
 		$gis = $this->getImageSize( $this->getLocalRefPath() );
 

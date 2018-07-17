@@ -1,6 +1,4 @@
 <?php
-use Wikimedia\ScopedCallback;
-
 /**
  * Factory for handling the special page list and generating SpecialPage objects.
  *
@@ -57,19 +55,17 @@ class SpecialPageFactoryTest extends MediaWikiTestCase {
 		$specialPageTestHelper = new SpecialPageTestHelper();
 
 		return [
-			'class name' => [ 'SpecialAllPages', false ],
+			'class name' => [ 'SpecialAllPages' ],
 			'closure' => [ function () {
 				return new SpecialAllPages();
-			}, false ],
-			'function' => [ [ $this, 'newSpecialAllPages' ], false ],
-			'callback string' => [ 'SpecialPageTestHelper::newSpecialAllPages', false ],
+			} ],
+			'function' => [ [ $this, 'newSpecialAllPages' ] ],
+			'callback string' => [ 'SpecialPageTestHelper::newSpecialAllPages' ],
 			'callback with object' => [
-				[ $specialPageTestHelper, 'newSpecialAllPages' ],
-				false
+				[ $specialPageTestHelper, 'newSpecialAllPages' ]
 			],
 			'callback array' => [
-				[ 'SpecialPageTestHelper', 'newSpecialAllPages' ],
-				false
+				[ 'SpecialPageTestHelper', 'newSpecialAllPages' ]
 			]
 		];
 	}
@@ -78,22 +74,22 @@ class SpecialPageFactoryTest extends MediaWikiTestCase {
 	 * @covers SpecialPageFactory::getPage
 	 * @dataProvider specialPageProvider
 	 */
-	public function testGetPage( $spec, $shouldReuseInstance ) {
+	public function testGetPage( $spec ) {
 		$this->mergeMwGlobalArrayValue( 'wgSpecialPages', [ 'testdummy' => $spec ] );
 		SpecialPageFactory::resetList();
 
 		$page = SpecialPageFactory::getPage( 'testdummy' );
-		$this->assertInstanceOf( SpecialPage::class, $page );
+		$this->assertInstanceOf( 'SpecialPage', $page );
 
 		$page2 = SpecialPageFactory::getPage( 'testdummy' );
-		$this->assertEquals( $shouldReuseInstance, $page2 === $page, "Should re-use instance:" );
+		$this->assertEquals( true, $page2 === $page, "Should re-use instance:" );
 	}
 
 	/**
 	 * @covers SpecialPageFactory::getNames
 	 */
 	public function testGetNames() {
-		$this->mergeMwGlobalArrayValue( 'wgSpecialPages', [ 'testdummy' => SpecialAllPages::class ] );
+		$this->mergeMwGlobalArrayValue( 'wgSpecialPages', [ 'testdummy' => 'SpecialAllPages' ] );
 		SpecialPageFactory::resetList();
 
 		$names = SpecialPageFactory::getNames();

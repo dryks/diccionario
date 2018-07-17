@@ -47,7 +47,7 @@ class PNGMetadataExtractor {
 		self::$pngSig = pack( "C8", 137, 80, 78, 71, 13, 10, 26, 10 );
 		self::$crcSize = 4;
 		/* based on list at http://owl.phy.queensu.ca/~phil/exiftool/TagNames/PNG.html#TextualData
-		 * and https://www.w3.org/TR/PNG/#11keywords
+		 * and http://www.w3.org/TR/PNG/#11keywords
 		 */
 		self::$textChunks = [
 			'xml:com.adobe.xmp' => 'xmp',
@@ -121,11 +121,9 @@ class PNGMetadataExtractor {
 				if ( !$buf || strlen( $buf ) < $chunk_size ) {
 					throw new Exception( __METHOD__ . ": Read error" );
 				}
-				$width = unpack( 'N', substr( $buf, 0, 4 ) )[1];
-				$height = unpack( 'N', substr( $buf, 4, 4 ) )[1];
 				$bitDepth = ord( substr( $buf, 8, 1 ) );
 				// Detect the color type in British English as per the spec
-				// https://www.w3.org/TR/PNG/#11IHDR
+				// http://www.w3.org/TR/PNG/#11IHDR
 				switch ( ord( substr( $buf, 9, 1 ) ) ) {
 					case 0:
 						$colorType = 'greyscale';
@@ -202,9 +200,9 @@ class PNGMetadataExtractor {
 					// if compressed
 					if ( $items[2] == "\x01" ) {
 						if ( function_exists( 'gzuncompress' ) && $items[4] === "\x00" ) {
-							Wikimedia\suppressWarnings();
+							MediaWiki\suppressWarnings();
 							$items[5] = gzuncompress( $items[5] );
-							Wikimedia\restoreWarnings();
+							MediaWiki\restoreWarnings();
 
 							if ( $items[5] === false ) {
 								// decompression failed
@@ -246,9 +244,9 @@ class PNGMetadataExtractor {
 					fseek( $fh, self::$crcSize, SEEK_CUR );
 					continue;
 				}
-				Wikimedia\suppressWarnings();
+				MediaWiki\suppressWarnings();
 				$content = iconv( 'ISO-8859-1', 'UTF-8', $content );
-				Wikimedia\restoreWarnings();
+				MediaWiki\restoreWarnings();
 
 				if ( $content === false ) {
 					throw new Exception( __METHOD__ . ": Read error (error with iconv)" );
@@ -286,9 +284,9 @@ class PNGMetadataExtractor {
 						continue;
 					}
 
-					Wikimedia\suppressWarnings();
+					MediaWiki\suppressWarnings();
 					$content = gzuncompress( $content );
-					Wikimedia\restoreWarnings();
+					MediaWiki\restoreWarnings();
 
 					if ( $content === false ) {
 						// decompression failed
@@ -297,9 +295,9 @@ class PNGMetadataExtractor {
 						continue;
 					}
 
-					Wikimedia\suppressWarnings();
+					MediaWiki\suppressWarnings();
 					$content = iconv( 'ISO-8859-1', 'UTF-8', $content );
-					Wikimedia\restoreWarnings();
+					MediaWiki\restoreWarnings();
 
 					if ( $content === false ) {
 						throw new Exception( __METHOD__ . ": Read error (error with iconv)" );

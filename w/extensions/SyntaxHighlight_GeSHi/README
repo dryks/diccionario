@@ -14,7 +14,10 @@ with earlier versions of MediaWiki, visit:
 
 == Installation ==
 
-Add this line to your LocalSettings.php:
+First, you will need to ensure that this extension's Composer-managed
+dependencies are available. In the extension directory, run 'composer update'.
+
+Next, Add this line to your LocalSettings.php:
 
     wfLoadExtension( 'SyntaxHighlight_GeSHi' );
 

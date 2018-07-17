@@ -21,9 +21,6 @@
  * @ingroup SpecialPage
  */
 
-use Wikimedia\Rdbms\IResultWrapper;
-use Wikimedia\Rdbms\IDatabase;
-
 /**
  * Class definition for a wanted query page like
  * WantedPages, WantedTemplates, etc
@@ -41,10 +38,21 @@ abstract class WantedQueryPage extends QueryPage {
 	/**
 	 * Cache page existence for performance
 	 * @param IDatabase $db
-	 * @param IResultWrapper $res
+	 * @param ResultWrapper $res
 	 */
 	function preprocessResults( $db, $res ) {
-		$this->executeLBFromResultWrapper( $res );
+		if ( !$res->numRows() ) {
+			return;
+		}
+
+		$batch = new LinkBatch;
+		foreach ( $res as $row ) {
+			$batch->add( $row->namespace, $row->title );
+		}
+		$batch->execute();
+
+		// Back to start for display
+		$res->seek( 0 );
 	}
 
 	/**
@@ -67,15 +75,14 @@ abstract class WantedQueryPage extends QueryPage {
 	 * @return string
 	 */
 	public function formatResult( $skin, $result ) {
-		$linkRenderer = $this->getLinkRenderer();
 		$title = Title::makeTitleSafe( $result->namespace, $result->title );
 		if ( $title instanceof Title ) {
 			if ( $this->isCached() || $this->forceExistenceCheck() ) {
 				$pageLink = $this->existenceCheck( $title )
-					? '<del>' . $linkRenderer->makeLink( $title ) . '</del>'
-					: $linkRenderer->makeLink( $title );
+					? '<del>' . Linker::link( $title ) . '</del>'
+					: Linker::link( $title );
 			} else {
-				$pageLink = $linkRenderer->makeLink(
+				$pageLink = Linker::link(
 					$title,
 					null,
 					[],
@@ -102,7 +109,6 @@ abstract class WantedQueryPage extends QueryPage {
 	 * @note This will only be run if the page is cached (ie $wgMiserMode = true)
 	 *   unless forceExistenceCheck() is true.
 	 * @since 1.24
-	 * @param Title $title
 	 * @return bool
 	 */
 	protected function existenceCheck( Title $title ) {
@@ -118,40 +124,7 @@ abstract class WantedQueryPage extends QueryPage {
 	 */
 	private function makeWlhLink( $title, $result ) {
 		$wlh = SpecialPage::getTitleFor( 'Whatlinkshere', $title->getPrefixedText() );
-		$label = $this->msg( 'nlinks' )->numParams( $result->value )->text();
-		return $this->getLinkRenderer()->makeLink( $wlh, $label );
+		$label = $this->msg( 'nlinks' )->numParams( $result->value )->escaped();
+		return Linker::link( $wlh, $label );
 	}
-
-	/**
-	 * Order by title for pages with the same number of links to them
-	 *
-	 * @return array
-	 * @since 1.29
-	 */
-	function getOrderFields() {
-		return [ 'value DESC', 'namespace', 'title' ];
-	}
-
-	/**
-	 * Do not order descending for all order fields.  We will use DESC only on one field, see
-	 * getOrderFields above. This overwrites sortDescending from QueryPage::getOrderFields().
-	 * Do NOT change this to true unless you remove the phrase DESC in getOrderFiels above.
-	 * If you do a database error will be thrown due to double adding DESC to query!
-	 *
-	 * @return bool
-	 * @since 1.29
-	 */
-	function sortDescending() {
-		return false;
-	}
-
-	/**
-	 * Also use the order fields returned by getOrderFields when fetching from the cache.
-	 * @return array
-	 * @since 1.29
-	 */
-	function getCacheOrderFields() {
-		return $this->getOrderFields();
-	}
-
 }

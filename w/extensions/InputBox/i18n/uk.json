@@ -4,8 +4,7 @@
 			"AS",
 			"Ahonc",
 			"Dim Grits",
-			"Ата",
-			"Piramidion"
+			"Ата"
 		]
 	},
 	"inputbox-desc": "Дозволяє включати заздалегідь визначені HTML-форми",
@@ -13,7 +12,7 @@
 	"inputbox-error-bad-type": "Невідомий тип поля вводу «$1».\nБудь ласка, зазначте один з допустимих типів: «create», «comment», «search», «search2» або «fulltext».",
 	"inputbox-tryexact": "Строгий пошук",
 	"inputbox-searchfulltext": "Повнотекстовий пошук",
-	"inputbox-createarticle": "Створити сторінку",
+	"inputbox-createarticle": "Створити статтю",
 	"inputbox-movearticle": "Перейменувати сторінку",
 	"inputbox-postcomment": "Новий розділ",
 	"inputbox-postcommenttitle": "Новий розділ",

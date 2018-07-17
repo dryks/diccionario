@@ -20,11 +20,9 @@
  * @file
  */
 
-use Wikimedia\Rdbms\IResultWrapper;
-
 abstract class UserArray implements Iterator {
 	/**
-	 * @param IResultWrapper $res
+	 * @param ResultWrapper $res
 	 * @return UserArrayFromResult
 	 */
 	static function newFromResult( $res ) {
@@ -40,7 +38,7 @@ abstract class UserArray implements Iterator {
 
 	/**
 	 * @param array $ids
-	 * @return UserArrayFromResult|ArrayIterator
+	 * @return UserArrayFromResult
 	 */
 	static function newFromIDs( $ids ) {
 		$ids = array_map( 'intval', (array)$ids ); // paranoia
@@ -48,15 +46,12 @@ abstract class UserArray implements Iterator {
 			// Database::select() doesn't like empty arrays
 			return new ArrayIterator( [] );
 		}
-		$dbr = wfGetDB( DB_REPLICA );
-		$userQuery = User::getQueryInfo();
+		$dbr = wfGetDB( DB_SLAVE );
 		$res = $dbr->select(
-			$userQuery['tables'],
-			$userQuery['fields'],
+			'user',
+			User::selectFields(),
 			[ 'user_id' => array_unique( $ids ) ],
-			__METHOD__,
-			[],
-			$userQuery['joins']
+			__METHOD__
 		);
 		return self::newFromResult( $res );
 	}
@@ -64,7 +59,7 @@ abstract class UserArray implements Iterator {
 	/**
 	 * @since 1.25
 	 * @param array $names
-	 * @return UserArrayFromResult|ArrayIterator
+	 * @return UserArrayFromResult
 	 */
 	static function newFromNames( $names ) {
 		$names = array_map( 'strval', (array)$names ); // paranoia
@@ -72,21 +67,18 @@ abstract class UserArray implements Iterator {
 			// Database::select() doesn't like empty arrays
 			return new ArrayIterator( [] );
 		}
-		$dbr = wfGetDB( DB_REPLICA );
-		$userQuery = User::getQueryInfo();
+		$dbr = wfGetDB( DB_SLAVE );
 		$res = $dbr->select(
-			$userQuery['tables'],
-			$userQuery['fields'],
+			'user',
+			User::selectFields(),
 			[ 'user_name' => array_unique( $names ) ],
-			__METHOD__,
-			[],
-			$userQuery['joins']
+			__METHOD__
 		);
 		return self::newFromResult( $res );
 	}
 
 	/**
-	 * @param IResultWrapper $res
+	 * @param ResultWrapper $res
 	 * @return UserArrayFromResult
 	 */
 	protected static function newFromResult_internal( $res ) {

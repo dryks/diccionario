@@ -47,24 +47,24 @@ class ApiFeedRecentChanges extends ApiBase {
 		$this->params = $this->extractRequestParams();
 
 		if ( !$config->get( 'Feed' ) ) {
-			$this->dieWithError( 'feed-unavailable' );
+			$this->dieUsage( 'Syndication feeds are not available', 'feed-unavailable' );
 		}
 
 		$feedClasses = $config->get( 'FeedClasses' );
 		if ( !isset( $feedClasses[$this->params['feedformat']] ) ) {
-			$this->dieWithError( 'feed-invalid' );
+			$this->dieUsage( 'Invalid subscription feed type', 'feed-invalid' );
 		}
 
 		$this->getMain()->setCacheMode( 'public' );
 		if ( !$this->getMain()->getParameter( 'smaxage' ) ) {
-			// T65249: This page gets hit a lot, cache at least 15 seconds.
+			// bug 63249: This page gets hit a lot, cache at least 15 seconds.
 			$this->getMain()->setCacheMaxAge( 15 );
 		}
 
 		$feedFormat = $this->params['feedformat'];
 		$specialClass = $this->params['target'] !== null
-			? SpecialRecentChangesLinked::class
-			: SpecialRecentChanges::class;
+			? 'SpecialRecentchangeslinked'
+			: 'SpecialRecentchanges';
 
 		$formatter = $this->getFeedObject( $feedFormat, $specialClass );
 
@@ -90,15 +90,15 @@ class ApiFeedRecentChanges extends ApiBase {
 	 * Return a ChannelFeed object.
 	 *
 	 * @param string $feedFormat Feed's format (either 'rss' or 'atom')
-	 * @param string $specialClass Relevant special page name (either 'SpecialRecentChanges' or
-	 *     'SpecialRecentChangesLinked')
+	 * @param string $specialClass Relevant special page name (either 'SpecialRecentchanges' or
+	 *     'SpecialRecentchangeslinked')
 	 * @return ChannelFeed
 	 */
 	public function getFeedObject( $feedFormat, $specialClass ) {
-		if ( $specialClass === SpecialRecentChangesLinked::class ) {
+		if ( $specialClass === 'SpecialRecentchangeslinked' ) {
 			$title = Title::newFromText( $this->params['target'] );
 			if ( !$title ) {
-				$this->dieWithError( [ 'apierror-invalidtitle', wfEscapeWikiText( $this->params['target'] ) ] );
+				$this->dieUsageMsg( [ 'invalidtitle', $this->params['target'] ] );
 			}
 
 			$feed = new ChangesFeed( $feedFormat, false );
@@ -168,6 +168,16 @@ class ApiFeedRecentChanges extends ApiBase {
 			],
 			'showlinkedto' => false,
 		];
+
+		if ( $config->get( 'AllowCategorizedRecentChanges' ) ) {
+			$ret += [
+				'categories' => [
+					ApiBase::PARAM_TYPE => 'string',
+					ApiBase::PARAM_ISMULTI => true,
+				],
+				'categories_any' => false,
+			];
+		}
 
 		return $ret;
 	}

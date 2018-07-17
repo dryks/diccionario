@@ -21,8 +21,6 @@
  * @ingroup SpecialPage
  */
 
-use MediaWiki\MediaWikiServices;
-
 /**
  * A special page that allows users to change their preferences
  *
@@ -55,22 +53,21 @@ class SpecialPreferences extends SpecialPage {
 		$out->addModules( 'mediawiki.special.preferences' );
 		$out->addModuleStyles( 'mediawiki.special.preferences.styles' );
 
-		$session = $this->getRequest()->getSession();
-		if ( $session->get( 'specialPreferencesSaveSuccess' ) ) {
+		$request = $this->getRequest();
+		if ( $request->getSessionData( 'specialPreferencesSaveSuccess' ) ) {
 			// Remove session data for the success message
-			$session->remove( 'specialPreferencesSaveSuccess' );
-			$out->addModuleStyles( 'mediawiki.notification.convertmessagebox.styles' );
+			$request->setSessionData( 'specialPreferencesSaveSuccess', null );
 
-			$out->addHTML(
+			$out->wrapWikiMsg(
 				Html::rawElement(
 					'div',
 					[
-						'class' => 'mw-preferences-messagebox mw-notify-success successbox',
-						'id' => 'mw-preferences-success',
-						'data-mw-autohide' => 'false',
+						'class' => 'mw-preferences-messagebox successbox',
+						'id' => 'mw-preferences-success'
 					],
-					Html::element( 'p', [], $this->msg( 'savedprefs' )->text() )
-				)
+					Html::element( 'p', [], '$1' )
+				),
+				'savedprefs'
 			);
 		}
 
@@ -83,7 +80,8 @@ class SpecialPreferences extends SpecialPage {
 			$user = $this->getUser();
 		}
 
-		$htmlForm = $this->getFormObject( $user, $this->getContext() );
+		$htmlForm = Preferences::getFormObject( $user, $this->getContext() );
+		$htmlForm->setSubmitCallback( [ 'Preferences', 'tryUISubmit' ] );
 		$sectionTitles = $htmlForm->getPreferenceSections();
 
 		$prefTabs = '';
@@ -118,19 +116,7 @@ class SpecialPreferences extends SpecialPage {
 		$htmlForm->show();
 	}
 
-	/**
-	 * Get the preferences form to use.
-	 * @param User $user The user.
-	 * @param IContextSource $context The context.
-	 * @return PreferencesForm|HTMLForm
-	 */
-	protected function getFormObject( $user, IContextSource $context ) {
-		$preferencesFactory = MediaWikiServices::getInstance()->getPreferencesFactory();
-		$form = $preferencesFactory->getForm( $user, $context );
-		return $form;
-	}
-
-	protected function showResetForm() {
+	private function showResetForm() {
 		if ( !$this->getUser()->isAllowed( 'editmyoptions' ) ) {
 			throw new PermissionsError( 'editmyoptions' );
 		}
@@ -159,7 +145,7 @@ class SpecialPreferences extends SpecialPage {
 		$user->saveSettings();
 
 		// Set session data for the success message
-		$this->getRequest()->getSession()->set( 'specialPreferencesSaveSuccess', 1 );
+		$this->getRequest()->setSessionData( 'specialPreferencesSaveSuccess', 1 );
 
 		$url = $this->getPageTitle()->getFullUrlForRedirect();
 		$this->getOutput()->redirect( $url );

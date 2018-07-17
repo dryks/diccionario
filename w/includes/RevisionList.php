@@ -20,14 +20,10 @@
  * @file
  */
 
-use MediaWiki\MediaWikiServices;
-use Wikimedia\Rdbms\ResultWrapper;
-use Wikimedia\Rdbms\IDatabase;
-
 /**
  * List for revision table items for a single page
  */
-abstract class RevisionListBase extends ContextSource implements Iterator {
+abstract class RevisionListBase extends ContextSource {
 	/** @var Title */
 	public $title;
 
@@ -37,7 +33,7 @@ abstract class RevisionListBase extends ContextSource implements Iterator {
 	/** @var ResultWrapper|bool */
 	protected $res;
 
-	/** @var bool|Revision */
+	/** @var bool|object */
 	protected $current;
 
 	/**
@@ -85,16 +81,12 @@ abstract class RevisionListBase extends ContextSource implements Iterator {
 	 */
 	public function reset() {
 		if ( !$this->res ) {
-			$this->res = $this->doQuery( wfGetDB( DB_REPLICA ) );
+			$this->res = $this->doQuery( wfGetDB( DB_SLAVE ) );
 		} else {
 			$this->res->rewind();
 		}
 		$this->initCurrent();
 		return $this->current;
-	}
-
-	public function rewind() {
-		$this->reset();
 	}
 
 	/**
@@ -113,14 +105,6 @@ abstract class RevisionListBase extends ContextSource implements Iterator {
 		$this->res->next();
 		$this->initCurrent();
 		return $this->current;
-	}
-
-	public function key() {
-		return $this->res ? $this->res->key() : 0;
-	}
-
-	public function valid() {
-		return $this->res ? $this->res->valid() : false;
 	}
 
 	/**
@@ -204,16 +188,6 @@ abstract class RevisionItemBase {
 	}
 
 	/**
-	 * Get the DB field name storing actor ids.
-	 * Override this function.
-	 * @since 1.31
-	 * @return bool
-	 */
-	public function getAuthorActorField() {
-		return false;
-	}
-
-	/**
 	 * Get the ID, as it would appear in the ids URL parameter
 	 * @return int
 	 */
@@ -268,16 +242,6 @@ abstract class RevisionItemBase {
 	}
 
 	/**
-	 * Get the author actor ID
-	 * @since 1.31
-	 * @return string
-	 */
-	public function getAuthorActor() {
-		$field = $this->getAuthorActorField();
-		return strval( $this->row->$field );
-	}
-
-	/**
 	 * Returns true if the current user can view the item
 	 */
 	abstract public function canView();
@@ -292,14 +256,6 @@ abstract class RevisionItemBase {
 	 * This is used to show the list in HTML form, by the special page.
 	 */
 	abstract public function getHTML();
-
-	/**
-	 * Returns an instance of LinkRenderer
-	 * @return \MediaWiki\Linker\LinkRenderer
-	 */
-	protected function getLinkRenderer() {
-		return MediaWikiServices::getInstance()->getLinkRenderer();
-	}
 }
 
 class RevisionList extends RevisionListBase {
@@ -316,14 +272,15 @@ class RevisionList extends RevisionListBase {
 		if ( $this->ids !== null ) {
 			$conds['rev_id'] = array_map( 'intval', $this->ids );
 		}
-		$revQuery = Revision::getQueryInfo( [ 'page', 'user' ] );
 		return $db->select(
-			$revQuery['tables'],
-			$revQuery['fields'],
+			[ 'revision', 'page', 'user' ],
+			array_merge( Revision::selectFields(), Revision::selectUserFields() ),
 			$conds,
 			__METHOD__,
 			[ 'ORDER BY' => 'rev_id DESC' ],
-			$revQuery['joins']
+			[
+				'page' => Revision::pageJoinCond(),
+				'user' => Revision::userJoinCond() ]
 		);
 	}
 
@@ -384,14 +341,13 @@ class RevisionItem extends RevisionItemBase {
 	 * @return string
 	 */
 	protected function getRevisionLink() {
-		$date = $this->list->getLanguage()->userTimeAndDate(
-			$this->revision->getTimestamp(), $this->list->getUser() );
+		$date = htmlspecialchars( $this->list->getLanguage()->userTimeAndDate(
+			$this->revision->getTimestamp(), $this->list->getUser() ) );
 
 		if ( $this->isDeleted() && !$this->canViewContent() ) {
-			return htmlspecialchars( $date );
+			return $date;
 		}
-		$linkRenderer = $this->getLinkRenderer();
-		return $linkRenderer->makeKnownLink(
+		return Linker::linkKnown(
 			$this->list->title,
 			$date,
 			[],
@@ -413,10 +369,9 @@ class RevisionItem extends RevisionItemBase {
 		if ( $this->isDeleted() && !$this->canViewContent() ) {
 			return $this->context->msg( 'diff' )->escaped();
 		} else {
-			$linkRenderer = $this->getLinkRenderer();
-			return $linkRenderer->makeKnownLink(
+			return Linker::linkKnown(
 					$this->list->title,
-					$this->list->msg( 'diff' )->text(),
+					$this->list->msg( 'diff' )->escaped(),
 					[],
 					[
 						'diff' => $this->revision->getId(),

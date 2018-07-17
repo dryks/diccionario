@@ -26,8 +26,6 @@
 
 require_once __DIR__ . '/Maintenance.php';
 
-use Wikimedia\Rdbms\IDatabase;
-
 /**
  * Maintenance script that deletes revisions which refer to a nonexisting page.
  *
@@ -85,18 +83,15 @@ class DeleteOrphanedRevisions extends Maintenance {
 	 * Do this inside a transaction
 	 *
 	 * @param array $id Array of revision id values
-	 * @param IDatabase $dbw Master DB handle
+	 * @param DatabaseBase $dbw DatabaseBase class (needs to be a master)
 	 */
 	private function deleteRevs( $id, &$dbw ) {
 		if ( !is_array( $id ) ) {
 			$id = [ $id ];
 		}
 		$dbw->delete( 'revision', [ 'rev_id' => $id ], __METHOD__ );
-
-		// Delete from ip_changes should a record exist.
-		$dbw->delete( 'ip_changes', [ 'ipc_rev_id' => $id ], __METHOD__ );
 	}
 }
 
-$maintClass = DeleteOrphanedRevisions::class;
+$maintClass = "DeleteOrphanedRevisions";
 require_once RUN_MAINTENANCE_IF_MAIN;

@@ -2,6 +2,8 @@
 /**
  * Implements Special:Mostinterwikis
  *
+ * Copyright © 2012 Umherirrender
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -19,10 +21,8 @@
  *
  * @file
  * @ingroup SpecialPage
+ * @author Umherirrender
  */
-
-use Wikimedia\Rdbms\IResultWrapper;
-use Wikimedia\Rdbms\IDatabase;
 
 /**
  * A special page that listed pages that have highest interwiki count
@@ -72,10 +72,23 @@ class MostinterwikisPage extends QueryPage {
 	 * Pre-fill the link cache
 	 *
 	 * @param IDatabase $db
-	 * @param IResultWrapper $res
+	 * @param ResultWrapper $res
 	 */
 	function preprocessResults( $db, $res ) {
-		$this->executeLBFromResultWrapper( $res );
+		# There's no point doing a batch check if we aren't caching results;
+		# the page must exist for it to have been pulled out of the table
+		if ( !$this->isCached() || !$res->numRows() ) {
+			return;
+		}
+
+		$batch = new LinkBatch;
+		foreach ( $res as $row ) {
+			$batch->add( $row->namespace, $row->title );
+		}
+		$batch->execute();
+
+		// Back to start for display
+		$res->seek( 0 );
 	}
 
 	/**
@@ -97,11 +110,10 @@ class MostinterwikisPage extends QueryPage {
 			);
 		}
 
-		$linkRenderer = $this->getLinkRenderer();
 		if ( $this->isCached() ) {
-			$link = $linkRenderer->makeLink( $title );
+			$link = Linker::link( $title );
 		} else {
-			$link = $linkRenderer->makeKnownLink( $title );
+			$link = Linker::linkKnown( $title );
 		}
 
 		$count = $this->msg( 'ninterwikis' )->numParams( $result->value )->escaped();

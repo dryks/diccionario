@@ -6,20 +6,17 @@
 	],
 	"url": "https://www.mediawiki.org/wiki/Extension:PdfHandler",
 	"descriptionmsg": "pdf-desc",
-	"license-name": "GPL-2.0-or-later",
+	"license-name": "GPL-2.0+",
 	"type": "media",
-	"requires": {
-		"MediaWiki": ">= 1.25.0"
-	},
 	"config": {
 		"PdfOutputExtension": "jpg",
 		"PdfHandlerDpi": 150,
 		"PdfCreateThumbnailsInJobQueue": false,
-		"PdfPostProcessor": "/usr/bin/convert",
+		"PdfPostProcessor": "convert",
 		"PdfHandlerJpegQuality": 95,
-		"PdftoText": "/usr/bin/pdftotext",
-		"PdfProcessor": "/usr/bin/gs",
-		"PdfInfo": "/usr/bin/pdfinfo"
+		"PdftoText": "pdftotext",
+		"PdfProcessor": "gs",
+		"PdfInfo": "pdfinfo"
 	},
 	"MessagesDirs": {
 		"PdfHandler": [
@@ -41,9 +38,9 @@
 		"application/pdf": "PdfHandler"
 	},
 	"AutoloadClasses": {
-		"PdfImage": "includes/PdfImage.php",
-		"PdfHandler": "includes/PdfHandler.php",
-		"CreatePdfThumbnailsJob": "includes/CreatePdfThumbnailsJob.php"
+		"PdfImage": "PdfHandler.image.php",
+		"PdfHandler": "PdfHandler_body.php",
+		"CreatePdfThumbnailsJob": "CreatePdfThumbnailsJob.class.php"
 	},
 	"manifest_version": 1
 }

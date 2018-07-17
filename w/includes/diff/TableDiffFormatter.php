@@ -38,6 +38,7 @@ class TableDiffFormatter extends DiffFormatter {
 	}
 
 	/**
+	 * @static
 	 * @param string $msg
 	 *
 	 * @return mixed
@@ -195,6 +196,7 @@ class TableDiffFormatter extends DiffFormatter {
 	 * @param string[] $closing
 	 */
 	protected function changed( $orig, $closing ) {
+
 		$diff = new WordLevelDiff( $orig, $closing );
 		$del = $diff->orig();
 		$add = $diff->closing();

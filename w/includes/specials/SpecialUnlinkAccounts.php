@@ -21,7 +21,6 @@ class SpecialUnlinkAccounts extends AuthManagerSpecialPage {
 
 	/**
 	 * Under which header this special page is listed in Special:SpecialPages.
-	 * @return string
 	 */
 	protected function getGroupName() {
 		return 'users';

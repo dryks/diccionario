@@ -131,9 +131,9 @@ class GIFHandler extends BitmapHandler {
 			return self::METADATA_GOOD;
 		}
 
-		Wikimedia\suppressWarnings();
+		MediaWiki\suppressWarnings();
 		$data = unserialize( $metadata );
-		Wikimedia\restoreWarnings();
+		MediaWiki\restoreWarnings();
 
 		if ( !$data || !is_array( $data ) ) {
 			wfDebug( __METHOD__ . " invalid GIF metadata\n" );
@@ -161,9 +161,9 @@ class GIFHandler extends BitmapHandler {
 
 		$original = parent::getLongDesc( $image );
 
-		Wikimedia\suppressWarnings();
+		MediaWiki\suppressWarnings();
 		$metadata = unserialize( $image->getMetadata() );
-		Wikimedia\restoreWarnings();
+		MediaWiki\restoreWarnings();
 
 		if ( !$metadata || $metadata['frameCount'] <= 1 ) {
 			return $original;
@@ -198,9 +198,9 @@ class GIFHandler extends BitmapHandler {
 	 */
 	public function getLength( $file ) {
 		$serMeta = $file->getMetadata();
-		Wikimedia\suppressWarnings();
+		MediaWiki\suppressWarnings();
 		$metadata = unserialize( $serMeta );
-		Wikimedia\restoreWarnings();
+		MediaWiki\restoreWarnings();
 
 		if ( !$metadata || !isset( $metadata['duration'] ) || !$metadata['duration'] ) {
 			return 0.0;

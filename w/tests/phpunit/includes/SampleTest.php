@@ -1,6 +1,6 @@
 <?php
 
-class SampleTest extends MediaWikiLangTestCase {
+class TestSample extends MediaWikiLangTestCase {
 
 	/**
 	 * Anything that needs to happen before your tests should go here.
@@ -32,11 +32,11 @@ class SampleTest extends MediaWikiLangTestCase {
 	 * they run.  While MediaWiki isn't strictly an Agile Programming
 	 * project, you are encouraged to use the naming described under
 	 * "Agile Documentation" at
-	 * https://www.phpunit.de/manual/3.4/en/other-uses-for-tests.html
+	 * http://www.phpunit.de/manual/3.4/en/other-uses-for-tests.html
 	 */
 	public function testTitleObjectStringConversion() {
 		$title = Title::newFromText( "text" );
-		$this->assertInstanceOf( Title::class, $title, "Title creation" );
+		$this->assertInstanceOf( 'Title', $title, "Title creation" );
 		$this->assertEquals( "Text", $title, "Automatic string conversion" );
 
 		$title = Title::newFromText( "text", NS_MEDIA );
@@ -45,7 +45,7 @@ class SampleTest extends MediaWikiLangTestCase {
 
 	/**
 	 * If you want to run a the same test with a variety of data, use a data provider.
-	 * see: https://www.phpunit.de/manual/3.4/en/writing-tests-for-phpunit.html
+	 * see: http://www.phpunit.de/manual/3.4/en/writing-tests-for-phpunit.html
 	 */
 	public static function provideTitles() {
 		return [
@@ -57,12 +57,12 @@ class SampleTest extends MediaWikiLangTestCase {
 		];
 	}
 
+	// @codingStandardsIgnoreStart Generic.Files.LineLength
 	/**
-	 * phpcs:disable Generic.Files.LineLength
 	 * @dataProvider provideTitles
-	 * See https://phpunit.de/manual/3.7/en/appendixes.annotations.html#appendixes.annotations.dataProvider
-	 * phpcs:enable
+	 * See http://phpunit.de/manual/3.7/en/appendixes.annotations.html#appendixes.annotations.dataProvider
 	 */
+	// @codingStandardsIgnoreEnd
 	public function testCreateBasicListOfTitles( $titleName, $ns, $text ) {
 		$title = Title::newFromText( $titleName, $ns );
 		$this->assertEquals( $text, "$title", "see if '$titleName' matches '$text'" );
@@ -89,16 +89,18 @@ class SampleTest extends MediaWikiLangTestCase {
 
 	/**
 	 * @depends testSetUpMainPageTitleForNextTest
-	 * See https://phpunit.de/manual/3.7/en/appendixes.annotations.html#appendixes.annotations.depends
+	 * See http://phpunit.de/manual/3.7/en/appendixes.annotations.html#appendixes.annotations.depends
 	 */
 	public function testCheckMainPageTitleIsConsideredLocal( $title ) {
 		$this->assertTrue( $title->isLocal() );
 	}
 
+	// @codingStandardsIgnoreStart Generic.Files.LineLength
 	/**
 	 * @expectedException InvalidArgumentException
-	 * See https://phpunit.de/manual/3.7/en/appendixes.annotations.html#appendixes.annotations.expectedException
+	 * See http://phpunit.de/manual/3.7/en/appendixes.annotations.html#appendixes.annotations.expectedException
 	 */
+	// @codingStandardsIgnoreEnd
 	public function testTitleObjectFromObject() {
 		$title = Title::newFromText( Title::newFromText( "test" ) );
 		$this->assertEquals( "Test", $title->isLocal() );

@@ -1,5 +1,9 @@
 <?php
 /**
+ *
+ *
+ * Created on July 7, 2007
+ *
  * Copyright © 2006 Yuri Astrakhan "<Firstname><Lastname>@gmail.com"
  *
  * This program is free software; you can redistribute it and/or modify
@@ -57,7 +61,7 @@ class ApiQueryExtLinksUsage extends ApiQueryGeneratorBase {
 
 		$miser_ns = [];
 		if ( $this->getConfig()->get( 'MiserMode' ) ) {
-			$miser_ns = $params['namespace'] ?: [];
+			$miser_ns = $params['namespace'];
 		} else {
 			$this->addWhereFld( 'page_namespace', $params['namespace'] );
 		}
@@ -226,6 +230,6 @@ class ApiQueryExtLinksUsage extends ApiQueryGeneratorBase {
 	}
 
 	public function getHelpUrls() {
-		return 'https://www.mediawiki.org/wiki/Special:MyLanguage/API:Exturlusage';
+		return 'https://www.mediawiki.org/wiki/API:Exturlusage';
 	}
 }

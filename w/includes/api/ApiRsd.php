@@ -3,6 +3,8 @@
 /**
  * API for MediaWiki 1.17+
  *
+ * Created on October 26, 2010
+ *
  * Copyright © 2010 Bryan Tong Minh and Brion Vibber
  *
  * This program is free software; you can redistribute it and/or modify
@@ -73,7 +75,7 @@ class ApiRsd extends ApiBase {
 	 * compatible APIs, by hooking 'ApiRsdServiceApis' and adding more
 	 * elements to the array.
 	 *
-	 * See https://cyber.harvard.edu/blogs/gems/tech/rsd.html for
+	 * See http://cyber.law.harvard.edu/blogs/gems/tech/rsd.html for
 	 * the base RSD spec, and check WordPress and StatusNet sites for
 	 * in-production examples listing several blogging and micrblogging
 	 * APIs.
@@ -87,7 +89,7 @@ class ApiRsd extends ApiBase {
 				'apiLink' => wfExpandUrl( wfScript( 'api' ), PROTO_CURRENT ),
 
 				// Docs link is optional, but recommended.
-				'docs' => 'https://www.mediawiki.org/wiki/Special:MyLanguage/API',
+				'docs' => 'https://www.mediawiki.org/wiki/API',
 
 				// Some APIs may need a blog ID, but it may be left blank.
 				'blogID' => '',

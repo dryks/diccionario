@@ -18,6 +18,7 @@
  * http://www.gnu.org/copyleft/gpl.html
  *
  * @file
+ * @author Aaron Schulz
  */
 
 /**
@@ -26,16 +27,16 @@
  * @since 1.22
  */
 class HashRing {
-	/** @var array (location => weight) */
+	/** @var Array (location => weight) */
 	protected $sourceMap = [];
-	/** @var array (location => (start, end)) */
+	/** @var Array (location => (start, end)) */
 	protected $ring = [];
 
-	/** @var HashRing|null */
+	/** @var Array (location => (start, end)) */
 	protected $liveRing;
-	/** @var array (location => UNIX timestamp) */
+	/** @var Array (location => UNIX timestamp) */
 	protected $ejectionExpiries = [];
-	/** @var int UNIX timestamp */
+	/** @var integer UNIX timestamp */
 	protected $ejectionNextExpiry = INF;
 
 	const RING_SIZE = 268435456; // 2^28
@@ -83,7 +84,7 @@ class HashRing {
 	 * @param string $item
 	 * @return string Location
 	 */
-	final public function getLocation( $item ) {
+	public function getLocation( $item ) {
 		$locations = $this->getLocations( $item, 1 );
 
 		return $locations[0];
@@ -93,7 +94,7 @@ class HashRing {
 	 * Get the location of an item on the ring, as well as the next locations
 	 *
 	 * @param string $item
-	 * @param int $limit Maximum number of locations to return
+	 * @param integer $limit Maximum number of locations to return
 	 * @return array List of locations
 	 */
 	public function getLocations( $item, $limit ) {
@@ -116,12 +117,11 @@ class HashRing {
 		// If more locations are requested, wrap-around and keep adding them
 		reset( $this->ring );
 		while ( count( $locations ) < $limit ) {
-			$location = key( $this->ring );
+			list( $location, ) = each( $this->ring );
 			if ( $location === $primaryLocation ) {
 				break; // don't go in circles
 			}
 			$locations[] = $location;
-			next( $this->ring );
 		}
 
 		return $locations;
@@ -137,10 +137,23 @@ class HashRing {
 	}
 
 	/**
+	 * Get a new hash ring with a location removed from the ring
+	 *
+	 * @param string $location
+	 * @return HashRing|bool Returns false if no non-zero weighted spots are left
+	 */
+	public function newWithoutLocation( $location ) {
+		$map = $this->sourceMap;
+		unset( $map[$location] );
+
+		return count( $map ) ? new self( $map ) : false;
+	}
+
+	/**
 	 * Remove a location from the "live" hash ring
 	 *
 	 * @param string $location
-	 * @param int $ttl Seconds
+	 * @param integer $ttl Seconds
 	 * @return bool Whether some non-ejected locations are left
 	 */
 	public function ejectFromLiveRing( $location, $ttl ) {
@@ -161,12 +174,12 @@ class HashRing {
 	 * @return HashRing
 	 * @throws UnexpectedValueException
 	 */
-	protected function getLiveRing() {
+	public function getLiveRing() {
 		$now = time();
 		if ( $this->liveRing === null || $this->ejectionNextExpiry <= $now ) {
 			$this->ejectionExpiries = array_filter(
 				$this->ejectionExpiries,
-				function ( $expiry ) use ( $now ) {
+				function( $expiry ) use ( $now ) {
 					return ( $expiry > $now );
 				}
 			);
@@ -206,7 +219,7 @@ class HashRing {
 	 * Get the location of an item on the "live" ring, as well as the next locations
 	 *
 	 * @param string $item
-	 * @param int $limit Maximum number of locations to return
+	 * @param integer $limit Maximum number of locations to return
 	 * @return array List of locations
 	 * @throws UnexpectedValueException
 	 */

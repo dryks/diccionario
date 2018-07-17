@@ -33,18 +33,16 @@ class SpecialRedirect extends FormSpecialPage {
 	/**
 	 * The type of the redirect (user/file/revision)
 	 *
-	 * Example value: `'user'`
-	 *
 	 * @var string $mType
+	 * @example 'user'
 	 */
 	protected $mType;
 
 	/**
 	 * The identifier/value for the redirect (which id, which file)
 	 *
-	 * Example value: `'42'`
-	 *
 	 * @var string $mValue
+	 * @example '42'
 	 */
 	protected $mValue;
 
@@ -177,16 +175,14 @@ class SpecialRedirect extends FormSpecialPage {
 			return null;
 		}
 
-		$logQuery = ActorMigration::newMigration()->getJoin( 'log_user' );
-
 		$logparams = [
-			'log_id' => 'log_id',
-			'log_timestamp' => 'log_timestamp',
-			'log_type' => 'log_type',
-			'log_user_text' => $logQuery['fields']['log_user_text'],
+			'log_id',
+			'log_timestamp',
+			'log_type',
+			'log_user_text',
 		];
 
-		$dbr = wfGetDB( DB_REPLICA );
+		$dbr = wfGetDB( DB_SLAVE );
 
 		// Gets the nested SQL statement which
 		// returns timestamp of the log with the given log ID
@@ -199,12 +195,9 @@ class SpecialRedirect extends FormSpecialPage {
 		// Returns all fields mentioned in $logparams of the logs
 		// with the same timestamp as the one returned by the statement above
 		$logsSameTimestamps = $dbr->select(
-			[ 'logging' ] + $logQuery['tables'],
+			'logging',
 			$logparams,
-			[ "log_timestamp = ($inner)" ],
-			__METHOD__,
-			[],
-			$logQuery['joins']
+			[ "log_timestamp = ($inner)" ]
 		);
 		if ( $logsSameTimestamps->numRows() === 0 ) {
 			return null;
@@ -222,10 +215,10 @@ class SpecialRedirect extends FormSpecialPage {
 
 		// Stores all the rows with the same values in each column
 		// as $rowMain
-		foreach ( $logparams as $key => $dummy ) {
+		foreach ( $logparams as $cond ) {
 			$matchedRows = [];
 			foreach ( $logsSameTimestamps as $row ) {
-				if ( $row->$key === $rowMain->$key ) {
+				if ( $row->$cond === $rowMain->$cond ) {
 					$matchedRows[] = $row;
 				}
 			}
@@ -243,7 +236,7 @@ class SpecialRedirect extends FormSpecialPage {
 			'log_user_text' => 'user'
 		];
 
-		foreach ( $logparams as $logKey => $dummy ) {
+		foreach ( $logparams as $logKey ) {
 			$query[$keys[$logKey]] = $matchedRows[0]->$logKey;
 		}
 		$query['offset'] = $query['offset'] + 1;

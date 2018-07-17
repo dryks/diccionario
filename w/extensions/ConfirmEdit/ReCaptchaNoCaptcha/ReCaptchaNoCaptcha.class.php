@@ -10,13 +10,19 @@ class ReCaptchaNoCaptcha extends SimpleCaptcha {
 	private $error = null;
 	/**
 	 * Get the captcha form.
-	 * @param int $tabIndex
-	 * @return array
+	 * @return string
 	 */
-	function getFormInformation( $tabIndex = 1 ) {
-		global $wgReCaptchaSiteKey, $wgLang;
-		$lang = htmlspecialchars( urlencode( $wgLang->getCode() ) );
+	function getForm( OutputPage $out, $tabIndex = 1 ) {
+		global $wgReCaptchaSiteKey;
+		$lang = htmlspecialchars( urlencode( $out->getLanguage()->getCode() ) );
 
+		// Insert reCAPTCHA script, in display language, if available.
+		// Language falls back to the browser's display language.
+		// See https://developers.google.com/recaptcha/docs/faq
+		$out->addHeadItem(
+			'g-recaptchascript',
+			"<script src=\"https://www.google.com/recaptcha/api.js?hl={$lang}\" async defer></script>"
+		);
 		$output = Html::element( 'div', [
 			'class' => [
 				'g-recaptcha',
@@ -48,20 +54,9 @@ class ReCaptchaNoCaptcha extends SimpleCaptcha {
   </div>
 </noscript>
 HTML;
-		return [
-			'html' => $output,
-			'headitems' => [
-				// Insert reCAPTCHA script, in display language, if available.
-				// Language falls back to the browser's display language.
-				// See https://developers.google.com/recaptcha/docs/faq
-				"<script src=\"https://www.google.com/recaptcha/api.js?hl={$lang}\" async defer></script>"
-			]
-		];
+		return $output;
 	}
 
-	/**
-	 * @param Status|array|string $info
-	 */
 	protected function logCheckError( $info ) {
 		if ( $info instanceof Status ) {
 			$errors = $info->getErrorsArray();
@@ -75,10 +70,6 @@ HTML;
 		wfDebugLog( 'captcha', 'Unable to validate response: ' . $error );
 	}
 
-	/**
-	 * @param WebRequest $request
-	 * @return array
-	 */
 	protected function getCaptchaParamsFromRequest( WebRequest $request ) {
 		$index = 'not used'; // ReCaptchaNoCaptcha combines captcha ID + solution into a single value
 		// API is hardwired to return captchaWord, so use that if the standard isempty
@@ -92,9 +83,9 @@ HTML;
 	 * Based on reference implementation:
 	 * https://github.com/google/recaptcha#php
 	 *
-	 * @param mixed $_ Not used (ReCaptcha v2 puts index and solution in a single string)
-	 * @param string $word captcha solution
-	 * @return bool
+	 * @param $_ mixed Not used (ReCaptcha v2 puts index and solution in a single string)
+	 * @param $word string captcha solution
+	 * @return boolean
 	 */
 	function passCaptcha( $_, $word ) {
 		global $wgRequest, $wgReCaptchaSecretKey, $wgReCaptchaSendRemoteIP;
@@ -131,22 +122,16 @@ HTML;
 		return $response['success'];
 	}
 
-	/**
-	 * @param array &$resultArr
-	 */
 	function addCaptchaAPI( &$resultArr ) {
 		$resultArr['captcha'] = $this->describeCaptchaType();
 		$resultArr['captcha']['error'] = $this->error;
 	}
 
-	/**
-	 * @return array
-	 */
 	public function describeCaptchaType() {
 		global $wgReCaptchaSiteKey;
 		return [
 			'type' => 'recaptchanocaptcha',
-			'mime' => 'image/png',
+			'mime' => 'mage/png',
 			'key' => $wgReCaptchaSiteKey,
 		];
 	}
@@ -155,7 +140,7 @@ HTML;
 	 * Show a message asking the user to enter a captcha on edit
 	 * The result will be treated as wiki text
 	 *
-	 * @param string $action Action being performed
+	 * @param $action string Action being performed
 	 * @return string Wikitext
 	 */
 	public function getMessage( $action ) {
@@ -166,17 +151,27 @@ HTML;
 		return $msg;
 	}
 
-	/**
-	 * @param ApiBase &$module
-	 * @param array &$params
-	 * @param int $flags
-	 * @return bool
-	 */
 	public function APIGetAllowedParams( &$module, &$params, $flags ) {
 		if ( $flags && $this->isAPICaptchaModule( $module ) ) {
-			$params['g-recaptcha-response'] = [
-				ApiBase::PARAM_HELP_MSG => 'renocaptcha-apihelp-param-g-recaptcha-response',
-			];
+			if ( defined( 'ApiBase::PARAM_HELP_MSG' ) ) {
+				$params['g-recaptcha-response'] = [
+					ApiBase::PARAM_HELP_MSG => 'renocaptcha-apihelp-param-g-recaptcha-response',
+				];
+			} else {
+				// @todo: Remove this branch when support for MediaWiki < 1.25 is dropped
+				$params['g-recaptcha-response'] = null;
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * @deprecated since MediaWiki 1.25
+	 */
+	public function APIGetParamDescription( &$module, &$desc ) {
+		if ( $this->isAPICaptchaModule( $module ) ) {
+			$desc['g-recaptcha-response'] = 'Field from the ReCaptcha widget';
 		}
 
 		return true;
@@ -202,28 +197,14 @@ HTML;
 		return [];
 	}
 
-	/**
-	 * @param array $captchaData
-	 * @param string $id
-	 * @return Message
-	 */
 	public function getCaptchaInfo( $captchaData, $id ) {
 		return wfMessage( 'renocaptcha-info' );
 	}
 
-	/**
-	 * @return ReCaptchaNoCaptchaAuthenticationRequest
-	 */
 	public function createAuthenticationRequest() {
 		return new ReCaptchaNoCaptchaAuthenticationRequest();
 	}
 
-	/**
-	 * @param array $requests
-	 * @param array $fieldInfo
-	 * @param array &$formDescriptor
-	 * @param string $action
-	 */
 	public function onAuthChangeFormFields(
 		array $requests, array $fieldInfo, array &$formDescriptor, $action
 	) {

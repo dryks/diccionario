@@ -31,7 +31,7 @@ require_once __DIR__ . '/../Maintenance.php';
 class Digit2Html extends Maintenance {
 
 	# A list of unicode numerals is available at:
-	# https://www.fileformat.info/info/unicode/category/Nd/list.htm
+	# http://www.fileformat.info/info/unicode/category/Nd/list.htm
 	private $mLangs = [
 		'Ar', 'As', 'Bh', 'Bo', 'Dz',
 		'Fa', 'Gu', 'Hi', 'Km', 'Kn',
@@ -55,15 +55,15 @@ class Digit2Html extends Maintenance {
 				continue;
 			}
 
-			$this->output( "OK\n\$digitTransformTable = [\n" );
+			$this->output( "OK\n\$digitTransformTable = array(\n" );
 			foreach ( $digitTransformTable as $latin => $translation ) {
-				$htmlent = bin2hex( $translation );
+				$htmlent = utf8ToHexSequence( $translation );
 				$this->output( "'$latin' => '$translation', # &#x$htmlent;\n" );
 			}
-			$this->output( "];\n" );
+			$this->output( ");\n" );
 		}
 	}
 }
 
-$maintClass = Digit2Html::class;
+$maintClass = "Digit2Html";
 require_once RUN_MAINTENANCE_IF_MAIN;

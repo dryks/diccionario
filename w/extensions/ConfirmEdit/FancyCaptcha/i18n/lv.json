@@ -5,7 +5,6 @@
 		]
 	},
 	"fancycaptcha-captcha": "Drošības pārbaude",
-	"fancycaptcha-accountcreate": "Lai aizsargātu vikivietni pret automatizētu kontu veidošanu, mēs lūdzam ievadīt vārdus, kas parādās zem ievades lauka ([[Special:Captcha/help|vairāk informācijas]]):",
-	"fancycaptcha-imgcaptcha-ph": "Ievadi tekstu, kuru redzi attēlā",
+	"fancycaptcha-imgcaptcha-ph": "Ievadi tekstu, kuru redzi augstāk",
 	"fancycaptcha-reload-text": "Atjaunināt"
 }

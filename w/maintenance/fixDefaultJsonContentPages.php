@@ -47,7 +47,7 @@ class FixDefaultJsonContentPages extends LoggedUpdateMaintenance {
 			return true;
 		}
 
-		$dbr = $this->getDB( DB_REPLICA );
+		$dbr = $this->getDB( DB_SLAVE );
 		$namespaces = [
 			NS_MEDIAWIKI => $dbr->buildLike( $dbr->anyString(), '.json' ),
 			NS_USER => $dbr->buildLike( $dbr->anyString(), '/', $dbr->anyString(), '.json' ),
@@ -64,12 +64,12 @@ class FixDefaultJsonContentPages extends LoggedUpdateMaintenance {
 								'page_id > ' . $dbr->addQuotes( $lastPage )
 						],
 						__METHOD__,
-						[ 'ORDER BY' => 'page_id', 'LIMIT' => $this->getBatchSize() ]
+						[ 'ORDER BY' => 'page_id', 'LIMIT' => $this->mBatchSize ]
 				);
 				foreach ( $rows as $row ) {
 					$this->handleRow( $row );
 				}
-			} while ( $rows->numRows() >= $this->getBatchSize() );
+			} while ( $rows->numRows() >= $this->mBatchSize );
 		}
 
 		return true;
@@ -124,5 +124,5 @@ class FixDefaultJsonContentPages extends LoggedUpdateMaintenance {
 	}
 }
 
-$maintClass = FixDefaultJsonContentPages::class;
+$maintClass = 'FixDefaultJsonContentPages';
 require_once RUN_MAINTENANCE_IF_MAIN;

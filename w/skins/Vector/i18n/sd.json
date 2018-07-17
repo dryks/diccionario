@@ -2,8 +2,7 @@
 	"@metadata": {
 		"authors": [
 			"Sindhu",
-			"Aursani",
-			"Mehtab ahmed"
+			"Aursani"
 		]
 	},
 	"vector-action-addsection": "عنوان ڏيو",
@@ -15,7 +14,7 @@
 	"vector-view-create": "سرجيو",
 	"vector-view-edit": "سنواريو",
 	"vector-view-history": "سوانح ڏسو",
-	"vector-view-view": "پڙھو",
+	"vector-view-view": "پڙهو",
 	"vector-view-viewsource": "ڪوڊ ڏسو",
 	"vector-more-actions": "وڌيڪ"
 }

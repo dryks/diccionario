@@ -22,9 +22,6 @@
  * @ingroup Actions
  */
 
-use MediaWiki\MediaWikiServices;
-use Wikimedia\Rdbms\Database;
-
 /**
  * Displays information about a page.
  *
@@ -73,9 +70,8 @@ class InfoAction extends FormlessAction {
 			$revid = $revision ? $revision->getId() : null;
 		}
 		if ( $revid !== null ) {
-			$cache = MediaWikiServices::getInstance()->getMainWANObjectCache();
-			$key = self::getCacheKey( $cache, $title, $revid );
-			$cache->delete( $key );
+			$key = self::getCacheKey( $title, $revid );
+			ObjectCache::getMainWANInstance()->delete( $key );
 		}
 	}
 
@@ -127,10 +123,7 @@ class InfoAction extends FormlessAction {
 			// Messages:
 			// pageinfo-header-basic, pageinfo-header-edits, pageinfo-header-restrictions,
 			// pageinfo-header-properties, pageinfo-category-info
-			$content .= $this->makeHeader(
-				$this->msg( "pageinfo-${header}" )->text(),
-				"mw-pageinfo-${header}"
-			) . "\n";
+			$content .= $this->makeHeader( $this->msg( "pageinfo-${header}" )->escaped() ) . "\n";
 			$table = "\n";
 			foreach ( $infoTable as $infoRow ) {
 				$name = ( $infoRow[0] instanceof Message ) ? $infoRow[0]->escaped() : $infoRow[0];
@@ -153,14 +146,12 @@ class InfoAction extends FormlessAction {
 	 * Creates a header that can be added to the output.
 	 *
 	 * @param string $header The header text.
-	 * @param string $canonicalId
 	 * @return string The HTML.
 	 */
-	protected function makeHeader( $header, $canonicalId ) {
-		$spanAttribs = [ 'class' => 'mw-headline', 'id' => Sanitizer::escapeIdForAttribute( $header ) ];
-		$h2Attribs = [ 'id' => Sanitizer::escapeIdForAttribute( $canonicalId ) ];
+	protected function makeHeader( $header ) {
+		$spanAttribs = [ 'class' => 'mw-headline', 'id' => Sanitizer::escapeId( $header ) ];
 
-		return Html::rawElement( 'h2', $h2Attribs, Html::element( 'span', $spanAttribs, $header ) );
+		return Html::rawElement( 'h2', [], Html::element( 'span', $spanAttribs, $header ) );
 	}
 
 	/**
@@ -186,7 +177,7 @@ class InfoAction extends FormlessAction {
 	 * Adds a table to the content that will be added to the output.
 	 *
 	 * @param string $content The content that will be added to the output
-	 * @param string $table
+	 * @param string $table The table
 	 * @return string The content with the table added
 	 */
 	protected function addTable( $content, $table ) {
@@ -209,7 +200,6 @@ class InfoAction extends FormlessAction {
 		$title = $this->getTitle();
 		$id = $title->getArticleID();
 		$config = $this->context->getConfig();
-		$linkRenderer = MediaWikiServices::getInstance()->getLinkRenderer();
 
 		$pageCounts = $this->pageCounts( $this->page );
 
@@ -237,11 +227,11 @@ class InfoAction extends FormlessAction {
 		if ( $title->isRedirect() ) {
 			$pageInfo['header-basic'][] = [
 				$this->msg( 'pageinfo-redirectsto' ),
-				$linkRenderer->makeLink( $this->page->getRedirectTarget() ) .
+				Linker::link( $this->page->getRedirectTarget() ) .
 				$this->msg( 'word-separator' )->escaped() .
-				$this->msg( 'parentheses' )->rawParams( $linkRenderer->makeLink(
+				$this->msg( 'parentheses' )->rawParams( Linker::link(
 					$this->page->getRedirectTarget(),
-					$this->msg( 'pageinfo-redirectsto-info' )->text(),
+					$this->msg( 'pageinfo-redirectsto-info' )->escaped(),
 					[],
 					[ 'action' => 'info' ]
 				) )->escaped()
@@ -268,49 +258,29 @@ class InfoAction extends FormlessAction {
 		// Language in which the page content is (supposed to be) written
 		$pageLang = $title->getPageLanguage()->getCode();
 
-		$pageLangHtml = $pageLang . ' - ' .
-			Language::fetchLanguageName( $pageLang, $lang->getCode() );
-		// Link to Special:PageLanguage with pre-filled page title if user has permissions
 		if ( $config->get( 'PageLanguageUseDB' )
-			&& $title->userCan( 'pagelang', $user )
+			&& $this->getTitle()->userCan( 'pagelang', $this->getUser() )
 		) {
-			$pageLangHtml .= ' ' . $this->msg( 'parentheses' )->rawParams( $linkRenderer->makeLink(
-				SpecialPage::getTitleValueFor( 'PageLanguage', $title->getPrefixedText() ),
-				$this->msg( 'pageinfo-language-change' )->text()
-			) )->escaped();
+			// Link to Special:PageLanguage with pre-filled page title if user has permissions
+			$titleObj = SpecialPage::getTitleFor( 'PageLanguage', $title->getPrefixedText() );
+			$langDisp = Linker::link(
+				$titleObj,
+				$this->msg( 'pageinfo-language' )->escaped()
+			);
+		} else {
+			// Display just the message
+			$langDisp = $this->msg( 'pageinfo-language' )->escaped();
 		}
 
-		$pageInfo['header-basic'][] = [
-			$this->msg( 'pageinfo-language' )->escaped(),
-			$pageLangHtml
-		];
+		$pageInfo['header-basic'][] = [ $langDisp,
+			Language::fetchLanguageName( $pageLang, $lang->getCode() )
+			. ' ' . $this->msg( 'parentheses', $pageLang )->escaped() ];
 
 		// Content model of the page
-		$modelHtml = htmlspecialchars( ContentHandler::getLocalizedName( $title->getContentModel() ) );
-		// If the user can change it, add a link to Special:ChangeContentModel
-		if ( $config->get( 'ContentHandlerUseDB' )
-			&& $title->userCan( 'editcontentmodel', $user )
-		) {
-			$modelHtml .= ' ' . $this->msg( 'parentheses' )->rawParams( $linkRenderer->makeLink(
-				SpecialPage::getTitleValueFor( 'ChangeContentModel', $title->getPrefixedText() ),
-				$this->msg( 'pageinfo-content-model-change' )->text()
-			) )->escaped();
-		}
-
 		$pageInfo['header-basic'][] = [
 			$this->msg( 'pageinfo-content-model' ),
-			$modelHtml
+			htmlspecialchars( ContentHandler::getLocalizedName( $title->getContentModel() ) )
 		];
-
-		if ( $title->inNamespace( NS_USER ) ) {
-			$pageUser = User::newFromName( $title->getRootText() );
-			if ( $pageUser && $pageUser->getId() && !$pageUser->isHidden() ) {
-				$pageInfo['header-basic'][] = [
-					$this->msg( 'pageinfo-user-id' ),
-					$pageUser->getId()
-				];
-			}
-		}
 
 		// Search engine status
 		$pOutput = new ParserOutput();
@@ -368,9 +338,9 @@ class InfoAction extends FormlessAction {
 		// Redirects to this page
 		$whatLinksHere = SpecialPage::getTitleFor( 'Whatlinkshere', $title->getPrefixedText() );
 		$pageInfo['header-basic'][] = [
-			$linkRenderer->makeLink(
+			Linker::link(
 				$whatLinksHere,
-				$this->msg( 'pageinfo-redirects-name' )->text(),
+				$this->msg( 'pageinfo-redirects-name' )->escaped(),
 				[],
 				[
 					'hidelinks' => 1,
@@ -395,10 +365,7 @@ class InfoAction extends FormlessAction {
 			$prefixIndex = SpecialPage::getTitleFor(
 				'Prefixindex', $title->getPrefixedText() . '/' );
 			$pageInfo['header-basic'][] = [
-				$linkRenderer->makeLink(
-					$prefixIndex,
-					$this->msg( 'pageinfo-subpages-name' )->text()
-				),
+				Linker::link( $prefixIndex, $this->msg( 'pageinfo-subpages-name' )->escaped() ),
 				$this->msg( 'pageinfo-subpages-value' )
 					->numParams(
 						$pageCounts['subpages']['total'],
@@ -437,19 +404,6 @@ class InfoAction extends FormlessAction {
 			];
 		}
 
-		// Display image SHA-1 value
-		if ( $title->inNamespace( NS_FILE ) ) {
-			$fileObj = wfFindFile( $title );
-			if ( $fileObj !== false ) {
-				// Convert the base-36 sha1 value obtained from database to base-16
-				$output = Wikimedia\base_convert( $fileObj->getSha1(), 36, 16, 40 );
-				$pageInfo['header-basic'][] = [
-					$this->msg( 'pageinfo-file-hash' ),
-					$output
-				];
-			}
-		}
-
 		// Page protection
 		$pageInfo['header-restrictions'] = [];
 
@@ -460,7 +414,7 @@ class InfoAction extends FormlessAction {
 
 			foreach ( $sources as $sourceTitle ) {
 				$cascadingFrom .= Html::rawElement(
-					'li', [], $linkRenderer->makeKnownLink( $sourceTitle ) );
+					'li', [], Linker::linkKnown( $sourceTitle ) );
 			}
 
 			$cascadingFrom = Html::rawElement( 'ul', [], $cascadingFrom );
@@ -498,7 +452,7 @@ class InfoAction extends FormlessAction {
 			}
 			$expiry = $title->getRestrictionExpiry( $restrictionType );
 			$formattedexpiry = $this->msg( 'parentheses',
-				$lang->formatExpiry( $expiry ) )->escaped();
+				$this->getLanguage()->formatExpiry( $expiry ) )->escaped();
 			$message .= $this->msg( 'word-separator' )->escaped() . $formattedexpiry;
 
 			// Messages: restriction-edit, restriction-move, restriction-create,
@@ -522,18 +476,16 @@ class InfoAction extends FormlessAction {
 		if ( $firstRev ) {
 			$firstRevUser = $firstRev->getUserText( Revision::FOR_THIS_USER );
 			if ( $firstRevUser !== '' ) {
-				$firstRevUserTitle = Title::makeTitle( NS_USER, $firstRevUser );
-				$batch->addObj( $firstRevUserTitle );
-				$batch->addObj( $firstRevUserTitle->getTalkPage() );
+				$batch->add( NS_USER, $firstRevUser );
+				$batch->add( NS_USER_TALK, $firstRevUser );
 			}
 		}
 
 		if ( $lastRev ) {
 			$lastRevUser = $lastRev->getUserText( Revision::FOR_THIS_USER );
 			if ( $lastRevUser !== '' ) {
-				$lastRevUserTitle = Title::makeTitle( NS_USER, $lastRevUser );
-				$batch->addObj( $lastRevUserTitle );
-				$batch->addObj( $lastRevUserTitle->getTalkPage() );
+				$batch->add( NS_USER, $lastRevUser );
+				$batch->add( NS_USER_TALK, $lastRevUser );
 			}
 		}
 
@@ -549,9 +501,9 @@ class InfoAction extends FormlessAction {
 			// Date of page creation
 			$pageInfo['header-edits'][] = [
 				$this->msg( 'pageinfo-firsttime' ),
-				$linkRenderer->makeKnownLink(
+				Linker::linkKnown(
 					$title,
-					$lang->userTimeAndDate( $firstRev->getTimestamp(), $user ),
+					htmlspecialchars( $lang->userTimeAndDate( $firstRev->getTimestamp(), $user ) ),
 					[],
 					[ 'oldid' => $firstRev->getId() ]
 				)
@@ -568,9 +520,11 @@ class InfoAction extends FormlessAction {
 			// Date of latest edit
 			$pageInfo['header-edits'][] = [
 				$this->msg( 'pageinfo-lasttime' ),
-				$linkRenderer->makeKnownLink(
+				Linker::linkKnown(
 					$title,
-					$lang->userTimeAndDate( $this->page->getTimestamp(), $user ),
+					htmlspecialchars(
+						$lang->userTimeAndDate( $this->page->getTimestamp(), $user )
+					),
 					[],
 					[ 'oldid' => $this->page->getLatest() ]
 				)
@@ -663,23 +617,22 @@ class InfoAction extends FormlessAction {
 					$more = null;
 				}
 
-				$templateListFormatter = new TemplatesOnThisPageFormatter(
-					$this->getContext(),
-					$linkRenderer
-				);
-
 				$pageInfo['header-properties'][] = [
 					$this->msg( 'pageinfo-templates' )
 						->numParams( $pageCounts['transclusion']['from'] ),
-					$templateListFormatter->format( $transcludedTemplates, false, $more )
+					Linker::formatTemplates(
+						$transcludedTemplates,
+						false,
+						false,
+						$more )
 				];
 			}
 
 			if ( !$config->get( 'MiserMode' ) && $pageCounts['transclusion']['to'] > 0 ) {
 				if ( $pageCounts['transclusion']['to'] > count( $transcludedTargets ) ) {
-					$more = $linkRenderer->makeLink(
+					$more = Linker::link(
 						$whatLinksHere,
-						$this->msg( 'moredotdotdot' )->text(),
+						$this->msg( 'moredotdotdot' )->escaped(),
 						[],
 						[ 'hidelinks' => 1, 'hideredirs' => 1 ]
 					);
@@ -687,15 +640,14 @@ class InfoAction extends FormlessAction {
 					$more = null;
 				}
 
-				$templateListFormatter = new TemplatesOnThisPageFormatter(
-					$this->getContext(),
-					$linkRenderer
-				);
-
 				$pageInfo['header-properties'][] = [
 					$this->msg( 'pageinfo-transclusions' )
 						->numParams( $pageCounts['transclusion']['to'] ),
-					$templateListFormatter->format( $transcludedTargets, false, $more )
+					Linker::formatTemplates(
+						$transcludedTargets,
+						false,
+						false,
+						$more )
 				];
 			}
 		}
@@ -712,45 +664,20 @@ class InfoAction extends FormlessAction {
 	protected function pageCounts( Page $page ) {
 		$fname = __METHOD__;
 		$config = $this->context->getConfig();
-		$cache = MediaWikiServices::getInstance()->getMainWANObjectCache();
 
-		return $cache->getWithSetCallback(
-			self::getCacheKey( $cache, $page->getTitle(), $page->getLatest() ),
-			WANObjectCache::TTL_WEEK,
+		return ObjectCache::getMainWANInstance()->getWithSetCallback(
+			self::getCacheKey( $page->getTitle(), $page->getLatest() ),
+			86400 * 7,
 			function ( $oldValue, &$ttl, &$setOpts ) use ( $page, $config, $fname ) {
-				global $wgActorTableSchemaMigrationStage;
-
 				$title = $page->getTitle();
 				$id = $title->getArticleID();
 
-				$dbr = wfGetDB( DB_REPLICA );
-				$dbrWatchlist = wfGetDB( DB_REPLICA, 'watchlist' );
+				$dbr = wfGetDB( DB_SLAVE );
+				$dbrWatchlist = wfGetDB( DB_SLAVE, 'watchlist' );
+
 				$setOpts += Database::getCacheSetOptions( $dbr, $dbrWatchlist );
 
-				if ( $wgActorTableSchemaMigrationStage === MIGRATION_NEW ) {
-					$tables = [ 'revision_actor_temp' ];
-					$field = 'revactor_actor';
-					$pageField = 'revactor_page';
-					$tsField = 'revactor_timestamp';
-					$joins = [];
-				} elseif ( $wgActorTableSchemaMigrationStage === MIGRATION_OLD ) {
-					$tables = [ 'revision' ];
-					$field = 'rev_user_text';
-					$pageField = 'rev_page';
-					$tsField = 'rev_timestamp';
-					$joins = [];
-				} else {
-					$tables = [ 'revision', 'revision_actor_temp', 'actor' ];
-					$field = 'COALESCE( actor_name, rev_user_text)';
-					$pageField = 'rev_page';
-					$tsField = 'rev_timestamp';
-					$joins = [
-						'revision_actor_temp' => [ 'LEFT JOIN', 'revactor_rev = rev_id' ],
-						'actor' => [ 'LEFT JOIN', 'revactor_actor = actor_id' ],
-					];
-				}
-
-				$watchedItemStore = MediaWikiServices::getInstance()->getWatchedItemStore();
+				$watchedItemStore = WatchedItemStore::getDefaultInstance();
 
 				$result = [];
 				$result['watchers'] = $watchedItemStore->countWatchers( $title );
@@ -777,12 +704,10 @@ class InfoAction extends FormlessAction {
 					$result['authors'] = 0;
 				} else {
 					$result['authors'] = (int)$dbr->selectField(
-						$tables,
-						"COUNT(DISTINCT $field)",
-						[ $pageField => $id ],
-						$fname,
-						[],
-						$joins
+						'revision',
+						'COUNT(DISTINCT rev_user_text)',
+						[ 'rev_page' => $id ],
+						$fname
 					);
 				}
 
@@ -803,15 +728,13 @@ class InfoAction extends FormlessAction {
 
 				// Recent number of distinct authors
 				$result['recent_authors'] = (int)$dbr->selectField(
-					$tables,
-					"COUNT(DISTINCT $field)",
+					'revision',
+					'COUNT(DISTINCT rev_user_text)',
 					[
-						$pageField => $id,
-						"$tsField >= " . $dbr->addQuotes( $threshold )
+						'rev_page' => $id,
+						"rev_timestamp >= " . $dbr->addQuotes( $threshold )
 					],
-					$fname,
-					[],
-					$joins
+					$fname
 				);
 
 				// Subpages (if enabled)
@@ -888,10 +811,9 @@ class InfoAction extends FormlessAction {
 		$real_names = [];
 		$user_names = [];
 		$anon_ips = [];
-		$linkRenderer = MediaWikiServices::getInstance()->getLinkRenderer();
 
 		# Sift for real versus user names
-		/** @var User $user */
+		/** @var $user User */
 		foreach ( $contributors as $user ) {
 			$page = $user->isAnon()
 				? SpecialPage::getTitleFor( 'Contributions', $user->getName() )
@@ -899,11 +821,11 @@ class InfoAction extends FormlessAction {
 
 			$hiddenPrefs = $this->context->getConfig()->get( 'HiddenPrefs' );
 			if ( $user->getId() == 0 ) {
-				$anon_ips[] = $linkRenderer->makeLink( $page, $user->getName() );
+				$anon_ips[] = Linker::link( $page, htmlspecialchars( $user->getName() ) );
 			} elseif ( !in_array( 'realname', $hiddenPrefs ) && $user->getRealName() ) {
-				$real_names[] = $linkRenderer->makeLink( $page, $user->getRealName() );
+				$real_names[] = Linker::link( $page, htmlspecialchars( $user->getRealName() ) );
 			} else {
-				$user_names[] = $linkRenderer->makeLink( $page, $user->getName() );
+				$user_names[] = Linker::link( $page, htmlspecialchars( $user->getName() ) );
 			}
 		}
 
@@ -955,12 +877,11 @@ class InfoAction extends FormlessAction {
 	}
 
 	/**
-	 * @param WANObjectCache $cache
 	 * @param Title $title
 	 * @param int $revId
 	 * @return string
 	 */
-	protected static function getCacheKey( WANObjectCache $cache, Title $title, $revId ) {
-		return $cache->makeKey( 'infoaction', md5( $title->getPrefixedText() ), $revId, self::VERSION );
+	protected static function getCacheKey( Title $title, $revId ) {
+		return wfMemcKey( 'infoaction', md5( $title->getPrefixedText() ), $revId, self::VERSION );
 	}
 }

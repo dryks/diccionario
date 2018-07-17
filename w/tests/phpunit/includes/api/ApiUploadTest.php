@@ -19,23 +19,19 @@
  * @group Database
  * @group medium
  * @group Broken
- *
- * @covers ApiUpload
  */
-class ApiUploadTest extends ApiUploadTestCase {
+class ApiUploadTest extends ApiTestCaseUpload {
 	/**
 	 * Testing login
 	 * XXX this is a funny way of getting session context
 	 */
 	public function testLogin() {
 		$user = self::$users['uploader'];
-		$userName = $user->getUser()->getName();
-		$password = $user->getPassword();
 
 		$params = [
 			'action' => 'login',
-			'lgname' => $userName,
-			'lgpassword' => $password
+			'lgname' => $user->username,
+			'lgpassword' => $user->password
 		];
 		list( $result, , $session ) = $this->doApiRequest( $params );
 		$this->assertArrayHasKey( "login", $result );
@@ -46,13 +42,14 @@ class ApiUploadTest extends ApiUploadTestCase {
 		$params = [
 			'action' => 'login',
 			'lgtoken' => $token,
-			'lgname' => $userName,
-			'lgpassword' => $password
+			'lgname' => $user->username,
+			'lgpassword' => $user->password
 		];
 		list( $result, , $session ) = $this->doApiRequest( $params, $session );
 		$this->assertArrayHasKey( "login", $result );
 		$this->assertArrayHasKey( "result", $result['login'] );
 		$this->assertEquals( "Success", $result['login']['result'] );
+		$this->assertArrayHasKey( 'lgtoken', $result['login'] );
 
 		$this->assertNotEmpty( $session, 'API Login must return a session' );
 
@@ -68,9 +65,9 @@ class ApiUploadTest extends ApiUploadTestCase {
 			$this->doApiRequest( [
 				'action' => 'upload'
 			] );
-		} catch ( ApiUsageException $e ) {
+		} catch ( UsageException $e ) {
 			$exception = true;
-			$this->assertContains( 'The "token" parameter must be set', $e->getMessage() );
+			$this->assertEquals( "The token parameter must be set", $e->getMessage() );
 		}
 		$this->assertTrue( $exception, "Got exception" );
 	}
@@ -84,12 +81,10 @@ class ApiUploadTest extends ApiUploadTestCase {
 			$this->doApiRequestWithToken( [
 				'action' => 'upload',
 			], $session, self::$users['uploader']->getUser() );
-		} catch ( ApiUsageException $e ) {
+		} catch ( UsageException $e ) {
 			$exception = true;
-			$this->assertEquals(
-				'One of the parameters "filekey", "file" and "url" is required.',
-				$e->getMessage()
-			);
+			$this->assertEquals( "One of the parameters filekey, file, url is required",
+				$e->getMessage() );
 		}
 		$this->assertTrue( $exception, "Got exception" );
 	}
@@ -132,7 +127,7 @@ class ApiUploadTest extends ApiUploadTestCase {
 		try {
 			list( $result, , ) = $this->doApiRequestWithToken( $params, $session,
 				self::$users['uploader']->getUser() );
-		} catch ( ApiUsageException $e ) {
+		} catch ( UsageException $e ) {
 			$exception = true;
 		}
 		$this->assertTrue( isset( $result['upload'] ) );
@@ -171,7 +166,7 @@ class ApiUploadTest extends ApiUploadTestCase {
 		$exception = false;
 		try {
 			$this->doApiRequestWithToken( $params, $session, self::$users['uploader']->getUser() );
-		} catch ( ApiUsageException $e ) {
+		} catch ( UsageException $e ) {
 			$this->assertContains( 'The file you submitted was empty', $e->getMessage() );
 			$exception = true;
 		}
@@ -221,7 +216,7 @@ class ApiUploadTest extends ApiUploadTestCase {
 		try {
 			list( $result, , $session ) = $this->doApiRequestWithToken( $params, $session,
 				self::$users['uploader']->getUser() );
-		} catch ( ApiUsageException $e ) {
+		} catch ( UsageException $e ) {
 			$exception = true;
 		}
 		$this->assertTrue( isset( $result['upload'] ) );
@@ -238,7 +233,7 @@ class ApiUploadTest extends ApiUploadTestCase {
 		try {
 			list( $result, , ) = $this->doApiRequestWithToken( $params, $session,
 				self::$users['uploader']->getUser() ); // FIXME: leaks a temporary file
-		} catch ( ApiUsageException $e ) {
+		} catch ( UsageException $e ) {
 			$exception = true;
 		}
 		$this->assertTrue( isset( $result['upload'] ) );
@@ -292,7 +287,7 @@ class ApiUploadTest extends ApiUploadTestCase {
 		try {
 			list( $result, , $session ) = $this->doApiRequestWithToken( $params, $session,
 				self::$users['uploader']->getUser() );
-		} catch ( ApiUsageException $e ) {
+		} catch ( UsageException $e ) {
 			$exception = true;
 		}
 		$this->assertTrue( isset( $result['upload'] ) );
@@ -317,7 +312,7 @@ class ApiUploadTest extends ApiUploadTestCase {
 		try {
 			list( $result ) = $this->doApiRequestWithToken( $params, $session,
 				self::$users['uploader']->getUser() ); // FIXME: leaks a temporary file
-		} catch ( ApiUsageException $e ) {
+		} catch ( UsageException $e ) {
 			$exception = true;
 		}
 		$this->assertTrue( isset( $result['upload'] ) );
@@ -374,7 +369,7 @@ class ApiUploadTest extends ApiUploadTestCase {
 		try {
 			list( $result, , $session ) = $this->doApiRequestWithToken( $params, $session,
 				self::$users['uploader']->getUser() ); // FIXME: leaks a temporary file
-		} catch ( ApiUsageException $e ) {
+		} catch ( UsageException $e ) {
 			$exception = true;
 		}
 		$this->assertFalse( $exception );
@@ -403,12 +398,12 @@ class ApiUploadTest extends ApiUploadTestCase {
 		try {
 			list( $result ) = $this->doApiRequestWithToken( $params, $session,
 				self::$users['uploader']->getUser() );
-		} catch ( ApiUsageException $e ) {
+		} catch ( UsageException $e ) {
 			$exception = true;
 		}
 		$this->assertTrue( isset( $result['upload'] ) );
 		$this->assertEquals( 'Success', $result['upload']['result'] );
-		$this->assertFalse( $exception, "No ApiUsageException exception." );
+		$this->assertFalse( $exception, "No UsageException exception." );
 
 		// clean up
 		$this->deleteFileByFileName( $fileName );
@@ -456,9 +451,9 @@ class ApiUploadTest extends ApiUploadTestCase {
 		$chunkSessionKey = false;
 		$resultOffset = 0;
 		// Open the file:
-		Wikimedia\suppressWarnings();
+		MediaWiki\suppressWarnings();
 		$handle = fopen( $filePath, "r" );
-		Wikimedia\restoreWarnings();
+		MediaWiki\restoreWarnings();
 
 		if ( $handle === false ) {
 			$this->markTestIncomplete( "could not open file: $filePath" );
@@ -466,9 +461,9 @@ class ApiUploadTest extends ApiUploadTestCase {
 
 		while ( !feof( $handle ) ) {
 			// Get the current chunk
-			Wikimedia\suppressWarnings();
+			MediaWiki\suppressWarnings();
 			$chunkData = fread( $handle, $chunkSize );
-			Wikimedia\restoreWarnings();
+			MediaWiki\restoreWarnings();
 
 			// Upload the current chunk into the $_FILE object:
 			$this->fakeUploadChunk( 'chunk', 'blob', $mimeType, $chunkData );
@@ -479,7 +474,7 @@ class ApiUploadTest extends ApiUploadTestCase {
 				try {
 					list( $result, , $session ) = $this->doApiRequestWithToken( $params, $session,
 						self::$users['uploader']->getUser() );
-				} catch ( ApiUsageException $e ) {
+				} catch ( UsageException $e ) {
 					$this->markTestIncomplete( $e->getMessage() );
 				}
 				// Make sure we got a valid chunk continue:
@@ -507,7 +502,7 @@ class ApiUploadTest extends ApiUploadTestCase {
 			try {
 				list( $result, , $session ) = $this->doApiRequestWithToken( $params, $session,
 					self::$users['uploader']->getUser() );
-			} catch ( ApiUsageException $e ) {
+			} catch ( UsageException $e ) {
 				$this->markTestIncomplete( $e->getMessage() );
 			}
 			// Make sure we got a valid chunk continue:
@@ -547,7 +542,7 @@ class ApiUploadTest extends ApiUploadTestCase {
 		try {
 			list( $result ) = $this->doApiRequestWithToken( $params, $session,
 				self::$users['uploader']->getUser() );
-		} catch ( ApiUsageException $e ) {
+		} catch ( UsageException $e ) {
 			$exception = true;
 		}
 		$this->assertTrue( isset( $result['upload'] ) );

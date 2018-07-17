@@ -1,9 +1,7 @@
 <?php
-use MediaWiki\MediaWikiServices;
 
 /**
  * @group ContentHandler
- * @group Database
  */
 class ContentHandlerTest extends MediaWikiTestCase {
 
@@ -22,40 +20,35 @@ class ContentHandlerTest extends MediaWikiTestCase {
 				12312 => 'testing',
 			],
 			'wgContentHandlers' => [
-				CONTENT_MODEL_WIKITEXT => WikitextContentHandler::class,
-				CONTENT_MODEL_JAVASCRIPT => JavaScriptContentHandler::class,
-				CONTENT_MODEL_JSON => JsonContentHandler::class,
-				CONTENT_MODEL_CSS => CssContentHandler::class,
-				CONTENT_MODEL_TEXT => TextContentHandler::class,
-				'testing' => DummyContentHandlerForTesting::class,
-				'testing-callbacks' => function ( $modelId ) {
+				CONTENT_MODEL_WIKITEXT => 'WikitextContentHandler',
+				CONTENT_MODEL_JAVASCRIPT => 'JavaScriptContentHandler',
+				CONTENT_MODEL_JSON => 'JsonContentHandler',
+				CONTENT_MODEL_CSS => 'CssContentHandler',
+				CONTENT_MODEL_TEXT => 'TextContentHandler',
+				'testing' => 'DummyContentHandlerForTesting',
+				'testing-callbacks' => function( $modelId ) {
 					return new DummyContentHandlerForTesting( $modelId );
 				}
 			],
 		] );
 
 		// Reset namespace cache
-		MWNamespace::clearCaches();
+		MWNamespace::getCanonicalNamespaces( true );
 		$wgContLang->resetNamespaces();
 		// And LinkCache
-		MediaWikiServices::getInstance()->resetServiceForTesting( 'LinkCache' );
+		LinkCache::destroySingleton();
 	}
 
 	protected function tearDown() {
 		global $wgContLang;
 
 		// Reset namespace cache
-		MWNamespace::clearCaches();
+		MWNamespace::getCanonicalNamespaces( true );
 		$wgContLang->resetNamespaces();
 		// And LinkCache
-		MediaWikiServices::getInstance()->resetServiceForTesting( 'LinkCache' );
+		LinkCache::destroySingleton();
 
 		parent::tearDown();
-	}
-
-	public function addDBDataOnce() {
-		$this->insertPage( 'Not_Main_Page', 'This is not a main page' );
-		$this->insertPage( 'Smithee', 'A smithee is one who smiths. See also [[Alan Smithee]]' );
 	}
 
 	public static function dataGetDefaultModelFor() {
@@ -248,6 +241,10 @@ class ContentHandlerTest extends MediaWikiTestCase {
 		$this->assertNull( $text );
 	}
 
+	/*
+	public static function makeContent( $text, Title $title, $modelId = null, $format = null ) {}
+	*/
+
 	public static function dataMakeContent() {
 		return [
 			[ 'hallo', 'Help:Test', null, null, CONTENT_MODEL_WIKITEXT, 'hallo', false ],
@@ -328,9 +325,7 @@ class ContentHandlerTest extends MediaWikiTestCase {
 		}
 	}
 
-	/**
-	 * @covers ContentHandler::getAutosummary
-	 *
+	/*
 	 * Test if we become a "Created blank page" summary from getAutoSummary if no Content added to
 	 * page.
 	 */
@@ -340,46 +335,46 @@ class ContentHandlerTest extends MediaWikiTestCase {
 		$content = new DummyContentHandlerForTesting( CONTENT_MODEL_WIKITEXT );
 		$title = Title::newFromText( 'Help:Test' );
 		// Create a new content object with no content
-		$newContent = ContentHandler::makeContent( '', $title, CONTENT_MODEL_WIKITEXT, null );
+		$newContent = ContentHandler::makeContent( '', $title, null, null, CONTENT_MODEL_WIKITEXT );
 		// first check, if we become a blank page created summary with the right bitmask
 		$autoSummary = $content->getAutosummary( null, $newContent, 97 );
-		$this->assertEquals( $autoSummary,
-			wfMessage( 'autosumm-newblank' )->inContentLanguage()->text() );
+		$this->assertEquals( $autoSummary, 'Created blank page' );
 		// now check, what we become with another bitmask
 		$autoSummary = $content->getAutosummary( null, $newContent, 92 );
 		$this->assertEquals( $autoSummary, '' );
 	}
 
-	/**
-	 * Test software tag that is added when content model of the page changes
-	 * @covers ContentHandler::getChangeTag
-	 */
-	public function testGetChangeTag() {
-		$this->setMwGlobals( 'wgSoftwareTags', [ 'mw-contentmodelchange' => true ] );
-		$wikitextContentHandler = new DummyContentHandlerForTesting( CONTENT_MODEL_WIKITEXT );
-		// Create old content object with javascript content model
-		$oldContent = ContentHandler::makeContent( '', null, CONTENT_MODEL_JAVASCRIPT, null );
-		// Create new content object with wikitext content model
-		$newContent = ContentHandler::makeContent( '', null, CONTENT_MODEL_WIKITEXT, null );
-		// Get the tag for this edit
-		$tag = $wikitextContentHandler->getChangeTag( $oldContent, $newContent, EDIT_UPDATE );
-		$this->assertSame( $tag, 'mw-contentmodelchange' );
+	/*
+	public function testSupportsSections() {
+		$this->markTestIncomplete( "not yet implemented" );
 	}
+	*/
 
-	/**
-	 * @covers ContentHandler::supportsCategories
-	 */
 	public function testSupportsCategories() {
 		$handler = new DummyContentHandlerForTesting( CONTENT_MODEL_WIKITEXT );
 		$this->assertTrue( $handler->supportsCategories(), 'content model supports categories' );
 	}
 
-	/**
-	 * @covers ContentHandler::supportsDirectEditing
-	 */
 	public function testSupportsDirectEditing() {
 		$handler = new DummyContentHandlerForTesting( CONTENT_MODEL_JSON );
 		$this->assertFalse( $handler->supportsDirectEditing(), 'direct editing is not supported' );
+	}
+
+	/**
+	 * @covers ContentHandler::runLegacyHooks
+	 */
+	public function testRunLegacyHooks() {
+		Hooks::register( 'testRunLegacyHooks', __CLASS__ . '::dummyHookHandler' );
+
+		$content = new WikitextContent( 'test text' );
+		$ok = ContentHandler::runLegacyHooks(
+			'testRunLegacyHooks',
+			[ 'foo', &$content, 'bar' ],
+			false
+		);
+
+		$this->assertTrue( $ok, "runLegacyHooks should have returned true" );
+		$this->assertEquals( "TEST TEXT", $content->getNativeData() );
 	}
 
 	public static function dummyHookHandler( $foo, &$text, $bar ) {
@@ -394,18 +389,17 @@ class ContentHandlerTest extends MediaWikiTestCase {
 
 	public function provideGetModelForID() {
 		return [
-			[ CONTENT_MODEL_WIKITEXT, WikitextContentHandler::class ],
-			[ CONTENT_MODEL_JAVASCRIPT, JavaScriptContentHandler::class ],
-			[ CONTENT_MODEL_JSON, JsonContentHandler::class ],
-			[ CONTENT_MODEL_CSS, CssContentHandler::class ],
-			[ CONTENT_MODEL_TEXT, TextContentHandler::class ],
-			[ 'testing', DummyContentHandlerForTesting::class ],
-			[ 'testing-callbacks', DummyContentHandlerForTesting::class ],
+			[ CONTENT_MODEL_WIKITEXT, 'WikitextContentHandler' ],
+			[ CONTENT_MODEL_JAVASCRIPT, 'JavaScriptContentHandler' ],
+			[ CONTENT_MODEL_JSON, 'JsonContentHandler' ],
+			[ CONTENT_MODEL_CSS, 'CssContentHandler' ],
+			[ CONTENT_MODEL_TEXT, 'TextContentHandler' ],
+			[ 'testing', 'DummyContentHandlerForTesting' ],
+			[ 'testing-callbacks', 'DummyContentHandlerForTesting' ],
 		];
 	}
 
 	/**
-	 * @covers ContentHandler::getForModelID
 	 * @dataProvider provideGetModelForID
 	 */
 	public function testGetModelForID( $modelId, $handlerClass ) {
@@ -414,84 +408,4 @@ class ContentHandlerTest extends MediaWikiTestCase {
 		$this->assertInstanceOf( $handlerClass, $handler );
 	}
 
-	/**
-	 * @covers ContentHandler::getFieldsForSearchIndex
-	 */
-	public function testGetFieldsForSearchIndex() {
-		$searchEngine = $this->newSearchEngine();
-
-		$handler = ContentHandler::getForModelID( CONTENT_MODEL_WIKITEXT );
-
-		$fields = $handler->getFieldsForSearchIndex( $searchEngine );
-
-		$this->assertArrayHasKey( 'category', $fields );
-		$this->assertArrayHasKey( 'external_link', $fields );
-		$this->assertArrayHasKey( 'outgoing_link', $fields );
-		$this->assertArrayHasKey( 'template', $fields );
-		$this->assertArrayHasKey( 'content_model', $fields );
-	}
-
-	private function newSearchEngine() {
-		$searchEngine = $this->getMockBuilder( SearchEngine::class )
-			->getMock();
-
-		$searchEngine->expects( $this->any() )
-			->method( 'makeSearchFieldMapping' )
-			->will( $this->returnCallback( function ( $name, $type ) {
-					return new DummySearchIndexFieldDefinition( $name, $type );
-			} ) );
-
-		return $searchEngine;
-	}
-
-	/**
-	 * @covers ContentHandler::getDataForSearchIndex
-	 */
-	public function testDataIndexFields() {
-		$mockEngine = $this->createMock( SearchEngine::class );
-		$title = Title::newFromText( 'Not_Main_Page', NS_MAIN );
-		$page = new WikiPage( $title );
-
-		$this->setTemporaryHook( 'SearchDataForIndex',
-			function (
-				&$fields,
-				ContentHandler $handler,
-				WikiPage $page,
-				ParserOutput $output,
-				SearchEngine $engine
-			) {
-				$fields['testDataField'] = 'test content';
-			} );
-
-		$output = $page->getContent()->getParserOutput( $title );
-		$data = $page->getContentHandler()->getDataForSearchIndex( $page, $output, $mockEngine );
-		$this->assertArrayHasKey( 'text', $data );
-		$this->assertArrayHasKey( 'text_bytes', $data );
-		$this->assertArrayHasKey( 'language', $data );
-		$this->assertArrayHasKey( 'testDataField', $data );
-		$this->assertEquals( 'test content', $data['testDataField'] );
-		$this->assertEquals( 'wikitext', $data['content_model'] );
-	}
-
-	/**
-	 * @covers ContentHandler::getParserOutputForIndexing
-	 */
-	public function testParserOutputForIndexing() {
-		$title = Title::newFromText( 'Smithee', NS_MAIN );
-		$page = new WikiPage( $title );
-
-		$out = $page->getContentHandler()->getParserOutputForIndexing( $page );
-		$this->assertInstanceOf( ParserOutput::class, $out );
-		$this->assertContains( 'one who smiths', $out->getRawText() );
-	}
-
-	/**
-	 * @covers ContentHandler::getContentModels
-	 */
-	public function testGetContentModelsHook() {
-		$this->setTemporaryHook( 'GetContentModels', function ( &$models ) {
-			$models[] = 'Ferrari';
-		} );
-		$this->assertContains( 'Ferrari', ContentHandler::getContentModels() );
-	}
 }

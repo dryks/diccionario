@@ -1,11 +1,8 @@
 <?php
 
-// phpcs:disable Squiz.Classes.ValidClassName.NotCamelCaps
-/**
- * @covers LanguageBe_tarask
- */
+// @codingStandardsIgnoreStart Ignore Squiz.Classes.ValidClassName.NotCamelCaps
 class LanguageBe_taraskTest extends LanguageClassesTestCase {
-	// phpcs:enable
+	// @codingStandardsIgnoreEnd
 	/**
 	 * Make sure the language code we are given is indeed
 	 * be-tarask. This is to ensure LanguageClassesTestCase
@@ -18,19 +15,19 @@ class LanguageBe_taraskTest extends LanguageClassesTestCase {
 	}
 
 	/**
-	 * @see T25156 & r64981
+	 * @see bug 23156 & r64981
 	 * @covers Language::commafy
 	 */
 	public function testSearchRightSingleQuotationMarkAsApostroph() {
 		$this->assertEquals(
 			"'",
 			$this->getLang()->normalizeForSearch( '’' ),
-			'T25156: U+2019 conversion to U+0027'
+			'bug 23156: U+2019 conversion to U+0027'
 		);
 	}
 
 	/**
-	 * @see T25156 & r64981
+	 * @see bug 23156 & r64981
 	 * @covers Language::commafy
 	 */
 	public function testCommafy() {
@@ -39,7 +36,7 @@ class LanguageBe_taraskTest extends LanguageClassesTestCase {
 	}
 
 	/**
-	 * @see T25156 & r64981
+	 * @see bug 23156 & r64981
 	 * @covers Language::commafy
 	 */
 	public function testDoesNotCommafyFourDigitsNumber() {

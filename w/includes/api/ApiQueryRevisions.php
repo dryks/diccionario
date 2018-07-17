@@ -1,5 +1,9 @@
 <?php
 /**
+ *
+ *
+ * Created on Sep 7, 2006
+ *
  * Copyright © 2006 Yuri Astrakhan "<Firstname><Lastname>@gmail.com"
  *
  * This program is free software; you can redistribute it and/or modify
@@ -56,7 +60,7 @@ class ApiQueryRevisions extends ApiQueryRevisionsBase {
 		}
 
 		$this->tokenFunctions = [
-			'rollback' => [ self::class, 'getRollbackToken' ]
+			'rollback' => [ 'ApiQueryRevisions', 'getRollbackToken' ]
 		];
 		Hooks::run( 'APIQueryRevisionsTokens', [ &$this->tokenFunctions ] );
 
@@ -76,7 +80,8 @@ class ApiQueryRevisions extends ApiQueryRevisionsBase {
 			return false;
 		}
 
-		return $wgUser->getEditToken( 'rollback' );
+		return $wgUser->getEditToken(
+			[ $title->getPrefixedText(), $rev->getUserText() ] );
 	}
 
 	protected function run( ApiPageSet $resultPageSet = null ) {
@@ -106,14 +111,19 @@ class ApiQueryRevisions extends ApiQueryRevisionsBase {
 		}
 
 		if ( $revCount > 0 && $enumRevMode ) {
-			$this->dieWithError(
-				[ 'apierror-revisions-nolist', $this->getModulePrefix() ], 'invalidparammix'
+			$this->dieUsage(
+				'The revids= parameter may not be used with the list options ' .
+					'(limit, startid, endid, dirNewer, start, end).',
+				'revids'
 			);
 		}
 
 		if ( $pageCount > 1 && $enumRevMode ) {
-			$this->dieWithError(
-				[ 'apierror-revisions-singlepage', $this->getModulePrefix() ], 'invalidparammix'
+			$this->dieUsage(
+				'titles, pageids or a generator was used to supply multiple pages, ' .
+					'but the limit, startid, endid, dirNewer, user, excludeuser, start ' .
+					'and end parameters may only be used on a single page.',
+				'multpages'
 			);
 		}
 
@@ -125,31 +135,20 @@ class ApiQueryRevisions extends ApiQueryRevisionsBase {
 		}
 
 		$db = $this->getDB();
+		$this->addTables( [ 'revision', 'page' ] );
+		$this->addJoinConds(
+			[ 'page' => [ 'INNER JOIN', [ 'page_id = rev_page' ] ] ]
+		);
 
 		if ( $resultPageSet === null ) {
 			$this->parseParameters( $params );
 			$this->token = $params['token'];
-			$opts = [];
+			$this->addFields( Revision::selectFields() );
 			if ( $this->token !== null || $pageCount > 0 ) {
-				$opts[] = 'page';
+				$this->addFields( Revision::selectPageFields() );
 			}
-			if ( $this->fetchContent ) {
-				$opts[] = 'text';
-			}
-			if ( $this->fld_user ) {
-				$opts[] = 'user';
-			}
-			$revQuery = Revision::getQueryInfo( $opts );
-			$this->addTables( $revQuery['tables'] );
-			$this->addFields( $revQuery['fields'] );
-			$this->addJoinConds( $revQuery['joins'] );
 		} else {
 			$this->limit = $this->getParameter( 'limit' ) ?: 10;
-			// Always join 'page' so orphaned revisions are filtered out
-			$this->addTables( [ 'revision', 'page' ] );
-			$this->addJoinConds(
-				[ 'page' => [ 'INNER JOIN', [ 'page_id = rev_page' ] ] ]
-			);
 			$this->addFields( [ 'rev_id', 'rev_timestamp', 'rev_page' ] );
 		}
 
@@ -169,22 +168,31 @@ class ApiQueryRevisions extends ApiQueryRevisionsBase {
 			$this->addWhereFld( 'ct_tag', $params['tag'] );
 		}
 
-		if ( $resultPageSet === null && $this->fetchContent ) {
+		if ( $this->fetchContent ) {
 			// For each page we will request, the user must have read rights for that page
 			$user = $this->getUser();
-			$status = Status::newGood();
-			/** @var Title $title */
+			/** @var $title Title */
 			foreach ( $pageSet->getGoodTitles() as $title ) {
 				if ( !$title->userCan( 'read', $user ) ) {
-					$status->fatal( ApiMessage::create(
-						[ 'apierror-cannotviewtitle', wfEscapeWikiText( $title->getPrefixedText() ) ],
-						'accessdenied'
-					) );
+					$this->dieUsage(
+						'The current user is not allowed to read ' . $title->getPrefixedText(),
+						'accessdenied' );
 				}
 			}
-			if ( !$status->isGood() ) {
-				$this->dieStatus( $status );
-			}
+
+			$this->addTables( 'text' );
+			$this->addJoinConds(
+				[ 'text' => [ 'INNER JOIN', [ 'rev_text_id=old_id' ] ] ]
+			);
+			$this->addFields( 'old_id' );
+			$this->addFields( Revision::selectTextFields() );
+		}
+
+		// add user name, if needed
+		if ( $this->fld_user ) {
+			$this->addTables( 'user' );
+			$this->addJoinConds( [ 'user' => Revision::userJoinCond() ] );
+			$this->addFields( Revision::selectUserFields() );
 		}
 
 		if ( $enumRevMode ) {
@@ -194,9 +202,17 @@ class ApiQueryRevisions extends ApiQueryRevisionsBase {
 			//  page_timestamp or usertext_timestamp if we have an IP rvuser
 
 			// This is mostly to prevent parameter errors (and optimize SQL?)
-			$this->requireMaxOneParameter( $params, 'startid', 'start' );
-			$this->requireMaxOneParameter( $params, 'endid', 'end' );
-			$this->requireMaxOneParameter( $params, 'user', 'excludeuser' );
+			if ( $params['startid'] !== null && $params['start'] !== null ) {
+				$this->dieUsage( 'start and startid cannot be used together', 'badparams' );
+			}
+
+			if ( $params['endid'] !== null && $params['end'] !== null ) {
+				$this->dieUsage( 'end and endid cannot be used together', 'badparams' );
+			}
+
+			if ( $params['user'] !== null && $params['excludeuser'] !== null ) {
+				$this->dieUsage( 'user and excludeuser cannot be used together', 'badparams' );
+			}
 
 			if ( $params['continue'] !== null ) {
 				$cont = explode( '|', $params['continue'] );
@@ -211,95 +227,33 @@ class ApiQueryRevisions extends ApiQueryRevisionsBase {
 				);
 			}
 
-			// Convert startid/endid to timestamps (T163532)
-			$revids = [];
-			if ( $params['startid'] !== null ) {
-				$revids[] = (int)$params['startid'];
-			}
-			if ( $params['endid'] !== null ) {
-				$revids[] = (int)$params['endid'];
-			}
-			if ( $revids ) {
-				$db = $this->getDB();
-				$sql = $db->unionQueries( [
-					$db->selectSQLText(
-						'revision',
-						[ 'id' => 'rev_id', 'ts' => 'rev_timestamp' ],
-						[ 'rev_id' => $revids ],
-						__METHOD__
-					),
-					$db->selectSQLText(
-						'archive',
-						[ 'id' => 'ar_rev_id', 'ts' => 'ar_timestamp' ],
-						[ 'ar_rev_id' => $revids ],
-						__METHOD__
-					),
-				], false );
-				$res = $db->query( $sql, __METHOD__ );
-				foreach ( $res as $row ) {
-					if ( (int)$row->id === (int)$params['startid'] ) {
-						$params['start'] = $row->ts;
-					}
-					if ( (int)$row->id === (int)$params['endid'] ) {
-						$params['end'] = $row->ts;
-					}
-				}
-				if ( $params['startid'] !== null && $params['start'] === null ) {
-					$p = $this->encodeParamName( 'startid' );
-					$this->dieWithError( [ 'apierror-revisions-badid', $p ], "badid_$p" );
-				}
-				if ( $params['endid'] !== null && $params['end'] === null ) {
-					$p = $this->encodeParamName( 'endid' );
-					$this->dieWithError( [ 'apierror-revisions-badid', $p ], "badid_$p" );
-				}
-
-				if ( $params['start'] !== null ) {
-					$op = ( $params['dir'] === 'newer' ? '>' : '<' );
-					$ts = $db->addQuotes( $db->timestampOrNull( $params['start'] ) );
-					if ( $params['startid'] !== null ) {
-						$this->addWhere( "rev_timestamp $op $ts OR "
-							. "rev_timestamp = $ts AND rev_id $op= " . intval( $params['startid'] ) );
-					} else {
-						$this->addWhere( "rev_timestamp $op= $ts" );
-					}
-				}
-				if ( $params['end'] !== null ) {
-					$op = ( $params['dir'] === 'newer' ? '<' : '>' ); // Yes, opposite of the above
-					$ts = $db->addQuotes( $db->timestampOrNull( $params['end'] ) );
-					if ( $params['endid'] !== null ) {
-						$this->addWhere( "rev_timestamp $op $ts OR "
-							. "rev_timestamp = $ts AND rev_id $op= " . intval( $params['endid'] ) );
-					} else {
-						$this->addWhere( "rev_timestamp $op= $ts" );
-					}
-				}
-			} else {
-				$this->addTimestampWhereRange( 'rev_timestamp', $params['dir'],
-					$params['start'], $params['end'] );
-			}
-
-			$sort = ( $params['dir'] === 'newer' ? '' : 'DESC' );
-			$this->addOption( 'ORDER BY', [ "rev_timestamp $sort", "rev_id $sort" ] );
+			$this->addTimestampWhereRange( 'rev_timestamp', $params['dir'],
+				$params['start'], $params['end'] );
+			$this->addWhereRange( 'rev_id', $params['dir'],
+				$params['startid'], $params['endid'] );
 
 			// There is only one ID, use it
 			$ids = array_keys( $pageSet->getGoodTitles() );
 			$this->addWhereFld( 'rev_page', reset( $ids ) );
 
 			if ( $params['user'] !== null ) {
-				$actorQuery = ActorMigration::newMigration()
-					->getWhere( $db, 'rev_user', User::newFromName( $params['user'], false ) );
-				$this->addTables( $actorQuery['tables'] );
-				$this->addJoinConds( $actorQuery['joins'] );
-				$this->addWhere( $actorQuery['conds'] );
+				$user = User::newFromName( $params['user'] );
+				if ( $user && $user->getId() > 0 ) {
+					$this->addWhereFld( 'rev_user', $user->getId() );
+				} else {
+					$this->addWhereFld( 'rev_user_text', $params['user'] );
+				}
 			} elseif ( $params['excludeuser'] !== null ) {
-				$actorQuery = ActorMigration::newMigration()
-					->getWhere( $db, 'rev_user', User::newFromName( $params['excludeuser'], false ) );
-				$this->addTables( $actorQuery['tables'] );
-				$this->addJoinConds( $actorQuery['joins'] );
-				$this->addWhere( 'NOT(' . $actorQuery['conds'] . ')' );
+				$user = User::newFromName( $params['excludeuser'] );
+				if ( $user && $user->getId() > 0 ) {
+					$this->addWhere( 'rev_user != ' . $user->getId() );
+				} else {
+					$this->addWhere( 'rev_user_text != ' .
+						$db->addQuotes( $params['excludeuser'] ) );
+				}
 			}
 			if ( $params['user'] !== null || $params['excludeuser'] !== null ) {
-				// Paranoia: avoid brute force searches (T19342)
+				// Paranoia: avoid brute force searches (bug 17342)
 				if ( !$this->getUser()->isAllowed( 'deletedhistory' ) ) {
 					$bitmask = Revision::DELETED_USER;
 				} elseif ( !$this->getUser()->isAllowedAny( 'suppressrevision', 'viewsuppressed' ) ) {
@@ -360,8 +314,7 @@ class ApiQueryRevisions extends ApiQueryRevisionsBase {
 
 		$count = 0;
 		$generated = [];
-		$hookData = [];
-		$res = $this->select( __METHOD__, [], $hookData );
+		$res = $this->select( __METHOD__ );
 
 		foreach ( $res as $row ) {
 			if ( ++$count > $this->limit ) {
@@ -391,15 +344,14 @@ class ApiQueryRevisions extends ApiQueryRevisionsBase {
 					foreach ( $this->token as $t ) {
 						$val = call_user_func( $tokenFunctions[$t], $title->getArticleID(), $title, $revision );
 						if ( $val === false ) {
-							$this->addWarning( [ 'apiwarn-tokennotallowed', $t ] );
+							$this->setWarning( "Action '$t' is not allowed for the current user" );
 						} else {
 							$rev[$t . 'token'] = $val;
 						}
 					}
 				}
 
-				$fit = $this->processRow( $row, $rev, $hookData ) &&
-					$this->addPageSubItem( $row->rev_page, $rev, 'rev' );
+				$fit = $this->addPageSubItem( $row->rev_page, $rev, 'rev' );
 				if ( !$fit ) {
 					if ( $enumRevMode ) {
 						$this->setContinueEnumParameter( 'continue',
@@ -502,6 +454,6 @@ class ApiQueryRevisions extends ApiQueryRevisionsBase {
 	}
 
 	public function getHelpUrls() {
-		return 'https://www.mediawiki.org/wiki/Special:MyLanguage/API:Revisions';
+		return 'https://www.mediawiki.org/wiki/API:Revisions';
 	}
 }

@@ -1,7 +1,7 @@
 <?php
 /**
  * Router for the php cli-server built-in webserver.
- * https://secure.php.net/manual/en/features.commandline.webserver.php
+ * http://www.php.net/manual/en/features.commandline.webserver.php
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -54,11 +54,16 @@ if ( !is_readable( $file ) ) {
 }
 $ext = pathinfo( $file, PATHINFO_EXTENSION );
 if ( $ext == 'php' || $ext == 'php5' ) {
-	return false;
+	# Execute php files
+	# We use require and return true here because when you return false
+	# the php webserver will discard post data and things like login
+	# will not function in the dev environment.
+	require $file;
+
+	return true;
 }
 $mime = false;
-// Borrow mime type file from MimeAnalyzer
-$lines = explode( "\n", file_get_contents( "includes/libs/mime/mime.types" ) );
+$lines = explode( "\n", file_get_contents( "includes/mime.types" ) );
 foreach ( $lines as $line ) {
 	$exts = explode( " ", $line );
 	$mime = array_shift( $exts );

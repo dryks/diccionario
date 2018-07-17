@@ -24,17 +24,14 @@ class ArrayBackedMemoizedCallable extends MemoizedCallable {
  * PHP Unit tests for MemoizedCallable class.
  * @covers MemoizedCallable
  */
-class MemoizedCallableTest extends PHPUnit\Framework\TestCase {
-
-	use MediaWikiCoversValidator;
+class MemoizedCallableTest extends PHPUnit_Framework_TestCase {
 
 	/**
 	 * The memoized callable should relate inputs to outputs in the same
 	 * way as the original underlying callable.
 	 */
 	public function testReturnValuePassedThrough() {
-		$mock = $this->getMockBuilder( stdClass::class )
-			->setMethods( [ 'reverse' ] )->getMock();
+		$mock = $this->getMock( 'stdClass', [ 'reverse' ] );
 		$mock->expects( $this->any() )
 			->method( 'reverse' )
 			->will( $this->returnCallback( 'strrev' ) );
@@ -47,11 +44,10 @@ class MemoizedCallableTest extends PHPUnit\Framework\TestCase {
 	 * Consecutive calls to the memoized callable with the same arguments
 	 * should result in just one invocation of the underlying callable.
 	 *
-	 * @requires extension apcu
+	 * @requires function apc_store/apcu_store
 	 */
 	public function testCallableMemoized() {
-		$observer = $this->getMockBuilder( stdClass::class )
-			->setMethods( [ 'computeSomething' ] )->getMock();
+		$observer = $this->getMock( 'stdClass', [ 'computeSomething' ] );
 		$observer->expects( $this->once() )
 			->method( 'computeSomething' )
 			->will( $this->returnValue( 'ok' ) );

@@ -1,5 +1,9 @@
 <?php
 /**
+ *
+ *
+ * Created on Feb 13, 2009
+ *
  * Copyright © 2009 Roan Kattouw "<Firstname>.<Lastname>@gmail.com"
  *
  * This program is free software; you can redistribute it and/or modify
@@ -51,16 +55,9 @@ class ApiQueryProtectedTitles extends ApiQueryGeneratorBase {
 
 		$prop = array_flip( $params['prop'] );
 		$this->addFieldsIf( 'pt_user', isset( $prop['user'] ) || isset( $prop['userid'] ) );
+		$this->addFieldsIf( 'pt_reason', isset( $prop['comment'] ) || isset( $prop['parsedcomment'] ) );
 		$this->addFieldsIf( 'pt_expiry', isset( $prop['expiry'] ) );
 		$this->addFieldsIf( 'pt_create_perm', isset( $prop['level'] ) );
-
-		if ( isset( $prop['comment'] ) || isset( $prop['parsedcomment'] ) ) {
-			$commentStore = CommentStore::getStore();
-			$commentQuery = $commentStore->getJoin( 'pt_reason' );
-			$this->addTables( $commentQuery['tables'] );
-			$this->addFields( $commentQuery['fields'] );
-			$this->addJoinConds( $commentQuery['joins'] );
-		}
 
 		$this->addTimestampWhereRange( 'pt_timestamp', $params['dir'], $params['start'], $params['end'] );
 		$this->addWhereFld( 'pt_namespace', $params['namespace'] );
@@ -130,17 +127,16 @@ class ApiQueryProtectedTitles extends ApiQueryGeneratorBase {
 				}
 
 				if ( isset( $prop['comment'] ) ) {
-					$vals['comment'] = $commentStore->getComment( 'pt_reason', $row )->text;
+					$vals['comment'] = $row->pt_reason;
 				}
 
 				if ( isset( $prop['parsedcomment'] ) ) {
-					$vals['parsedcomment'] = Linker::formatComment(
-						$commentStore->getComment( 'pt_reason', $row )->text, $titles
-					);
+					$vals['parsedcomment'] = Linker::formatComment( $row->pt_reason, $title );
 				}
 
 				if ( isset( $prop['expiry'] ) ) {
-					$vals['expiry'] = ApiResult::formatExpiry( $row->pt_expiry );
+					global $wgContLang;
+					$vals['expiry'] = $wgContLang->formatExpiry( $row->pt_expiry, TS_ISO_8601 );
 				}
 
 				if ( isset( $prop['level'] ) ) {
@@ -239,6 +235,6 @@ class ApiQueryProtectedTitles extends ApiQueryGeneratorBase {
 	}
 
 	public function getHelpUrls() {
-		return 'https://www.mediawiki.org/wiki/Special:MyLanguage/API:Protectedtitles';
+		return 'https://www.mediawiki.org/wiki/API:Protectedtitles';
 	}
 }

@@ -48,13 +48,7 @@ abstract class Preprocessor {
 			'names' => [ 2 => null ],
 			'min' => 2,
 			'max' => 2,
-		],
-		'-{' => [
-			'end' => '}-',
-			'names' => [ 2 => null ],
-			'min' => 2,
-			'max' => 2,
-		],
+		]
 	];
 
 	/**
@@ -62,7 +56,6 @@ abstract class Preprocessor {
 	 *
 	 * @param string $text
 	 * @param int $flags
-	 * @param string $tree
 	 */
 	protected function cacheSetTree( $text, $flags, $tree ) {
 		$config = RequestContext::getMain()->getConfig();
@@ -70,15 +63,15 @@ abstract class Preprocessor {
 		$length = strlen( $text );
 		$threshold = $config->get( 'PreprocessorCacheThreshold' );
 		if ( $threshold === false || $length < $threshold || $length > 1e6 ) {
-			return;
+			return false;
 		}
 
-		$cache = ObjectCache::getLocalClusterInstance();
-		$key = $cache->makeKey(
+		$key = wfMemcKey(
 			defined( 'static::CACHE_PREFIX' ) ? static::CACHE_PREFIX : static::class,
 			md5( $text ), $flags );
 		$value = sprintf( "%08d", static::CACHE_VERSION ) . $tree;
 
+		$cache = ObjectCache::getInstance( $config->get( 'MainCacheType' ) );
 		$cache->set( $key, $value, 86400 );
 
 		LoggerFactory::getInstance( 'Preprocessor' )
@@ -102,9 +95,9 @@ abstract class Preprocessor {
 			return false;
 		}
 
-		$cache = ObjectCache::getLocalClusterInstance();
+		$cache = ObjectCache::getInstance( $config->get( 'MainCacheType' ) );
 
-		$key = $cache->makeKey(
+		$key = wfMemcKey(
 			defined( 'static::CACHE_PREFIX' ) ? static::CACHE_PREFIX : static::class,
 			md5( $text ), $flags );
 

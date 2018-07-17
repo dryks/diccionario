@@ -48,10 +48,10 @@ ve.ui.MWSyntaxHighlightDialog.prototype.initialize = function () {
 
 	this.input = new ve.ui.MWAceEditorWidget( {
 		limit: 1,
+		multiline: true,
 		rows: 10,
 		maxRows: 25,
 		autosize: true,
-		autocomplete: 'live',
 		classes: [ 've-ui-mwExtensionWindow-input' ]
 	} );
 
@@ -59,6 +59,8 @@ ve.ui.MWSyntaxHighlightDialog.prototype.initialize = function () {
 
 	// Mixin method
 	ve.ui.MWSyntaxHighlightWindow.prototype.initialize.call( this );
+
+	this.showLinesCheckbox.connect( this, { change: 'onShowLinesCheckboxChange' } );
 
 	this.languageField.setAlignment( 'left' );
 
@@ -69,8 +71,7 @@ ve.ui.MWSyntaxHighlightDialog.prototype.initialize = function () {
 		content: [
 			this.languageField,
 			this.codeField,
-			this.showLinesField,
-			this.startLineField
+			this.showLinesField
 		]
 	} );
 
@@ -83,16 +84,23 @@ ve.ui.MWSyntaxHighlightDialog.prototype.initialize = function () {
  * @inheritdoc MWSyntaxHighlightWindow
  */
 ve.ui.MWSyntaxHighlightDialog.prototype.onLanguageInputChange = function () {
-	var validity, dialog = this;
+	var dialog = this;
 
 	// Mixin method
 	ve.ui.MWSyntaxHighlightWindow.prototype.onLanguageInputChange.call( this );
 
-	validity = this.language.getValidity();
-	validity.always( function () {
-		var language = ve.dm.MWSyntaxHighlightNode.static.convertLanguageToAce( dialog.language.getValue() );
-		dialog.input.setLanguage( validity.state() === 'resolved' ? language : 'text' );
+	this.language.getInput().isValid().done( function ( valid ) {
+		dialog.input.setLanguage( valid ? dialog.language.getInput().getValue() : 'text' );
 	} );
+};
+
+/**
+ * Handle change events from the show lines chechbox
+ *
+ * @param {boolean} value Widget value
+ */
+ve.ui.MWSyntaxHighlightDialog.prototype.onShowLinesCheckboxChange = function () {
+	this.input.toggleLineNumbers( this.showLinesCheckbox.isSelected() );
 };
 
 /**
@@ -130,7 +138,7 @@ ve.ui.MWSyntaxHighlightDialog.prototype.getTeardownProcess = function ( data ) {
 	var process = ve.ui.MWSyntaxHighlightDialog.super.prototype.getTeardownProcess.call( this, data );
 	// Mixin process
 	return ve.ui.MWSyntaxHighlightWindow.prototype.getTeardownProcess.call( this, data, process ).first( function () {
-		this.language.setValue( '' );
+		this.language.input.setValue( '' );
 		this.input.teardown();
 	}, this );
 };

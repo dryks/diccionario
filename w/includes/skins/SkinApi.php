@@ -4,7 +4,9 @@
  * the usual skin elements but still using CSS, JS, and such via OutputPage and
  * ResourceLoader.
  *
- * Copyright © 2014 Wikimedia Foundation and contributors
+ * Created on Sep 08, 2014
+ *
+ * Copyright © 2014 Brad Jorsch <bjorsch@wikimedia.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,7 +32,7 @@
  */
 class SkinApi extends SkinTemplate {
 	public $skinname = 'apioutput';
-	public $template = SkinApiTemplate::class;
+	public $template = 'SkinApiTemplate';
 
 	public function setupSkinUserCss( OutputPage $out ) {
 		parent::setupSkinUserCss( $out );

@@ -22,7 +22,6 @@ namespace MediaWiki\Logger\Monolog;
 
 use Kafka\MetaDataFromKafka;
 use Kafka\Produce;
-use Kafka\Protocol\Decoder;
 use MediaWiki\Logger\LoggerFactory;
 use Monolog\Handler\AbstractProcessingHandler;
 use Monolog\Logger;
@@ -33,12 +32,12 @@ use Psr\Log\LoggerInterface;
  *
  * Constructor options array arguments:
  * * alias: map from monolog channel to kafka topic name. When no
- *   alias exists the topic "monolog_$channel" will be used.
+ *	  alias exists the topic "monolog_$channel" will be used.
  * * swallowExceptions: Swallow exceptions that occur while talking to
- *   kafka. Defaults to false.
+ *    kafka. Defaults to false.
  * * logExceptions: Log exceptions talking to kafka here. Either null,
- *   the name of a channel to log to, or an object implementing
- *   FormatterInterface. Defaults to null.
+ *    the name of a channel to log to, or an object implementing
+ *    FormatterInterface. Defaults to null.
  *
  * Requires the nmred/kafka-php library, version >= 1.3.0
  *
@@ -69,7 +68,6 @@ class KafkaHandler extends AbstractProcessingHandler {
 		'alias' => [], // map from monolog channel to kafka topic
 		'swallowExceptions' => false, // swallow exceptions sending records
 		'logExceptions' => null, // A PSR3 logger to inform about errors
-		'requireAck' => 0,
 	];
 
 	/**
@@ -120,15 +118,11 @@ class KafkaHandler extends AbstractProcessingHandler {
 			$options['logExceptions'] = LoggerFactory::getInstance( $options['logExceptions'] );
 		}
 
-		if ( isset( $options['requireAck'] ) ) {
-			$produce->setRequireAck( $options['requireAck'] );
-		}
-
 		return new self( $produce, $options, $level, $bubble );
 	}
 
 	/**
-	 * @inheritDoc
+	 * {@inheritDoc}
 	 */
 	protected function write( array $record ) {
 		if ( $record['formatted'] !== null ) {
@@ -138,7 +132,7 @@ class KafkaHandler extends AbstractProcessingHandler {
 	}
 
 	/**
-	 * @inheritDoc
+	 * {@inheritDoc}
 	 */
 	public function handleBatch( array $batch ) {
 		$channels = [];
@@ -171,42 +165,13 @@ class KafkaHandler extends AbstractProcessingHandler {
 	 */
 	protected function send() {
 		try {
-			$response = $this->produce->send();
+			$this->produce->send();
 		} catch ( \Kafka\Exception $e ) {
 			$ignore = $this->warning(
 				'Error sending records to kafka: {exception}',
 				[ 'exception' => $e ] );
 			if ( !$ignore ) {
 				throw $e;
-			} else {
-				return;
-			}
-		}
-
-		if ( is_bool( $response ) ) {
-			return;
-		}
-
-		$errors = [];
-		foreach ( $response as $topicName => $partitionResponse ) {
-			foreach ( $partitionResponse as $partition => $info ) {
-				if ( $info['errCode'] === 0 ) {
-					// no error
-					continue;
-				}
-				$errors[] = sprintf(
-					'Error producing to %s (errno %d): %s',
-					$topicName,
-					$info['errCode'],
-					Decoder::getError( $info['errCode'] )
-				);
-			}
-		}
-
-		if ( $errors ) {
-			$error = implode( "\n", $errors );
-			if ( !$this->warning( $error ) ) {
-				throw new \RuntimeException( $error );
 			}
 		}
 	}

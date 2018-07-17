@@ -21,9 +21,6 @@
  * @ingroup SpecialPage
  */
 
-use Wikimedia\Rdbms\IResultWrapper;
-use Wikimedia\Rdbms\IDatabase;
-
 /**
  * Variant of QueryPage which formats the result as a simple link to the page
  *
@@ -36,10 +33,20 @@ abstract class PageQueryPage extends QueryPage {
 	 * This should be done for live data and cached data.
 	 *
 	 * @param IDatabase $db
-	 * @param IResultWrapper $res
+	 * @param ResultWrapper $res
 	 */
 	public function preprocessResults( $db, $res ) {
-		$this->executeLBFromResultWrapper( $res );
+		if ( !$res->numRows() ) {
+			return;
+		}
+
+		$batch = new LinkBatch();
+		foreach ( $res as $row ) {
+			$batch->add( $row->namespace, $row->title );
+		}
+		$batch->execute();
+
+		$res->seek( 0 );
 	}
 
 	/**
@@ -56,7 +63,7 @@ abstract class PageQueryPage extends QueryPage {
 
 		if ( $title instanceof Title ) {
 			$text = $wgContLang->convert( $title->getPrefixedText() );
-			return $this->getLinkRenderer()->makeLink( $title, $text );
+			return Linker::link( $title, htmlspecialchars( $text ) );
 		} else {
 			return Html::element( 'span', [ 'class' => 'mw-invalidtitle' ],
 				Linker::getInvalidTitleDescription( $this->getContext(), $row->namespace, $row->title ) );

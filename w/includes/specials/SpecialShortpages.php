@@ -21,9 +21,6 @@
  * @ingroup SpecialPage
  */
 
-use Wikimedia\Rdbms\IResultWrapper;
-use Wikimedia\Rdbms\IDatabase;
-
 /**
  * SpecialShortpages extends QueryPage. It is used to return the shortest
  * pages in the database.
@@ -41,11 +38,9 @@ class ShortPagesPage extends QueryPage {
 	}
 
 	public function getQueryInfo() {
-		$config = $this->getConfig();
-		$blacklist = $config->get( 'ShortPagesNamespaceBlacklist' );
 		$tables = [ 'page' ];
 		$conds = [
-			'page_namespace' => array_diff( MWNamespace::getContentNamespaces(), $blacklist ),
+			'page_namespace' => MWNamespace::getContentNamespaces(),
 			'page_is_redirect' => 0
 		];
 		$joinConds = [];
@@ -67,67 +62,28 @@ class ShortPagesPage extends QueryPage {
 		];
 	}
 
-	public function reallyDoQuery( $limit, $offset = false ) {
-		$fname = static::class . '::reallyDoQuery';
-		$dbr = $this->getRecacheDB();
-		$query = $this->getQueryInfo();
-		$order = $this->getOrderFields();
-
-		if ( $this->sortDescending() ) {
-			foreach ( $order as &$field ) {
-				$field .= ' DESC';
-			}
-		}
-
-		$tables = isset( $query['tables'] ) ? (array)$query['tables'] : [];
-		$fields = isset( $query['fields'] ) ? (array)$query['fields'] : [];
-		$conds = isset( $query['conds'] ) ? (array)$query['conds'] : [];
-		$options = isset( $query['options'] ) ? (array)$query['options'] : [];
-		$join_conds = isset( $query['join_conds'] ) ? (array)$query['join_conds'] : [];
-
-		if ( $limit !== false ) {
-			$options['LIMIT'] = intval( $limit );
-		}
-
-		if ( $offset !== false ) {
-			$options['OFFSET'] = intval( $offset );
-		}
-
-		$namespaces = $conds['page_namespace'];
-		if ( count( $namespaces ) === 1 ) {
-			$options['ORDER BY'] = $order;
-			$res = $dbr->select( $tables, $fields, $conds, $fname,
-				$options, $join_conds
-			);
-		} else {
-			unset( $conds['page_namespace'] );
-			$options['INNER ORDER BY'] = $order;
-			$options['ORDER BY'] = [ 'value' . ( $this->sortDescending() ? ' DESC' : '' ) ];
-			$sql = $dbr->unionConditionPermutations(
-				$tables,
-				$fields,
-				[ 'page_namespace' => $namespaces ],
-				$conds,
-				$fname,
-				$options,
-				$join_conds
-			);
-			$res = $dbr->query( $sql, $fname );
-		}
-
-		return $res;
-	}
-
 	function getOrderFields() {
 		return [ 'page_len' ];
 	}
 
 	/**
 	 * @param IDatabase $db
-	 * @param IResultWrapper $res
+	 * @param ResultWrapper $res
 	 */
 	function preprocessResults( $db, $res ) {
-		$this->executeLBFromResultWrapper( $res );
+		# There's no point doing a batch check if we aren't caching results;
+		# the page must exist for it to have been pulled out of the table
+		if ( !$this->isCached() || !$res->numRows() ) {
+			return;
+		}
+
+		$batch = new LinkBatch();
+		foreach ( $res as $row ) {
+			$batch->add( $row->namespace, $row->title );
+		}
+		$batch->execute();
+
+		$res->seek( 0 );
 	}
 
 	function sortDescending() {
@@ -148,20 +104,19 @@ class ShortPagesPage extends QueryPage {
 				Linker::getInvalidTitleDescription( $this->getContext(), $result->namespace, $result->title ) );
 		}
 
-		$linkRenderer = $this->getLinkRenderer();
-		$hlink = $linkRenderer->makeKnownLink(
+		$hlink = Linker::linkKnown(
 			$title,
-			$this->msg( 'hist' )->text(),
+			$this->msg( 'hist' )->escaped(),
 			[],
 			[ 'action' => 'history' ]
 		);
 		$hlinkInParentheses = $this->msg( 'parentheses' )->rawParams( $hlink )->escaped();
 
 		if ( $this->isCached() ) {
-			$plink = $linkRenderer->makeLink( $title );
+			$plink = Linker::link( $title );
 			$exists = $title->exists();
 		} else {
-			$plink = $linkRenderer->makeKnownLink( $title );
+			$plink = Linker::linkKnown( $title );
 			$exists = true;
 		}
 

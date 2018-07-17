@@ -20,9 +20,9 @@
  * @file
  */
 
+use Cdb\Reader as CdbReader;
+use Cdb\Writer as CdbWriter;
 use CLDRPluralRuleParser\Evaluator;
-use CLDRPluralRuleParser\Error as CLDRPluralRuleError;
-use MediaWiki\MediaWikiServices;
 
 /**
  * Class for caching the contents of localisation files, Messages*.php
@@ -109,8 +109,7 @@ class LocalisationCache {
 	static public $allKeys = [
 		'fallback', 'namespaceNames', 'bookstoreList',
 		'magicWords', 'messages', 'rtl', 'capitalizeAllNouns', 'digitTransformTable',
-		'separatorTransformTable', 'minimumGroupingDigits',
-		'fallback8bitEncoding', 'linkPrefixExtension',
+		'separatorTransformTable', 'fallback8bitEncoding', 'linkPrefixExtension',
 		'linkTrail', 'linkPrefixCharset', 'namespaceAliases',
 		'dateFormats', 'datePreferences', 'datePreferenceMigrationMap',
 		'defaultDateFormat', 'extraUserToggles', 'specialPageAliases',
@@ -182,6 +181,7 @@ class LocalisationCache {
 	private $mergeableKeys = null;
 
 	/**
+	 * Constructor.
 	 * For constructor parameters, see the documentation in DefaultSettings.php
 	 * for $wgLocalisationCacheConf.
 	 *
@@ -199,22 +199,22 @@ class LocalisationCache {
 			switch ( $conf['store'] ) {
 				case 'files':
 				case 'file':
-					$storeClass = LCStoreCDB::class;
+					$storeClass = 'LCStoreCDB';
 					break;
 				case 'db':
-					$storeClass = LCStoreDB::class;
+					$storeClass = 'LCStoreDB';
 					break;
 				case 'array':
-					$storeClass = LCStoreStaticArray::class;
+					$storeClass = 'LCStoreStaticArray';
 					break;
 				case 'detect':
 					if ( !empty( $conf['storeDirectory'] ) ) {
-						$storeClass = LCStoreCDB::class;
+						$storeClass = 'LCStoreCDB';
 					} elseif ( $wgCacheDirectory ) {
 						$storeConf['directory'] = $wgCacheDirectory;
-						$storeClass = LCStoreCDB::class;
+						$storeClass = 'LCStoreCDB';
 					} else {
-						$storeClass = LCStoreDB::class;
+						$storeClass = 'LCStoreDB';
 					}
 					break;
 				default:
@@ -224,7 +224,7 @@ class LocalisationCache {
 			}
 		}
 
-		wfDebugLog( 'caches', static::class . ": using store $storeClass" );
+		wfDebugLog( 'caches', get_class( $this ) . ": using store $storeClass" );
 		if ( !empty( $conf['storeDirectory'] ) ) {
 			$storeConf['directory'] = $conf['storeDirectory'];
 		}
@@ -309,7 +309,7 @@ class LocalisationCache {
 	 * array.
 	 * @param string $code
 	 * @param string $key
-	 * @return bool|null|string|string[]
+	 * @return bool|null|string
 	 */
 	public function getSubitemList( $code, $key ) {
 		if ( in_array( $key, self::$splitKeys ) ) {
@@ -517,15 +517,15 @@ class LocalisationCache {
 	 */
 	protected function readPHPFile( $_fileName, $_fileType ) {
 		// Disable APC caching
-		Wikimedia\suppressWarnings();
+		MediaWiki\suppressWarnings();
 		$_apcEnabled = ini_set( 'apc.cache_by_default', '0' );
-		Wikimedia\restoreWarnings();
+		MediaWiki\restoreWarnings();
 
 		include $_fileName;
 
-		Wikimedia\suppressWarnings();
+		MediaWiki\suppressWarnings();
 		ini_set( 'apc.cache_by_default', $_apcEnabled );
-		Wikimedia\restoreWarnings();
+		MediaWiki\restoreWarnings();
 
 		if ( $_fileType == 'core' || $_fileType == 'extension' ) {
 			$data = compact( self::$allKeys );
@@ -545,6 +545,7 @@ class LocalisationCache {
 	 * @return array Array with a 'messages' key, or empty array if the file doesn't exist
 	 */
 	public function readJSONFile( $fileName ) {
+
 		if ( !is_readable( $fileName ) ) {
 			return [];
 		}
@@ -556,6 +557,7 @@ class LocalisationCache {
 
 		$data = FormatJson::decode( $json, true );
 		if ( $data === null ) {
+
 			throw new MWException( __METHOD__ . ": Invalid JSON file: $fileName" );
 		}
 
@@ -686,7 +688,7 @@ class LocalisationCache {
 	 * exists, the data array is returned, otherwise false is returned.
 	 *
 	 * @param string $code
-	 * @param array &$deps
+	 * @param array $deps
 	 * @return array
 	 */
 	protected function readSourceFilesAndRegisterDeps( $code, &$deps ) {
@@ -718,7 +720,7 @@ class LocalisationCache {
 	 * Merge two localisation values, a primary and a fallback, overwriting the
 	 * primary value in place.
 	 * @param string $key
-	 * @param mixed &$value
+	 * @param mixed $value
 	 * @param mixed $fallbackValue
 	 */
 	protected function mergeItem( $key, &$value, $fallbackValue ) {
@@ -748,7 +750,7 @@ class LocalisationCache {
 	}
 
 	/**
-	 * @param mixed &$value
+	 * @param mixed $value
 	 * @param mixed $fallbackValue
 	 */
 	protected function mergeMagicWords( &$value, $fallbackValue ) {
@@ -774,7 +776,7 @@ class LocalisationCache {
 	 * otherwise.
 	 * @param array $codeSequence
 	 * @param string $key
-	 * @param mixed &$value
+	 * @param mixed $value
 	 * @param mixed $fallbackValue
 	 * @return bool
 	 */
@@ -798,15 +800,12 @@ class LocalisationCache {
 	 * @return array
 	 */
 	public function getMessagesDirs() {
-		global $IP;
-
-		$config = MediaWikiServices::getInstance()->getMainConfig();
-		$messagesDirs = $config->get( 'MessagesDirs' );
+		global $wgMessagesDirs, $IP;
 		return [
 			'core' => "$IP/languages/i18n",
 			'api' => "$IP/includes/api/i18n",
 			'oojs-ui' => "$IP/resources/lib/oojs-ui/i18n",
-		] + $messagesDirs;
+		] + $wgMessagesDirs;
 	}
 
 	/**
@@ -957,9 +956,8 @@ class LocalisationCache {
 
 		# Add cache dependencies for any referenced globals
 		$deps['wgExtensionMessagesFiles'] = new GlobalDependency( 'wgExtensionMessagesFiles' );
-		// The 'MessagesDirs' config setting is used in LocalisationCache::getMessagesDirs().
-		// We use the key 'wgMessagesDirs' for historical reasons.
-		$deps['wgMessagesDirs'] = new MainConfigDependency( 'MessagesDirs' );
+		// $wgMessagesDirs is used in LocalisationCache::getMessagesDirs()
+		$deps['wgMessagesDirs'] = new GlobalDependency( 'wgMessagesDirs' );
 		$deps['version'] = new ConstantDependency( 'LocalisationCache::VERSION' );
 
 		# Add dependencies to the cache entry
@@ -1030,6 +1028,7 @@ class LocalisationCache {
 			$blobStore = new MessageBlobStore();
 			$blobStore->clear();
 		}
+
 	}
 
 	/**

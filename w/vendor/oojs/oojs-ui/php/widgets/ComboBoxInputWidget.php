@@ -16,32 +16,33 @@ class ComboBoxInputWidget extends TextInputWidget {
 	/**
 	 * @param array $config Configuration options
 	 * @param array[] $config['options'] Array of menu options in the format
-	 *   `[ 'data' => …, 'label' => … ]`
+	 *   `array( 'data' => …, 'label' => … )`
 	 */
 	public function __construct( array $config = [] ) {
-		// ComboBoxInputWidget shouldn't support `multiline`
-		$config['multiline'] = false;
+		// Config initialization
+		$config = array_merge( [
+			'indicator' => 'down',
+		], $config );
 
 		// Parent constructor
 		parent::__construct( $config );
 
 		// Initialization
-		$this->forceAutocomplete = isset( $config['autocomplete'] ) ? $config['autocomplete'] : false;
-		$this->downIndicator = new IndicatorWidget( [ 'indicator' => 'down' ] );
 		$this->datalist = new Tag( 'datalist' );
-		$this->datalist->setAttributes( [ 'id' => Tag::generateElementId() ] );
+		$this->datalist->ensureInfusableId();
+		$this->datalist->setInfusable( false );
 		$this->input->setAttributes( [ 'list' => $this->datalist->getAttribute( 'id' ) ] );
 
 		$this->setOptions( isset( $config['options'] ) ? $config['options'] : [] );
 		$this->addClasses( [ 'oo-ui-comboBoxInputWidget', 'oo-ui-comboBoxInputWidget-php' ] );
-		$this->appendContent( $this->downIndicator, $this->datalist );
+		$this->appendContent( $this->datalist );
 	}
 
 	/**
 	 * Set the options available for this input.
 	 *
 	 * @param array[] $options Array of menu options in the format
-	 *   `[ 'data' => …, 'label' => … ]`
+	 *   `array( 'data' => …, 'label' => … )`
 	 * @return $this
 	 */
 	public function setOptions( $options ) {
@@ -68,13 +69,6 @@ class ComboBoxInputWidget extends TextInputWidget {
 			$o[] = [ 'data' => $data, 'label' => $label ];
 		}
 		$config['options'] = $o;
-		// JS ComboBoxInputWidget has `autocomplete: false` in the defaults. Make sure
-		// explicitly passing `autocomplete: true` overrides that. Doing so doesn't make
-		// much sense, this is just to make the tests happy.
-		if ( $this->forceAutocomplete ) {
-			$config['autocomplete'] = true;
-		}
-		$config['$overlay'] = true;
 		return parent::getConfig( $config );
 	}
 }

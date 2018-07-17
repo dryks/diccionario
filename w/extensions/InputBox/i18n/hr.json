@@ -3,8 +3,7 @@
 		"authors": [
 			"Brest",
 			"Dnik",
-			"SpeedyGonsales",
-			"MaGa"
+			"SpeedyGonsales"
 		]
 	},
 	"inputbox-desc": "Dozvoli uključivanje predefiniranih obrazaca u HTML-u",
@@ -12,7 +11,5 @@
 	"inputbox-error-bad-type": "Tip ulaznog polja \"$1\" nije prepoznat. \nMolimo navedite \"create\", \"comment\", \"search\", \"search2\" ili \"fulltext\".",
 	"inputbox-tryexact": "Pokušaj naći točan pogodak",
 	"inputbox-searchfulltext": "Traži po cjelokupnom tekstu",
-	"inputbox-createarticle": "Stvori stranicu",
-	"inputbox-postcomment": "Novi odlomak",
-	"inputbox-postcommenttitle": "Novi odlomak"
+	"inputbox-createarticle": "Stvori članak"
 }

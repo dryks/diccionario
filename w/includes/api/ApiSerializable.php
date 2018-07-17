@@ -1,6 +1,8 @@
 <?php
 /**
- * Copyright © 2015 Wikimedia Foundation and contributors
+ * Created on Feb 25, 2015
+ *
+ * Copyright © 2015 Brad Jorsch "bjorsch@wikimedia.org"
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

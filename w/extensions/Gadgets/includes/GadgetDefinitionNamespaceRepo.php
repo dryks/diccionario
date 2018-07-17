@@ -1,15 +1,12 @@
 <?php
 
-use MediaWiki\Linker\LinkTarget;
-use MediaWiki\MediaWikiServices;
-use Wikimedia\Rdbms\Database;
-
 /**
  * GadgetRepo implementation where each gadget has a page in
  * the Gadget definition namespace, and scripts and styles are
  * located in the Gadget namespace.
  */
 class GadgetDefinitionNamespaceRepo extends GadgetRepo {
+
 	/**
 	 * How long in seconds the list of gadget ids and
 	 * individual gadgets should be cached for (1 day)
@@ -21,8 +18,22 @@ class GadgetDefinitionNamespaceRepo extends GadgetRepo {
 	 */
 	private $wanCache;
 
-	public function __construct() {
-		$this->wanCache = MediaWikiServices::getInstance()->getMainWANObjectCache();
+	/**
+	 * @var string
+	 */
+	private $idsKey;
+
+	public function __construct () {
+		$this->idsKey = wfMemcKey( 'gadgets', 'namespace', 'ids' );
+		$this->wanCache = ObjectCache::getMainWANInstance();
+	}
+
+	/**
+	 * Purge the list of gadget ids when a page is deleted
+	 * or if a new page is created
+	 */
+	public function purgeGadgetIdsList() {
+		$this->wanCache->touchCheckKey( $this->idsKey );
 	}
 
 	/**
@@ -31,63 +42,40 @@ class GadgetDefinitionNamespaceRepo extends GadgetRepo {
 	 * @return string[]
 	 */
 	public function getGadgetIds() {
-		$key = $this->getGadgetIdsKey();
-
 		return $this->wanCache->getWithSetCallback(
-			$key,
+			$this->idsKey,
 			self::CACHE_TTL,
-			function ( $oldValue, &$ttl, array &$setOpts ) {
-				$dbr = wfGetDB( DB_REPLICA );
+			function( $oldValue, &$ttl, array &$setOpts ) {
+				$dbr = wfGetDB( DB_SLAVE );
 				$setOpts += Database::getCacheSetOptions( $dbr );
-
 				return $dbr->selectFieldValues(
 					'page',
 					'page_title',
-					[ 'page_namespace' => NS_GADGET_DEFINITION ],
+					array(
+						'page_namespace' => NS_GADGET_DEFINITION
+					),
 					__METHOD__
 				);
 			},
-			[
-				'checkKeys' => [ $key ],
-				'pcTTL' => WANObjectCache::TTL_PROC_SHORT,
-				'lockTSE' => 30
-			]
+			array(
+				'checkKeys' => array( $this->idsKey ),
+				'pcTTL' => 5,
+				'lockTSE' => '30',
+			)
 		);
 	}
 
 	/**
-	 * @inheritDoc
+	 * Update the cache for a specific Gadget whenever it is updated
+	 *
+	 * @param string $id
 	 */
-	public function handlePageUpdate( LinkTarget $target ) {
-		if ( $target->inNamespace( NS_GADGET_DEFINITION ) ) {
-			$this->purgeGadgetEntry( $target->getText() );
-		}
+	public function updateGadgetObjectCache( $id ) {
+		$this->wanCache->touchCheckKey( $this->getGadgetCacheKey( $id ) );
 	}
 
-	/**
-	 * @inheritDoc
-	 */
-	public function handlePageCreation( LinkTarget $target ) {
-		if ( $target->inNamespace( NS_GADGET_DEFINITION ) ) {
-			$this->purgeGadgetIdsList();
-		}
-	}
-
-	/**
-	 * @inheritDoc
-	 */
-	public function handlePageDeletion( LinkTarget $target ) {
-		if ( $target->inNamespace( NS_GADGET_DEFINITION ) ) {
-			$this->purgeGadgetIdsList();
-			$this->purgeGadgetEntry( $target->getText() );
-		}
-	}
-
-	/**
-	 * Purge the list of gadget ids when a page is deleted or if a new page is created
-	 */
-	public function purgeGadgetIdsList() {
-		$this->wanCache->touchCheckKey( $this->getGadgetIdsKey() );
+	private function getGadgetCacheKey( $id ) {
+		return wfMemcKey( 'gadgets', 'object', md5( $id ), Gadget::GADGET_CLASS_VERSION );
 	}
 
 	/**
@@ -100,17 +88,13 @@ class GadgetDefinitionNamespaceRepo extends GadgetRepo {
 		$gadget = $this->wanCache->getWithSetCallback(
 			$key,
 			self::CACHE_TTL,
-			/**
-			 * @suppress PhanTypeMismatchArgument
-			 */
-			function ( $old, &$ttl, array &$setOpts ) use ( $id ) {
-				$setOpts += Database::getCacheSetOptions( wfGetDB( DB_REPLICA ) );
+			function( $old, &$ttl, array &$setOpts ) use ( $id ) {
+				$setOpts += Database::getCacheSetOptions( wfGetDB( DB_SLAVE ) );
 				$title = Title::makeTitleSafe( NS_GADGET_DEFINITION, $id );
 				if ( !$title ) {
 					$ttl = WANObjectCache::TTL_UNCACHEABLE;
 					return null;
 				}
-
 				$rev = Revision::newFromTitle( $title );
 				if ( !$rev ) {
 					$ttl = WANObjectCache::TTL_UNCACHEABLE;
@@ -126,11 +110,11 @@ class GadgetDefinitionNamespaceRepo extends GadgetRepo {
 
 				return Gadget::newFromDefinitionContent( $id, $content );
 			},
-			[
-				'checkKeys' => [ $key ],
-				'pcTTL' => WANObjectCache::TTL_PROC_SHORT,
-				'lockTSE' => 30
-			]
+			array(
+				'checkKeys' => array( $key ),
+				'pcTTL' => 5,
+				'lockTSE' => '30',
+			)
 		);
 
 		if ( $gadget === null ) {
@@ -138,30 +122,5 @@ class GadgetDefinitionNamespaceRepo extends GadgetRepo {
 		}
 
 		return $gadget;
-	}
-
-	/**
-	 * Update the cache for a specific Gadget whenever it is updated
-	 *
-	 * @param string $id
-	 */
-	public function purgeGadgetEntry( $id ) {
-		$this->wanCache->touchCheckKey( $this->getGadgetCacheKey( $id ) );
-	}
-
-	/**
-	 * @return string
-	 */
-	private function getGadgetIdsKey() {
-		return $this->wanCache->makeKey( 'gadgets', 'namespace', 'ids' );
-	}
-
-	/**
-	 * @param string $id
-	 * @return string
-	 */
-	private function getGadgetCacheKey( $id ) {
-		return $this->wanCache->makeKey(
-			'gadgets', 'object', md5( $id ), Gadget::GADGET_CLASS_VERSION );
 	}
 }
