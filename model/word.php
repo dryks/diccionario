@@ -129,8 +129,8 @@ echo '
 
     $navig=ob_get_clean();
 
-   
-$cleanhead = preg_replace("#</head>#",$headend,$cleanhead);
+    
+$cleanhead = preg_replace("#es.wiktionary.org#","diccionario.pro",$cleanhead);
 $cleanhead = preg_replace("#</head>#",$headend,$cleanhead);
 $cleanhead = preg_replace("#<title>(.*)</title>#","<title>{$this->title}</title>",$cleanhead);
 $cleanhead = preg_replace("#<body (.*?)>#","<body $1>$navig",$cleanhead);
